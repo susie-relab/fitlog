@@ -44,7 +44,7 @@ export default function DistancePicker({ value, onChange }: Props) {
     setTextInput(v);
     const num = parseFloat(v);
     if (!isNaN(num) && num > 0 && num <= 160) {
-      onChange(String(Math.round(num * 10) / 10));
+      onChange(String(Math.round(num * 100) / 100));
     } else if (v === '' || v === '0') {
       onChange('');
     }
@@ -67,9 +67,9 @@ export default function DistancePicker({ value, onChange }: Props) {
           type="number"
           className="input pr-10"
           placeholder="Distance km"
-          min="0.1"
+          min="0.01"
           max="160"
-          step="0.1"
+          step="0.01"
           value={textInput}
           onChange={handleTextChange}
           onBlur={handleTextBlur}
