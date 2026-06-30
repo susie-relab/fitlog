@@ -8,6 +8,7 @@ import {
 } from '@/types';
 import { formatDuration, formatDate, formatPaceMinKm, formatPaceMinMile, formatSpeedKmh, daysAgo } from '@/lib/utils';
 import EditActivityModal from '@/components/EditActivityModal';
+import { activitiesToCsv, downloadCsv } from '@/lib/exportCsv';
 
 export default function ActivityLogPage() {
   const { user } = useAuth();
@@ -49,7 +50,19 @@ export default function ActivityLogPage() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <h1 className="text-xl font-bold text-white mb-4">Activity Log</h1>
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-xl font-bold text-white">Activity Log</h1>
+        <button
+          onClick={() => {
+            const csv = activitiesToCsv(activities);
+            downloadCsv(csv, `sportlog-all-${new Date().toISOString().split('T')[0]}.csv`);
+          }}
+          disabled={activities.length === 0}
+          className="btn-secondary text-sm flex items-center gap-1.5"
+        >
+          ↓ Export all
+        </button>
+      </div>
 
       {/* 30 day quick stats */}
       <div className="card mb-5">

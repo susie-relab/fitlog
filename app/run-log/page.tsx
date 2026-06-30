@@ -6,6 +6,7 @@ import { Activity, RunType, RUN_TYPE_LABELS, RUN_TYPE_COLORS } from '@/types';
 import { formatDuration, formatDate, formatPaceMinKm, formatPaceMinMile, formatSpeedKmh, daysAgo, getStartOfWeek } from '@/lib/utils';
 import EditActivityModal from '@/components/EditActivityModal';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { activitiesToCsv, downloadCsv } from '@/lib/exportCsv';
 
 type ChartMetric = 'distance' | 'duration' | 'pace' | 'count';
 
@@ -81,7 +82,19 @@ export default function RunLogPage() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <h1 className="text-xl font-bold text-white mb-4">Run Log</h1>
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-xl font-bold text-white">Run Log</h1>
+        <button
+          onClick={() => {
+            const csv = activitiesToCsv(runs);
+            downloadCsv(csv, `sportlog-runs-${new Date().toISOString().split('T')[0]}.csv`);
+          }}
+          disabled={runs.length === 0}
+          className="btn-secondary text-sm flex items-center gap-1.5"
+        >
+          ↓ Export all runs
+        </button>
+      </div>
 
       {/* Period selector */}
       <div className="flex gap-1.5 flex-wrap mb-4">

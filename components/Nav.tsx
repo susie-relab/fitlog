@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Plus, LayoutDashboard, List, Footprints, TrendingUp, Award, BookOpen, Target, Upload, LogOut } from 'lucide-react';
+import { Plus, LayoutDashboard, List, Footprints, TrendingUp, Award, BookOpen, Target, Upload, Download, LogOut } from 'lucide-react';
 import { useAuth } from './AuthProvider';
 import { useDirtyForm } from './DirtyFormContext';
 
@@ -14,6 +14,7 @@ const tabs = [
   { href: '/pbs', label: "PB's", icon: Award },
   { href: '/notes', label: 'Notes', icon: BookOpen },
   { href: '/training-plan', label: 'Plan', icon: Target },
+  { href: '/export', label: 'Export', icon: Download },
 ];
 
 export default function Nav() {
