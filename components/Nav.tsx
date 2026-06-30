@@ -6,11 +6,11 @@ import { useAuth } from './AuthProvider';
 
 const tabs = [
   { href: '/add', label: 'Add', icon: Plus },
+  { href: '/activity-log', label: 'Log', icon: List },
+  { href: '/run-log', label: 'Runs', icon: Footprints },
   { href: '/stats', label: '14 Days', icon: BarChart2 },
   { href: '/total-stats', label: 'Stats', icon: TrendingUp },
   { href: '/pbs', label: "PB's", icon: Award },
-  { href: '/activity-log', label: 'Log', icon: List },
-  { href: '/run-log', label: 'Runs', icon: Footprints },
 ];
 
 export default function Nav() {
