@@ -64,12 +64,20 @@ export default function ActivityLogPage() {
     : chartWindow === '1y' ? daysAgo(365).split('T')[0]
     : '0000-01-01';
   const chartActivities = activities.filter(a => a.date >= chartStart);
+  const getWeekStart = (dateStr: string) => {
+    const d = new Date(dateStr);
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+    d.setDate(diff);
+    return d.toISOString().split('T')[0];
+  };
   const grouped: Record<string, number> = {};
   for (const a of [...chartActivities].sort((a, b) => a.date.localeCompare(b.date))) {
-    grouped[a.date] = (grouped[a.date] || 0) + 1;
+    const week = getWeekStart(a.date);
+    grouped[week] = (grouped[week] || 0) + 1;
   }
-  const chartData = Object.entries(grouped).map(([date, count]) => ({
-    date: date.slice(5),
+  const chartData = Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b)).map(([date, count]) => ({
+    date: date.slice(5).replace('-', '/'),
     count,
   }));
 
