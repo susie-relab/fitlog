@@ -27,7 +27,6 @@ export default function RunLogPage() {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [chartMetric, setChartMetric] = useState<ChartMetric>('distance');
   const [showChart, setShowChart] = useState(false);
-  const [chartWindow, setChartWindow] = useState<'30d' | '90d' | '6m' | '1y' | 'all'>('90d');
 
   useEffect(() => {
     if (!user) return;
@@ -211,39 +210,21 @@ export default function RunLogPage() {
               {showChart ? '▼' : '▶'} Chart
             </button>
             {showChart && (
-              <div className="flex items-center gap-2">
-                <select
-                  className="text-xs bg-[#0F172A] border border-[#334155] text-[#94A3B8] rounded px-2 py-1 outline-none"
-                  value={chartWindow}
-                  onChange={e => setChartWindow(e.target.value as typeof chartWindow)}
-                >
-                  <option value="30d">Last 30 days</option>
-                  <option value="90d">Last 90 days</option>
-                  <option value="6m">Last 6 months</option>
-                  <option value="1y">Last year</option>
-                  <option value="all">All time</option>
-                </select>
-                <div className="flex gap-1">
-                  {(['distance','duration','pace','count'] as ChartMetric[]).map(m => (
-                    <button
-                      key={m}
-                      onClick={() => setChartMetric(m)}
-                      className={`px-2 py-1 rounded text-xs font-medium transition-all ${chartMetric === m ? 'bg-blue-600 text-white' : 'text-[#64748B] hover:text-white'}`}
-                    >
-                      {m === 'distance' ? 'km' : m === 'duration' ? 'min' : m === 'pace' ? 'pace' : '#'}
-                    </button>
-                  ))}
-                </div>
+              <div className="flex gap-1">
+                {(['distance','duration','pace','count'] as ChartMetric[]).map(m => (
+                  <button
+                    key={m}
+                    onClick={() => setChartMetric(m)}
+                    className={`px-2 py-1 rounded text-xs font-medium transition-all ${chartMetric === m ? 'bg-blue-600 text-white' : 'text-[#64748B] hover:text-white'}`}
+                  >
+                    {m === 'distance' ? 'km' : m === 'duration' ? 'min' : m === 'pace' ? 'pace' : '#'}
+                  </button>
+                ))}
               </div>
             )}
           </div>
           {showChart && (() => {
-            const windowStart = chartWindow === '30d' ? daysAgo(30).split('T')[0]
-              : chartWindow === '90d' ? daysAgo(90).split('T')[0]
-              : chartWindow === '6m' ? daysAgo(182).split('T')[0]
-              : chartWindow === '1y' ? daysAgo(365).split('T')[0]
-              : '0000-01-01';
-            const chartRuns = runs.filter(r => r.date >= windowStart);
+            const chartRuns = runsByPeriod;
             // Group by date for chart
             const grouped: Record<string, { date: string; dist: number; dur: number; pace: number[]; count: number }> = {};
             for (const r of [...chartRuns].sort((a, b) => a.date.localeCompare(b.date))) {
