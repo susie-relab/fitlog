@@ -5,6 +5,9 @@ import { useAuth } from '@/components/AuthProvider';
 import { Activity, RunType, RUN_TYPE_LABELS, RUN_TYPE_COLORS } from '@/types';
 import { formatDuration, formatDate, formatPaceMinKm, formatPaceMinMile, formatSpeedKmh, daysAgo, getStartOfWeek } from '@/lib/utils';
 import EditActivityModal from '@/components/EditActivityModal';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+
+type ChartMetric = 'distance' | 'duration' | 'pace' | 'count';
 
 type Period = 'all' | 'week' | '30d' | 'month';
 
@@ -21,6 +24,8 @@ export default function RunLogPage() {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [chartMetric, setChartMetric] = useState<ChartMetric>('distance');
+  const [showChart, setShowChart] = useState(true);
 
   useEffect(() => {
     if (!user) return;
@@ -147,6 +152,67 @@ export default function RunLogPage() {
           <div className="stat-label">Run Types</div>
         </div>
       </div>
+
+      {/* Chart */}
+      {runsByPeriod.length > 1 && (
+        <div className="card mb-4">
+          <div className="flex items-center justify-between mb-3">
+            <button
+              onClick={() => setShowChart(v => !v)}
+              className="text-sm font-semibold text-[#94A3B8] uppercase tracking-wide hover:text-white transition-colors"
+            >
+              {showChart ? '▼' : '▶'} Distance Chart
+            </button>
+            {showChart && (
+              <div className="flex gap-1">
+                {(['distance','duration','pace','count'] as ChartMetric[]).map(m => (
+                  <button
+                    key={m}
+                    onClick={() => setChartMetric(m)}
+                    className={`px-2 py-1 rounded text-xs font-medium transition-all ${chartMetric === m ? 'bg-blue-600 text-white' : 'text-[#64748B] hover:text-white'}`}
+                  >
+                    {m === 'distance' ? 'km' : m === 'duration' ? 'min' : m === 'pace' ? 'pace' : '#'}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          {showChart && (() => {
+            // Group by date for chart
+            const grouped: Record<string, { date: string; dist: number; dur: number; pace: number[]; count: number }> = {};
+            for (const r of [...runsByPeriod].sort((a, b) => a.date.localeCompare(b.date))) {
+              if (!grouped[r.date]) grouped[r.date] = { date: r.date, dist: 0, dur: 0, pace: [], count: 0 };
+              grouped[r.date].dist += r.distance_km || 0;
+              grouped[r.date].dur += r.duration_minutes;
+              if (r.pace_min_km) grouped[r.date].pace.push(r.pace_min_km);
+              grouped[r.date].count++;
+            }
+            const chartData = Object.values(grouped).map(g => ({
+              date: g.date.slice(5), // MM-DD
+              km: Math.round(g.dist * 10) / 10,
+              min: g.dur,
+              pace: g.pace.length > 0 ? Math.round((g.pace.reduce((a, b) => a + b) / g.pace.length) * 100) / 100 : null,
+              count: g.count,
+            }));
+            const dataKey = chartMetric === 'distance' ? 'km' : chartMetric === 'duration' ? 'min' : chartMetric === 'pace' ? 'pace' : 'count';
+            const yLabel = chartMetric === 'distance' ? 'km' : chartMetric === 'duration' ? 'min' : chartMetric === 'pace' ? 'min/km' : 'runs';
+            return (
+              <ResponsiveContainer width="100%" height={160}>
+                <LineChart data={chartData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1E293B" />
+                  <XAxis dataKey="date" tick={{ fill: '#475569', fontSize: 10 }} tickLine={false} axisLine={false} />
+                  <YAxis tick={{ fill: '#475569', fontSize: 10 }} tickLine={false} axisLine={false} />
+                  <Tooltip
+                    contentStyle={{ background: '#1E293B', border: '1px solid #334155', borderRadius: 8, color: '#F1F5F9', fontSize: 12 }}
+                    formatter={(val) => [`${val} ${yLabel}`, dataKey === 'km' ? 'Distance' : dataKey === 'min' ? 'Duration' : dataKey === 'pace' ? 'Avg Pace' : 'Runs']}
+                  />
+                  <Line type="monotone" dataKey={dataKey} stroke="#3B82F6" strokeWidth={2} dot={{ fill: '#3B82F6', r: 3 }} activeDot={{ r: 5 }} connectNulls />
+                </LineChart>
+              </ResponsiveContainer>
+            );
+          })()}
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex gap-2 mb-4 flex-wrap">

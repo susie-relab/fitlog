@@ -49,3 +49,24 @@ create policy "Users can manage their own manual PBs"
 
 -- Index for fast date-based queries
 create index if not exists activities_user_date on activities(user_id, date desc);
+
+-- Goals / Training Plan table
+create table if not exists goals (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users(id) on delete cascade not null,
+  period text not null check (period in ('week','month','quarter','year')),
+  target_runs integer,
+  target_distance_km numeric(8,2),
+  target_minutes integer,
+  target_activities integer,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
+  unique(user_id, period)
+);
+
+alter table goals enable row level security;
+
+create policy "Users can manage their own goals"
+  on goals for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);

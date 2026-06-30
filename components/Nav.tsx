@@ -1,21 +1,33 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Plus, BarChart2, TrendingUp, Award, List, Footprints, Upload, LogOut } from 'lucide-react';
+import { Plus, LayoutDashboard, List, Footprints, TrendingUp, Award, BookOpen, Target, Upload, LogOut } from 'lucide-react';
 import { useAuth } from './AuthProvider';
+import { useDirtyForm } from './DirtyFormContext';
 
 const tabs = [
   { href: '/add', label: 'Add', icon: Plus },
   { href: '/activity-log', label: 'Log', icon: List },
   { href: '/run-log', label: 'Runs', icon: Footprints },
-  { href: '/stats', label: '14 Days', icon: BarChart2 },
+  { href: '/dash', label: 'Dash', icon: LayoutDashboard },
   { href: '/total-stats', label: 'Stats', icon: TrendingUp },
   { href: '/pbs', label: "PB's", icon: Award },
+  { href: '/notes', label: 'Notes', icon: BookOpen },
+  { href: '/training-plan', label: 'Plan', icon: Target },
 ];
 
 export default function Nav() {
   const path = usePathname();
   const { user, signOut } = useAuth();
+  const { isDirty, setShowWarning, setPendingHref } = useDirtyForm();
+
+  const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    if (isDirty && path === '/add' && href !== '/add') {
+      e.preventDefault();
+      setPendingHref(href);
+      setShowWarning(true);
+    }
+  };
 
   return (
     <>
@@ -32,6 +44,7 @@ export default function Nav() {
               <Link
                 key={href}
                 href={href}
+                onClick={e => handleNavClick(e, href)}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                   active
                     ? 'bg-blue-600 text-white'
@@ -45,12 +58,13 @@ export default function Nav() {
           })}
           <Link
             href="/import"
+            onClick={e => handleNavClick(e, '/import')}
             className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
               path === '/import' ? 'bg-blue-600 text-white' : 'text-[#94A3B8] hover:bg-[#334155] hover:text-white'
             }`}
           >
             <Upload size={18} />
-            Import Garmin
+            Import Data
           </Link>
         </div>
         {user && (

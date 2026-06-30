@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
 import {
@@ -8,6 +8,7 @@ import {
   EXERCISE_TYPE_COLORS, RUN_TYPE_COLORS
 } from '@/types';
 import DistancePicker from '@/components/DistancePicker';
+import { useDirtyForm } from '@/components/DirtyFormContext';
 
 const EXERCISE_TYPES: ExerciseType[] = ['run', 'walk', 'sport', 'hiit', 'stretch', 'bike', 'swim', 'solo_fitness'];
 const RUN_TYPES: RunType[] = ['easy', 'long', 'tempo', 'fartlek', 'speed_intervals', 'hill_reps', 'trail', 'long_intervals'];
@@ -40,6 +41,21 @@ export default function AddPage() {
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+  const { setDirty, showWarning, setShowWarning, pendingHref } = useDirtyForm();
+
+  const isDirty = !!(name || exerciseType || hours || mins || distance || notes || effort);
+
+  useEffect(() => {
+    setDirty(isDirty);
+    return () => setDirty(false);
+  }, [isDirty, setDirty]);
+
+  useEffect(() => {
+    if (!isDirty) return;
+    const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ''; };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [isDirty]);
 
   const durationMinutes = (parseInt(hours || '0') * 60) + parseInt(mins || '0');
 
@@ -90,6 +106,7 @@ export default function AddPage() {
       setMaxHr(''); setAvgHr(''); setIsPb(false); setPbDesc('');
       setDate(new Date().toISOString().split('T')[0]);
       setTimeout(() => setSuccess(false), 3000);
+      // form is clean after save
     }
   };
 
@@ -324,6 +341,28 @@ export default function AddPage() {
           {saving ? 'Saving...' : 'Save Activity'}
         </button>
       </div>
+
+      {/* Unsaved changes modal */}
+      {showWarning && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)' }}>
+          <div className="bg-[#1E293B] border border-[#334155] rounded-2xl p-6 max-w-sm w-full">
+            <h2 className="text-white font-bold text-lg mb-2">Unsaved changes</h2>
+            <p className="text-[#94A3B8] text-sm mb-5">You have unsaved changes on this form. Leave anyway?</p>
+            <div className="flex gap-3">
+              <button onClick={() => setShowWarning(false)} className="btn-secondary flex-1">
+                Keep editing
+              </button>
+              <a
+                href={pendingHref}
+                className="btn-primary flex-1 text-center"
+                onClick={() => { setShowWarning(false); setDirty(false); }}
+              >
+                Leave anyway
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

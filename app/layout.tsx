@@ -3,6 +3,7 @@ import { Plus_Jakarta_Sans, Outfit } from "next/font/google";
 import "./globals.css";
 import Nav from "@/components/Nav";
 import AuthProvider from "@/components/AuthProvider";
+import { DirtyFormProvider } from "@/components/DirtyFormContext";
 
 // Body font — clean, modern, similar readability to Calibri/Aptos
 const jakarta = Plus_Jakarta_Sans({
@@ -34,12 +35,14 @@ export default function RootLayout({
     <html lang="en" className={`h-full ${jakarta.variable} ${outfit.variable}`}>
       <body className="min-h-full bg-[#0F172A] text-[#F1F5F9]">
         <AuthProvider>
-          <div className="flex min-h-screen">
-            <Nav />
-            <main className="flex-1 md:ml-56 p-4 md:p-6 main-content">
-              {children}
-            </main>
-          </div>
+          <DirtyFormProvider>
+            <div className="flex min-h-screen">
+              <Nav />
+              <main className="flex-1 md:ml-56 p-4 md:p-6 main-content">
+                {children}
+              </main>
+            </div>
+          </DirtyFormProvider>
         </AuthProvider>
       </body>
     </html>
