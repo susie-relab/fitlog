@@ -112,7 +112,7 @@ export default function DashPage() {
     <div className="max-w-2xl mx-auto">
       <div className="flex items-start justify-between mb-5">
         <div>
-          <h1 className="text-2xl font-bold text-white">{greeting()} 👋</h1>
+          <h1 className="text-2xl font-bold text-white">{greeting()}{user?.user_metadata?.username ? `, ${user.user_metadata.username}` : ''} 👋</h1>
           <p className="text-[#64748B] text-sm mt-0.5">Here's your training at a glance</p>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
