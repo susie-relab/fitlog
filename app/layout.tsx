@@ -43,7 +43,7 @@ export default function RootLayout({
           <DirtyFormProvider>
             <div className="flex min-h-screen">
               <Nav />
-              <main className="flex-1 md:ml-56 p-4 md:p-6 main-content">
+              <main className="flex-1 md:ml-56 p-3 md:p-6 main-content w-full min-w-0">
                 {children}
               </main>
             </div>

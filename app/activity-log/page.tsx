@@ -123,20 +123,20 @@ export default function ActivityLogPage() {
 
         {/* Type breakdown */}
         {Object.keys(byType).length > 0 && (
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-1.5 min-w-0">
             {(Object.entries(byType) as [ExerciseType, number][])
               .sort((a, b) => b[1] - a[1])
               .map(([type, count]) => (
-                <div key={type} className="flex items-center gap-2">
+                <div key={type} className="flex items-center gap-2 min-w-0">
                   <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: EXERCISE_TYPE_COLORS[type] }} />
-                  <span className="text-xs text-[#94A3B8] flex-1">{EXERCISE_TYPE_LABELS[type]}</span>
-                  <div className="flex-1 bg-[#0F172A] rounded-full h-1.5 overflow-hidden">
+                  <span className="text-xs text-[#94A3B8] w-28 flex-shrink-0 truncate">{EXERCISE_TYPE_LABELS[type]}</span>
+                  <div className="flex-1 bg-[#0F172A] rounded-full h-1.5 overflow-hidden min-w-0">
                     <div
                       className="h-1.5 rounded-full"
                       style={{ width: `${(count / totalActivities30) * 100}%`, background: EXERCISE_TYPE_COLORS[type] }}
                     />
                   </div>
-                  <span className="text-xs font-semibold text-white w-4 text-right">{count}</span>
+                  <span className="text-xs font-semibold text-white w-4 text-right flex-shrink-0">{count}</span>
                 </div>
               ))}
           </div>
