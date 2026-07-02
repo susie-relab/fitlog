@@ -42,6 +42,7 @@ export default function AddPage() {
   const [isPb, setIsPb] = useState(false);
   const [pbDesc, setPbDesc] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [showMore, setShowMore] = useState(false);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
@@ -358,61 +359,75 @@ export default function AddPage() {
           </div>
         </div>
 
-        {/* Distance */}
+        {/* Distance — always visible */}
         <div>
           <label className="label">Distance (optional)</label>
           <DistancePicker value={distance} onChange={setDistance} />
         </div>
 
-        {/* Pace */}
-        <div>
-          <label className="label">Average Pace (optional) <span className="text-[#64748B]">min/km</span></label>
-          <div className="flex gap-2 items-center">
-            <input type="number" className="input" placeholder="Min" min="0" value={paceMin} onChange={e => setPaceMin(e.target.value)} />
-            <span className="text-[#64748B]">:</span>
-            <input type="number" className="input" placeholder="Sec" min="0" max="59" value={paceSec} onChange={e => setPaceSec(e.target.value)} />
-          </div>
-        </div>
+        {/* More details toggle */}
+        <button
+          type="button"
+          onClick={() => setShowMore(v => !v)}
+          className="flex items-center gap-2 text-sm text-[#64748B] hover:text-[#94A3B8] transition-colors py-1"
+        >
+          <span>{showMore ? '▼' : '▶'}</span>
+          {showMore ? 'Hide details' : 'More details (pace, HR, intensity, notes)'}
+        </button>
 
-        <div>
-          <label className="label">Max Pace (optional) <span className="text-[#64748B]">min/km</span></label>
-          <div className="flex gap-2 items-center">
-            <input type="number" className="input" placeholder="Min" min="0" value={maxPaceMin} onChange={e => setMaxPaceMin(e.target.value)} />
-            <span className="text-[#64748B]">:</span>
-            <input type="number" className="input" placeholder="Sec" min="0" max="59" value={maxPaceSec} onChange={e => setMaxPaceSec(e.target.value)} />
-          </div>
-        </div>
+        {showMore && (
+          <>
+            {/* Pace */}
+            <div>
+              <label className="label">Average Pace (optional) <span className="text-[#64748B]">min/km</span></label>
+              <div className="flex gap-2 items-center">
+                <input type="number" className="input" placeholder="Min" min="0" value={paceMin} onChange={e => setPaceMin(e.target.value)} />
+                <span className="text-[#64748B]">:</span>
+                <input type="number" className="input" placeholder="Sec" min="0" max="59" value={paceSec} onChange={e => setPaceSec(e.target.value)} />
+              </div>
+            </div>
 
-        {/* HR */}
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="label">Avg Heart Rate (optional)</label>
-            <input type="number" className="input" placeholder="bpm" value={avgHr} onChange={e => setAvgHr(e.target.value)} />
-          </div>
-          <div>
-            <label className="label">Max Heart Rate (optional)</label>
-            <input type="number" className="input" placeholder="bpm" value={maxHr} onChange={e => setMaxHr(e.target.value)} />
-          </div>
-        </div>
+            <div>
+              <label className="label">Max Pace (optional) <span className="text-[#64748B]">min/km</span></label>
+              <div className="flex gap-2 items-center">
+                <input type="number" className="input" placeholder="Min" min="0" value={maxPaceMin} onChange={e => setMaxPaceMin(e.target.value)} />
+                <span className="text-[#64748B]">:</span>
+                <input type="number" className="input" placeholder="Sec" min="0" max="59" value={maxPaceSec} onChange={e => setMaxPaceSec(e.target.value)} />
+              </div>
+            </div>
 
-        {/* Intensity Minutes */}
-        <div>
-          <label className="label">Intensity Minutes (optional)</label>
-          <input type="number" className="input" placeholder="e.g. 25" value={intensityMins} onChange={e => setIntensityMins(e.target.value)} />
-        </div>
+            {/* HR */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="label">Avg Heart Rate (optional)</label>
+                <input type="number" className="input" placeholder="bpm" value={avgHr} onChange={e => setAvgHr(e.target.value)} />
+              </div>
+              <div>
+                <label className="label">Max Heart Rate (optional)</label>
+                <input type="number" className="input" placeholder="bpm" value={maxHr} onChange={e => setMaxHr(e.target.value)} />
+              </div>
+            </div>
 
-        {/* Notes */}
-        <div>
-          <label className="label">Notes / Highlights (optional)</label>
-          <textarea
-            className="input"
-            placeholder="How did it go? Any highlights?"
-            rows={3}
-            value={notes}
-            onChange={e => setNotes(e.target.value)}
-            style={{ resize: 'vertical' }}
-          />
-        </div>
+            {/* Intensity Minutes */}
+            <div>
+              <label className="label">Intensity Minutes (optional)</label>
+              <input type="number" className="input" placeholder="e.g. 25" value={intensityMins} onChange={e => setIntensityMins(e.target.value)} />
+            </div>
+
+            {/* Notes */}
+            <div>
+              <label className="label">Notes / Highlights (optional)</label>
+              <textarea
+                className="input"
+                placeholder="How did it go? Any highlights?"
+                rows={3}
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+                style={{ resize: 'vertical' }}
+              />
+            </div>
+          </>
+        )}
 
         {/* PB */}
         <div>

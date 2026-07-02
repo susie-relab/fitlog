@@ -63,7 +63,7 @@ export const RUN_TYPE_COLORS: Record<RunType, string> = {
 // --- Subtypes (all optional) ---
 
 export type SportSubType = 'football' | 'tennis' | 'netball' | 'volleyball' | 'golf' | 'turbo_touch' | 'padel' | 'touch_rugby' | 'basketball' | 'cricket' | 'badminton' | 'rugby' | 'hockey' | 'frisbee' | 'table_tennis';
-export type GymSubType = 'hiit_workout' | 'crossfit' | 'hyrox' | 'strength' | 'conditioning' | 'arms' | 'legs' | 'back_shoulders' | 'core' | 'row_indoor';
+export type GymSubType = 'hiit_workout' | 'strength' | 'conditioning' | 'crossfit' | 'hyrox' | 'arms' | 'legs' | 'back_shoulders' | 'core' | 'row_indoor' | 'stair_climber' | 'ski_erg';
 export type WaterSnowSubType = 'kayak' | 'sailing' | 'surf' | 'rowing' | 'waka_ama' | 'sup' | 'snowboard' | 'skiing';
 export type SwimSubType = 'ocean' | 'pool';
 export type FitnessSubType = 'boxing' | 'jump_rope' | 'dance' | 'skateboard' | 'rock_climbing' | 'trampoline' | 'martial_arts' | 'cleaning';
@@ -77,9 +77,10 @@ export const SPORT_SUB_LABELS: Record<SportSubType, string> = {
   hockey: 'Hockey', frisbee: 'Frisbee', table_tennis: 'Table Tennis',
 };
 export const GYM_SUB_LABELS: Record<GymSubType, string> = {
-  hiit_workout: 'HIIT', crossfit: 'CrossFit', hyrox: 'Hyrox', strength: 'Strength',
-  conditioning: 'Conditioning', arms: 'Arms', legs: 'Legs', back_shoulders: 'Back & Shoulders',
-  core: 'Core', row_indoor: 'Row (Indoor)',
+  hiit_workout: 'HIIT', strength: 'Strength', conditioning: 'Conditioning',
+  crossfit: 'CrossFit', hyrox: 'Hyrox', arms: 'Arms', legs: 'Legs',
+  back_shoulders: 'Back & Shoulders', core: 'Core', row_indoor: 'Row (Indoor)',
+  stair_climber: 'Stair Climber', ski_erg: 'Ski Erg',
 };
 export const WATER_SNOW_SUB_LABELS: Record<WaterSnowSubType, string> = {
   kayak: 'Kayak', sailing: 'Sailing', surf: 'Surf', rowing: 'Rowing',
