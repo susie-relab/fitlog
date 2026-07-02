@@ -7,7 +7,7 @@ import {
   EXERCISE_TYPE_LABELS, EXERCISE_TYPE_COLORS, RUN_TYPE_LABELS,
   EXERCISE_TYPE_ORDER,
 } from '@/types';
-import { formatDuration, formatDate, formatPaceMinKm, formatPaceMinMile, formatSpeedKmh, daysAgo } from '@/lib/utils';
+import { formatDuration, formatDate, formatShortDate, formatPaceMinKm, formatPaceMinMile, formatSpeedKmh, daysAgo } from '@/lib/utils';
 import EditActivityModal from '@/components/EditActivityModal';
 import { activitiesToCsv, downloadCsv } from '@/lib/exportCsv';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
@@ -78,7 +78,7 @@ export default function ActivityLogPage() {
     grouped[week] = (grouped[week] || 0) + 1;
   }
   const chartData = Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b)).map(([date, count]) => ({
-    date: date.slice(5).replace('-', '/'),
+    date: formatShortDate(date),
     count,
   }));
 

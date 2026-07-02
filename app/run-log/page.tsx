@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
 import { Activity, RunType, RUN_TYPE_LABELS, RUN_TYPE_COLORS } from '@/types';
-import { formatDuration, formatDate, formatPaceMinKm, formatPaceMinMile, formatSpeedKmh, daysAgo, getStartOfWeek } from '@/lib/utils';
+import { formatDuration, formatDate, formatShortDate, formatPaceMinKm, formatPaceMinMile, formatSpeedKmh, daysAgo, getStartOfWeek } from '@/lib/utils';
 import EditActivityModal from '@/components/EditActivityModal';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { activitiesToCsv, downloadCsv } from '@/lib/exportCsv';
@@ -235,7 +235,7 @@ export default function RunLogPage() {
               grouped[r.date].count++;
             }
             const chartData = Object.values(grouped).map(g => ({
-              date: g.date.slice(5), // MM-DD
+              date: formatShortDate(g.date),
               km: Math.round(g.dist * 10) / 10,
               min: g.dur,
               pace: g.pace.length > 0 ? Math.round((g.pace.reduce((a, b) => a + b) / g.pace.length) * 100) / 100 : null,

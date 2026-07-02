@@ -26,8 +26,13 @@ export function formatSpeedKmh(paceMinKm: number): string {
 }
 
 export function formatDate(dateStr: string): string {
-  const d = new Date(dateStr);
-  return d.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' });
+  const [year, month, day] = dateStr.split('-');
+  return `${day}/${month}/${year}`;
+}
+
+export function formatShortDate(dateStr: string): string {
+  const [, month, day] = dateStr.split('-');
+  return `${day}/${month}`;
 }
 
 export function getStartOfWeek(): string {
