@@ -87,7 +87,7 @@ export default function ActivityLogPage() {
   return (
     <div className="max-w-2xl mx-auto">
       <div className="flex items-center justify-between mb-4 gap-2">
-        <h1 className="text-xl font-bold text-white">Exercise Log</h1>
+        <h1 className="text-xl font-bold text-white">Activity Log</h1>
         <button
           onClick={() => {
             const csv = activitiesToCsv(activities);

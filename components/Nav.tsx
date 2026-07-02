@@ -9,9 +9,9 @@ const tabs = [
   { href: '/add', label: 'Add', icon: Plus },
   { href: '/activity-log', label: 'Log', icon: List },
   { href: '/run-log', label: 'Runs', icon: Footprints },
-  { href: '/training-plan', label: 'Plan', icon: Target },
-  { href: '/dash', label: 'Dash', icon: LayoutDashboard },
   { href: '/total-stats', label: 'Stats', icon: TrendingUp },
+  { href: '/dash', label: 'Dash', icon: LayoutDashboard },
+  { href: '/training-plan', label: 'Plan', icon: Target },
   { href: '/pbs', label: "PB's", icon: Award },
   { href: '/notes', label: 'Notes', icon: BookOpen },
   { href: '/import', label: 'Import', icon: Upload },
@@ -54,7 +54,7 @@ export default function Nav() {
                 }`}
               >
                 <Icon size={18} />
-                {label === '14 Days' ? '14 Day Stats' : label === 'Log' ? 'Exercise Log' : label === 'Runs' ? 'Run Log' : label === 'Plan' ? 'Training Plan' : label}
+                {label === '14 Days' ? '14 Day Stats' : label === 'Log' ? 'Activity Log' : label === 'Runs' ? 'Run Log' : label === 'Plan' ? 'Training Plan' : label}
               </Link>
             );
           })}
