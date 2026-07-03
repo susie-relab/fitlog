@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
 import { Activity, ExerciseType, EXERCISE_TYPE_LABELS, EXERCISE_TYPE_COLORS } from '@/types';
 import { formatDuration, daysAgo, calcDayStreak, calcWeekStreak } from '@/lib/utils';
-import { PlanRecord, RUN_DISTANCE_LABELS, todaysSession, isRunSession, planSessionHref } from '@/lib/runPlanGenerator';
+import { PlanRecord, RUN_DISTANCE_LABELS, todaysSession, nextSession, isRunSession, planSessionHref } from '@/lib/runPlanGenerator';
 import { SESSION_COLORS, sessionTarget } from '@/components/PlanWeekTable';
 import Link from 'next/link';
 
@@ -63,6 +63,18 @@ export default function DashPage() {
   const todayPlanItems = plans
     .map(p => ({ plan: p, today: todaysSession(p, todayISO) }))
     .filter((x): x is { plan: PlanRecord; today: NonNullable<ReturnType<typeof todaysSession>> } => !!x.today);
+
+  // Next upcoming run (strictly after today) across all run plans — the soonest one.
+  const nextRun = plans
+    .filter(p => p.plan_kind === 'run')
+    .map(p => ({ plan: p, next: nextSession(p, todayISO, isRunSession, { after: true }) }))
+    .filter((x): x is { plan: PlanRecord; next: NonNullable<ReturnType<typeof nextSession>> } => !!x.next)
+    .sort((a, b) => a.next.dateISO.localeCompare(b.next.dateISO))[0] ?? null;
+  const fmtDay = (iso: string) => {
+    const [y, m, d] = iso.split('-');
+    const wd = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date(iso + 'T00:00:00').getDay()];
+    return `${wd} ${d}/${m}`;
+  };
 
   const now14 = daysAgo(14).split('T')[0];
   const last14 = activities.filter(a => a.date >= now14);
@@ -140,10 +152,12 @@ export default function DashPage() {
         </div>
       </div>
 
-      {/* Today's Plan */}
-      {todayPlanItems.length > 0 && (
+      {/* Today's Plan / what's next */}
+      {(todayPlanItems.length > 0 || nextRun) && (
         <div className="card mb-5">
-          <h2 className="text-sm font-semibold text-[#94A3B8] uppercase tracking-wide mb-3">Today's Plan</h2>
+          <h2 className="text-sm font-semibold text-[#94A3B8] uppercase tracking-wide mb-3">
+            {todayPlanItems.length > 0 ? "Today's Plan" : 'Up Next'}
+          </h2>
           <div className="flex flex-col gap-2">
             {todayPlanItems.map(({ plan, today }) => {
               const s = today.session;
@@ -166,6 +180,22 @@ export default function DashPage() {
                 </div>
               );
             })}
+
+            {/* Next run (upcoming) */}
+            {nextRun && (
+              <div className="flex items-center gap-3 py-2 px-3 rounded-lg border border-[#293548] bg-[#0F172A]">
+                <span className="w-1.5 h-9 rounded-full flex-shrink-0" style={{ background: SESSION_COLORS[nextRun.next.session.type] }} />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-semibold text-[#64748B] uppercase">Next Run · {fmtDay(nextRun.next.dateISO)}</span>
+                  </div>
+                  <span className="text-sm font-semibold text-white truncate block">{nextRun.next.session.title}</span>
+                  <span className="text-xs text-[#64748B]">{RUN_DISTANCE_LABELS[nextRun.plan.distance]}{sessionTarget(nextRun.next.session) ? ` · ${sessionTarget(nextRun.next.session)}` : ''}</span>
+                </div>
+                <Link href={planSessionHref(nextRun.next.session, nextRun.plan.id, nextRun.next.week, nextRun.next.day)}
+                  className="btn-secondary text-xs px-3 py-1.5 flex-shrink-0">Log</Link>
+              </div>
+            )}
           </div>
         </div>
       )}

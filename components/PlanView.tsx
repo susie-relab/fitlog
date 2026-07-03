@@ -72,6 +72,18 @@ export default function PlanView({ plan, onChange, onEdit, onDelete, onBack }: P
     persist(newData);
   };
 
+  // Swap a session with another day in the same week (reorder).
+  const moveDay = (week: number, from: Weekday, to: Weekday) => {
+    if (from === to) return;
+    const newData = { ...data, weeks: data.weeks.map(w => {
+      if (w.weekNumber !== week) return w;
+      const days = { ...w.days };
+      const tmp = days[to]; days[to] = days[from]; days[from] = tmp;
+      return { ...w, days };
+    }) };
+    persist(newData);
+  };
+
   const sel = selected ? data.weeks.find(w => w.weekNumber === selected.week)!.days[selected.day] : null;
 
   const logSession = (s: Session) => {
@@ -194,6 +206,23 @@ export default function PlanView({ plan, onChange, onEdit, onDelete, onBack }: P
                 <button onClick={() => { mutateDay(selected.week, selected.day, () => ({ type: 'rest', title: 'Rest', detail: 'Take a full day off. Recovery is where the gains happen.', completed: false })); setSelected(null); }}
                   className="py-2 rounded-lg border border-[#334155] text-[#94A3B8] text-xs hover:border-[#475569]">Make this a Rest day</button>
               )}
+
+              {/* Move to another day (swaps) */}
+              <div>
+                <p className="text-xs text-[#64748B] mb-1.5">Move to another day (swaps)</p>
+                <div className="grid grid-cols-7 gap-1">
+                  {WEEKDAYS.map(d => (
+                    <button key={d} disabled={d === selected.day}
+                      onClick={() => { moveDay(selected.week, selected.day, d); setSelected(null); }}
+                      className={`py-1.5 rounded text-[10px] font-semibold border transition-all ${
+                        d === selected.day ? 'border-blue-500 bg-blue-500/20 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'
+                      }`}>
+                      {WEEKDAY_LABELS[d].slice(0, 1)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <button onClick={() => setSelected(null)} className="text-sm text-[#64748B] hover:text-white py-1">Close</button>
             </div>
           </div>

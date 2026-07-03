@@ -574,16 +574,53 @@ export function planSessionHref(s: Session, planId: string, week: number, day: W
   return `/add?${p.toString()}`;
 }
 
+function addDaysISO(dateISO: string, days: number): string {
+  const d = new Date(dateISO + 'T00:00:00');
+  d.setDate(d.getDate() + days);
+  return d.toISOString().split('T')[0];
+}
+function weekdayOf(dateISO: string): Weekday {
+  const jsDay = new Date(dateISO + 'T00:00:00').getDay(); // 0 Sun .. 6 Sat
+  return (['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as Weekday[])[jsDay];
+}
+
+type PlanLike = { plan_data: PlanData; start_date: string; weeks: number };
+
 /** Today's session for a plan, given its start date, or null if out of range. */
-export function todaysSession(plan: { plan_data: PlanData; start_date: string; weeks: number }, todayISO: string):
+export function todaysSession(plan: PlanLike, todayISO: string):
   { week: number; day: Weekday; session: Session } | null {
   const daysSince = Math.floor((new Date(todayISO + 'T00:00:00').getTime() - new Date(plan.start_date + 'T00:00:00').getTime()) / 86400000);
   if (daysSince < 0) return null;
   const weekIdx = Math.floor(daysSince / 7);
   if (weekIdx >= plan.weeks) return null;
-  const jsDay = new Date(todayISO + 'T00:00:00').getDay(); // 0 Sun .. 6 Sat
-  const day = (['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as Weekday[])[jsDay];
+  const day = weekdayOf(todayISO);
   const week = plan.plan_data.weeks[weekIdx];
   if (!week) return null;
   return { week: week.weekNumber, day, session: week.days[day] };
+}
+
+/**
+ * The next matching session on or after `fromISO` (optionally strictly after).
+ * Scans calendar days forward through the plan.
+ */
+export function nextSession(
+  plan: PlanLike, fromISO: string,
+  match: (s: Session) => boolean,
+  opts: { after?: boolean; includeCompleted?: boolean } = {},
+): { week: number; day: Weekday; session: Session; dateISO: string } | null {
+  const daysSince = Math.floor((new Date(fromISO + 'T00:00:00').getTime() - new Date(plan.start_date + 'T00:00:00').getTime()) / 86400000);
+  const startOffset = Math.max(0, daysSince) + (opts.after ? 1 : 0);
+  const totalDays = plan.weeks * 7;
+  for (let idx = startOffset; idx < totalDays; idx++) {
+    const dateISO = addDaysISO(plan.start_date, idx);
+    const weekIdx = Math.floor(idx / 7);
+    const week = plan.plan_data.weeks[weekIdx];
+    if (!week) continue;
+    const day = weekdayOf(dateISO);
+    const s = week.days[day];
+    if (match(s) && (opts.includeCompleted || !s.completed)) {
+      return { week: week.weekNumber, day, session: s, dateISO };
+    }
+  }
+  return null;
 }
