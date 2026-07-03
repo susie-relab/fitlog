@@ -276,19 +276,25 @@ function longIntervals(): Session {
 }
 
 function sprintReps(cfg: PlanConfig): Session {
+  // Level scales volume: relaxed = fewer reps / fewer blocks, tough = more.
+  const bump = cfg.level === 'tough' ? 1 : cfg.level === 'relaxed' ? -1 : 0;
+  const blockCount = cfg.level === 'relaxed' ? randInt(1, 2) : cfg.level === 'tough' ? randInt(3, 4) : randInt(2, 3);
+  const r = (min: number, max: number) => randInt(Math.max(1, min + bump), max + bump);
+
   // Multi-block session (mixed distances + sport-specific phase plays).
-  if (chance(0.35)) {
+  if (chance(0.4)) {
     const blockPool = [
-      `${randInt(4, 6)} x 50 m (30 sec rest, or go every 45 sec)`,
-      `${randInt(3, 4)} x 150 m (30 sec rest, or go every min)`,
-      `${randInt(3, 5)} x 80 m (run 20 m & back twice; 20 sec rest, or go every 40 sec)`,
-      `${randInt(4, 6)} x 100 m (full recovery between)`,
-      `${randInt(3, 4)} x 200 m (walk-back recovery)`,
-      `${randInt(2, 3)} x 1 min phase plays (mimic your movements and plays in your sport)`,
-      `${randInt(5, 8)} shuttle runs (5 m & back, 10 m & back, 15 m & back, 20 m & back)`,
+      `${r(3, 5)} x [100 m & 200 m] (run every minute — less rest after the 200 m; e.g. 100, 200, 100, 200…)`,
+      `${r(8, 12)} x 50 m (on the 30 seconds)`,
+      `${r(3, 5)} x 80 m (run 20 m & back twice = 80 m; 20 sec rest, or go every 40 sec)`,
+      `${r(3, 5)} x 150 m (30 sec rest, or go every min)`,
+      `${r(4, 6)} x 100 m (full recovery between)`,
+      `${r(3, 4)} x 200 m (walk-back recovery)`,
+      `${r(2, 3)} x 1 min phase plays (mimic your movements and plays in your sport)`,
+      `${r(5, 8)} shuttle runs (5 m & back, 10 m & back, 15 m & back, 20 m & back)`,
     ];
-    const blocks = pickN(blockPool, randInt(3, 4));
-    return { type: 'sprint_reps', title: 'Sprint Reps', distanceKm: round(blocks.length * 0.8 + 1.5, 0.5),
+    const blocks = pickN(blockPool, blockCount);
+    return { type: 'sprint_reps', title: 'Sprint Reps', distanceKm: round(blocks.length * 0.9 + 1.5, 0.5),
       detail: '5 min warm-up\n' + blocks.map((b, i) => `Block ${i + 1}: ${b}`).join('\n') + '\n5 min cooldown' };
   }
   const pool = [
