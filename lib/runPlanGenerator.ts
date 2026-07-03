@@ -232,7 +232,16 @@ function tempoRun(cfg: PlanConfig): Session {
 
 function fartlek(cfg: PlanConfig): Session {
   const roll = rand();
-  if (roll < 0.25) {
+  if (roll < 0.2) {
+    // mixed blocks with a tempo bridge; tough = more reps + shorter easy floats
+    const tough = cfg.level === 'tough';
+    const easy = tough ? '20 sec' : '30 sec';
+    const r1 = randInt(tough ? 5 : 3, tough ? 7 : 5);
+    const r2 = randInt(tough ? 4 : 2, tough ? 5 : 4);
+    return { type: 'fartlek', title: 'Fartlek (Mixed)', distanceKm: round(6, 0.5),
+      detail: `5 min warm-up\n${r1} x [30 sec fast / ${easy} easy]\n2 min tempo\n${r2} x [1 min fast / 1 min easy]\n5 min cooldown` };
+  }
+  if (roll < 0.35) {
     // pyramid fartlek: 1-2-3-4-5-4-3-2-1 min fast with slow floats between
     return { type: 'fartlek', title: 'Fartlek (Pyramid)', distanceKm: round(6.5, 0.5),
       detail: '5:00 warm-up, then a pyramid:\n1 min fast / 1 min slow\n2 min fast / 2 min slow\n3 min fast / 2 min slow\n4 min fast / 2 min slow\n5 min fast / 2 min slow\n4 min fast / 2 min slow\n3 min fast / 2 min slow\n2 min fast / 2 min slow\n1 min fast / 1 min slow\n5:00 cooldown.' };
