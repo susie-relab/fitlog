@@ -43,7 +43,7 @@ export const RUN_TYPE_LABELS: Record<RunType, string> = {
   easy: 'Easy',
   tempo: 'Tempo',
   fartlek: 'Fartlek',
-  speed_intervals: 'Speed Intervals',
+  speed_intervals: 'Sprint Reps',
   hill_reps: 'Hill Reps',
   trail: 'Trail',
   long_intervals: 'Long Intervals',
