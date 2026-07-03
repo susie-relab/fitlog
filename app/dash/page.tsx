@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
 import { Activity, ExerciseType, EXERCISE_TYPE_LABELS, EXERCISE_TYPE_COLORS } from '@/types';
 import { formatDuration, daysAgo, calcDayStreak, calcWeekStreak } from '@/lib/utils';
-import { PlanRecord, RUN_DISTANCE_LABELS, todaysSession, nextSession, isRunSession, planSessionHref } from '@/lib/runPlanGenerator';
+import { PlanRecord, RUN_DISTANCE_LABELS, todaysSession, nextSession, isRunSession, planSessionHref, WEEKDAYS } from '@/lib/runPlanGenerator';
 import { SESSION_COLORS, sessionTarget } from '@/components/PlanWeekTable';
 import Link from 'next/link';
 
@@ -71,10 +71,21 @@ export default function DashPage() {
     .filter((x): x is { plan: PlanRecord; next: NonNullable<ReturnType<typeof nextSession>> } => !!x.next)
     .sort((a, b) => a.next.dateISO.localeCompare(b.next.dateISO))[0] ?? null;
   const fmtDay = (iso: string) => {
-    const [y, m, d] = iso.split('-');
+    const [, m, d] = iso.split('-');
     const wd = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date(iso + 'T00:00:00').getDay()];
     return `${wd} ${d}/${m}`;
   };
+
+  // This week's completion across active plans + whether today's sessions are done.
+  const weekAgg = todayPlanItems.reduce((acc, { plan }) => {
+    const daysSince = Math.floor((new Date(todayISO + 'T00:00:00').getTime() - new Date(plan.start_date + 'T00:00:00').getTime()) / 86400000);
+    const idx = Math.min(Math.max(0, Math.floor(daysSince / 7)), plan.weeks - 1);
+    const wk = plan.plan_data.weeks[idx];
+    if (wk) for (const d of WEEKDAYS) if (isRunSession(wk.days[d])) { acc.total++; if (wk.days[d].completed) acc.done++; }
+    return acc;
+  }, { done: 0, total: 0 });
+  const todaysRunnable = todayPlanItems.filter(x => isRunSession(x.today.session));
+  const todayAllDone = todaysRunnable.length > 0 && todaysRunnable.every(x => x.today.session.completed);
 
   const now14 = daysAgo(14).split('T')[0];
   const last14 = activities.filter(a => a.date >= now14);
@@ -197,6 +208,20 @@ export default function DashPage() {
               </div>
             )}
           </div>
+
+          {/* Week progress + today nudge */}
+          {weekAgg.total > 0 && (
+            <div className="mt-3 pt-3 border-t border-[#293548]">
+              {todayAllDone && <p className="text-xs text-green-400 font-medium mb-2">✓ Today's sessions done — nice work! 🎉</p>}
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs text-[#64748B]">This week</span>
+                <span className="text-xs text-[#94A3B8] font-semibold">{weekAgg.done} of {weekAgg.total} done</span>
+              </div>
+              <div className="w-full bg-[#0F172A] rounded-full h-1.5 overflow-hidden">
+                <div className="h-1.5 rounded-full bg-green-500 transition-all" style={{ width: `${Math.round((weekAgg.done / weekAgg.total) * 100)}%` }} />
+              </div>
+            </div>
+          )}
         </div>
       )}
 

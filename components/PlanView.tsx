@@ -32,6 +32,7 @@ export default function PlanView({ plan, onChange, onEdit, onDelete, onBack }: P
   const [selected, setSelected] = useState<{ week: number; day: Weekday } | null>(null);
   const [copied, setCopied] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
+  const [confirmRestart, setConfirmRestart] = useState(false);
 
   const data = plan.plan_data;
   const totalRuns = data.weeks.reduce((s, w) => s + WEEKDAYS.filter(d => isRunSession(w.days[d])).length, 0);
@@ -66,6 +67,17 @@ export default function PlanView({ plan, onChange, onEdit, onDelete, onBack }: P
     const updated = { ...plan, plan_data: newData };
     onChange(updated);
     await supabase.from('training_plans').update({ plan_data: newData, updated_at: new Date().toISOString() }).eq('id', plan.id);
+  };
+
+  // Restart the plan from today: reset start date + clear all completed flags.
+  const restartFromToday = async () => {
+    const cleared = { ...data, weeks: data.weeks.map(w => ({
+      ...w, days: Object.fromEntries(WEEKDAYS.map(d => [d, { ...w.days[d], completed: false, completedActivityId: null }])) as typeof w.days,
+    })) };
+    const updated = { ...plan, plan_data: cleared, start_date: today };
+    onChange(updated);
+    await supabase.from('training_plans').update({ plan_data: cleared, start_date: today, updated_at: new Date().toISOString() }).eq('id', plan.id);
+    setConfirmRestart(false);
   };
 
   const mutateDay = (week: number, day: Weekday, fn: (s: Session) => Session) => {
@@ -160,6 +172,18 @@ export default function PlanView({ plan, onChange, onEdit, onDelete, onBack }: P
       <PlanWeekTable plan={data} currentWeek={currentWeekNo} labelOffset={labelOffset} onDayClick={(week, day) => setSelected({ week, day })} />
 
       <RunTypeGlossary />
+
+      {/* Restart */}
+      <div>
+        {!confirmRestart ? (
+          <button onClick={() => setConfirmRestart(true)} className="w-full py-2 text-sm text-[#64748B] hover:text-blue-400 transition-colors">↻ Restart from today</button>
+        ) : (
+          <div className="flex gap-2">
+            <button onClick={restartFromToday} className="flex-1 py-2 rounded-lg bg-blue-900/40 border border-blue-700 text-blue-300 text-sm font-medium">Restart from today (clears progress)</button>
+            <button onClick={() => setConfirmRestart(false)} className="flex-1 py-2 rounded-lg border border-[#334155] text-[#94A3B8] text-sm">Cancel</button>
+          </div>
+        )}
+      </div>
 
       {/* Delete */}
       <div>
