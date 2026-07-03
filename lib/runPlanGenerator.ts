@@ -280,8 +280,12 @@ function longIntervals(): Session {
   const [dist, maxReps] = pick(options);
   const reps = randInt(3, maxReps);
   const km = round(reps * (dist === '400 m' ? 0.6 : dist === '800 m' ? 1.0 : dist === '1 km' ? 1.2 : 1.7) + 2, 0.5);
+  // recovery: either a jog, or a fixed timed rest
+  const recovery = chance(0.5)
+    ? 'a jog recovery between'
+    : `${pick(['90 sec', '2 min', '2:30', '3 min'])} rest between`;
   return { type: 'long_intervals', title: 'Long Intervals', distanceKm: km,
-    detail: `1 km warm-up, ${reps} x ${dist} at ~75% intensity with a jog recovery between, 1 km cooldown.` };
+    detail: `1 km warm-up, ${reps} x ${dist} at ~75% intensity with ${recovery}, 1 km cooldown.` };
 }
 
 function sprintReps(cfg: PlanConfig): Session {
