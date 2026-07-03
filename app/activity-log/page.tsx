@@ -252,6 +252,7 @@ export default function ActivityLogPage() {
                     {a.avg_hr && <Detail label="Avg HR" value={`${a.avg_hr} bpm`} />}
                     {a.max_hr && <Detail label="Max HR" value={`${a.max_hr} bpm`} />}
                     {a.intensity_minutes && <Detail label="Intensity Mins" value={`${a.intensity_minutes}`} />}
+                    {a.elevation_gain_m ? <Detail label="Elevation Gain" value={`${a.elevation_gain_m} m`} /> : null}
                     {a.notes && (
                       <div className="col-span-2">
                         <span className="text-xs text-[#64748B] font-medium">Notes</span>

@@ -42,6 +42,7 @@ export default function EditActivityModal({ activity, onClose, onSaved, onDelete
   const [maxPaceSec, setMaxPaceSec] = useState(activity.max_pace_min_km ? String(Math.round((activity.max_pace_min_km % 1) * 60)) : '');
   const [maxHr, setMaxHr] = useState(activity.max_hr ? String(activity.max_hr) : '');
   const [avgHr, setAvgHr] = useState(activity.avg_hr ? String(activity.avg_hr) : '');
+  const [elevationGain, setElevationGain] = useState(activity.elevation_gain_m ? String(activity.elevation_gain_m) : '');
   const [isPb, setIsPb] = useState(activity.is_pb);
   const [pbDesc, setPbDesc] = useState(activity.pb_description || '');
   const [date, setDate] = useState(activity.date);
@@ -89,6 +90,7 @@ export default function EditActivityModal({ activity, onClose, onSaved, onDelete
         max_pace_min_km: paceToDecimal(maxPaceMin, maxPaceSec) ?? null,
         max_hr: maxHr ? parseInt(maxHr) : null,
         avg_hr: avgHr ? parseInt(avgHr) : null,
+        elevation_gain_m: elevationGain ? parseInt(elevationGain) : null,
         is_pb: isPb,
         pb_description: isPb ? pbDesc : null,
         date,
@@ -350,6 +352,12 @@ export default function EditActivityModal({ activity, onClose, onSaved, onDelete
           <div>
             <label className="label">Intensity Minutes (optional)</label>
             <input type="number" className="input" placeholder="e.g. 25" value={intensityMins} onChange={e => setIntensityMins(e.target.value)} />
+          </div>
+
+          {/* Elevation Gain */}
+          <div>
+            <label className="label">Elevation Gain (optional) <span className="text-[#64748B]">m</span></label>
+            <input type="number" className="input" placeholder="e.g. 120" min="0" value={elevationGain} onChange={e => setElevationGain(e.target.value)} />
           </div>
 
           {/* Notes */}

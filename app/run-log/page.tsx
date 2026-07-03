@@ -338,6 +338,7 @@ export default function RunLogPage() {
                   {r.avg_hr && <RDetail label="Avg HR" value={`${r.avg_hr} bpm`} />}
                   {r.max_hr && <RDetail label="Max HR" value={`${r.max_hr} bpm`} />}
                   {r.intensity_minutes && <RDetail label="Intensity Mins" value={`${r.intensity_minutes}`} />}
+                  {r.elevation_gain_m ? <RDetail label="Elevation Gain" value={`${r.elevation_gain_m} m`} /> : null}
                   {r.notes && (
                     <div className="col-span-2">
                       <span className="text-xs text-[#64748B] font-medium">Notes</span>

@@ -112,6 +112,7 @@ export interface Activity {
   intensity_minutes?: number;
   pace_min_km?: number;
   max_pace_min_km?: number;
+  elevation_gain_m?: number;
   max_hr?: number;
   avg_hr?: number;
   is_pb: boolean;

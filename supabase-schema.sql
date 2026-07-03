@@ -16,6 +16,8 @@ create table if not exists activities (
   max_pace_min_km numeric(5,3),
   max_hr integer,
   avg_hr integer,
+  elevation_gain_m integer,
+  sub_type text,
   is_pb boolean default false,
   pb_description text,
   date date not null,
@@ -93,6 +95,9 @@ create index if not exists notes_user_date on notes(user_id, date desc);
 
 -- Migration: add sub_type column to activities
 -- alter table activities add column if not exists sub_type text;
+
+-- Migration: add elevation_gain_m column to activities
+-- alter table activities add column if not exists elevation_gain_m integer;
 
 -- Migration: if goals table already exists, run these:
 -- alter table goals add column if not exists activity_type text not null default 'all';

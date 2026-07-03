@@ -39,6 +39,7 @@ export default function AddPage() {
   const [maxPaceSec, setMaxPaceSec] = useState('');
   const [maxHr, setMaxHr] = useState('');
   const [avgHr, setAvgHr] = useState('');
+  const [elevationGain, setElevationGain] = useState('');
   const [isPb, setIsPb] = useState(false);
   const [pbDesc, setPbDesc] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -100,6 +101,7 @@ export default function AddPage() {
       max_pace_min_km: paceToDecimal(maxPaceMin, maxPaceSec),
       max_hr: maxHr ? parseInt(maxHr) : null,
       avg_hr: avgHr ? parseInt(avgHr) : null,
+      elevation_gain_m: elevationGain ? parseInt(elevationGain) : null,
       is_pb: isPb,
       pb_description: isPb ? pbDesc : null,
       date,
@@ -115,7 +117,7 @@ export default function AddPage() {
       setName(''); setExerciseType(''); setRunType(''); setSubType(''); setGymTypes([]); setHours(''); setMins('');
       setEffort(null); setDistance(''); setNotes(''); setIntensityMins('');
       setPaceMin(''); setPaceSec(''); setMaxPaceMin(''); setMaxPaceSec('');
-      setMaxHr(''); setAvgHr(''); setIsPb(false); setPbDesc('');
+      setMaxHr(''); setAvgHr(''); setElevationGain(''); setIsPb(false); setPbDesc('');
       setDate(new Date().toISOString().split('T')[0]);
       setTimeout(() => setSuccess(false), 3000);
       // form is clean after save
@@ -412,6 +414,12 @@ export default function AddPage() {
             <div>
               <label className="label">Intensity Minutes (optional)</label>
               <input type="number" className="input" placeholder="e.g. 25" value={intensityMins} onChange={e => setIntensityMins(e.target.value)} />
+            </div>
+
+            {/* Elevation Gain */}
+            <div>
+              <label className="label">Elevation Gain (optional) <span className="text-[#64748B]">m</span></label>
+              <input type="number" className="input" placeholder="e.g. 120" min="0" value={elevationGain} onChange={e => setElevationGain(e.target.value)} />
             </div>
 
             {/* Notes */}
