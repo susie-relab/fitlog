@@ -290,7 +290,15 @@ function sprintReps(cfg: PlanConfig): Session {
 }
 
 function hillReps(cfg: PlanConfig): Session {
-  const kind = pick(['long', 'short', 'time'] as const);
+  const kind = pick(['long', 'short', 'time', 'sandwich'] as const);
+  if (kind === 'sandwich') {
+    // two hill blocks with an endurance run sandwiched between
+    const reps = pick([8, 10, 12]);
+    const t = pick(['30 sec', '45 sec']);
+    const mid = pick([8, 10, 12]);
+    return { type: 'hill_reps', title: 'Hill Repeats', distanceKm: round(reps * 0.35 * 2 + mid / 6 + 2, 0.5),
+      detail: `5 min warm-up\n${reps} x ${t} hills\n${mid} min steady run\n${reps} x ${t} hills\n5 min cooldown` };
+  }
   if (kind === 'long') {
     const reps = randInt(2, 3);
     const lo = pick([1, 1.5]); const hi = lo + pick([0.5, 1, 1.5]);
