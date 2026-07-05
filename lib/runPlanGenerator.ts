@@ -25,6 +25,7 @@ export interface Session {
   title: string;        // display heading, e.g. "Tempo Run"
   exerciseType?: string;// for sport/custom sessions: an ExerciseType key
   subType?: string;     // e.g. 'football', 'strength'
+  sportSessionType?: string; // for sport-plan sessions: the session-type key ('recovery','training',…) used for colour
   distanceKm?: number;  // the session's displayed TOTAL distance goal (mutually exclusive with timeMin)
   timeMin?: number;     // the session's displayed TOTAL time goal (mutually exclusive with distanceKm)
   estKm?: number;       // internal-only distance estimate for weekly volume totals (not displayed as a goal)
@@ -79,12 +80,23 @@ export interface SportSession {
   durationMax?: number;
 }
 
+/** A session type + how many per week, for the randomise mode. */
+export interface SportPoolItem {
+  sessionType: string;   // a SPORT_SESSION_TYPES key or a custom label
+  count: number;         // sessions per week
+  durationMin?: number;
+  durationMax?: number;
+}
+
 export interface SportConfig {
   name?: string;
   exerciseType: string;    // ExerciseType key for logging (e.g. 'sport', 'swim')
   sportSubType?: string;   // optional subtype key ('football', ...)
   sportLabel: string;      // display name for the sport (subtype label, type label, or custom text)
-  sessions: SportSession[];
+  assignMode: 'perDay' | 'random'; // choose each day, or pick sessions and randomise the days
+  sessions: SportSession[];        // perDay mode: the weekly template (each carries its own duration)
+  pool: SportPoolItem[];           // random mode: session types + weekly counts
+  spread: 'weeks' | 'cram';        // random mode, when >7/week: spread across weeks vs pack into each week
   weeks: number;
   startDate: string;
   level: PlanLevel;
@@ -735,38 +747,76 @@ export function generateCustomPlan(cfg: CustomConfig): PlanData {
 }
 
 // ---------- single-sport plans (session types on chosen days) ----------
-function sportSessionToSession(s: SportSession, cfg: SportConfig): Session {
-  if (s.sessionType === 'rest') return restDay();
-  if (s.sessionType === 'crosstrain') return crosstrain();
-  const dur = s.durationMin != null && s.durationMax != null
-    ? randInt(s.durationMin, s.durationMax)
-    : (s.durationMin ?? s.durationMax ?? undefined);
-  const stLabel = SPORT_SESSION_LABELS[s.sessionType] ?? s.sessionType;
+// A single session-type instance placed on a day (used by both modes).
+function sportSession(sessionType: string, cfg: SportConfig, durMin?: number, durMax?: number): Session {
+  if (sessionType === 'rest') return restDay();
+  if (sessionType === 'crosstrain') return crosstrain();
+  const dur = durMin != null && durMax != null ? randInt(durMin, durMax) : (durMin ?? durMax ?? undefined);
+  const stLabel = SPORT_SESSION_LABELS[sessionType] ?? sessionType;
   return {
-    type: 'sport', exerciseType: cfg.exerciseType, subType: cfg.sportSubType,
+    type: 'sport', exerciseType: cfg.exerciseType, subType: cfg.sportSubType, sportSessionType: sessionType,
     title: `${cfg.sportLabel} — ${stLabel}`, timeMin: dur,
     detail: `${cfg.sportLabel} ${stLabel.toLowerCase()} session${dur ? ` · ${dur} min` : ''}.`,
   };
 }
 
-/** Build a single-sport plan: the weekly session template repeats each week. */
+// Merge multiple sessions landing on one day (cram mode) into one combined entry.
+function combineSportSessions(list: Session[], cfg: SportConfig): Session {
+  if (list.length === 1) return list[0];
+  const parts = list.map(s => s.title.includes('—') ? s.title.split('—').pop()!.trim() : s.title);
+  const totalMin = list.reduce((t, s) => t + (s.timeMin || 0), 0) || undefined;
+  return {
+    type: 'sport', exerciseType: cfg.exerciseType, subType: cfg.sportSubType, sportSessionType: 'mixed',
+    title: `${cfg.sportLabel} — ${parts.join(' + ')}`, timeMin: totalMin,
+    detail: list.map(s => s.detail).join('\n'),
+  };
+}
+
+/** Build a single-sport plan (per-day template, or pick-and-randomise). */
 export function generateSportPlan(cfg: SportConfig): PlanData {
   const weeks: PlanWeek[] = [];
-  for (let w = 0; w < cfg.weeks; w++) {
-    const days: Partial<Record<Weekday, Session>> = {};
-    for (const d of WEEKDAYS) {
-      const sess = cfg.sessions.find(s => s.day === d);
-      days[d] = sess ? sportSessionToSession(sess, cfg) : restDay();
+
+  if (cfg.assignMode === 'random') {
+    // one entry per session instance for a single week
+    const perWeek: SportPoolItem[] = [];
+    for (const p of cfg.pool) for (let i = 0; i < Math.max(1, p.count); i++) perWeek.push(p);
+
+    // spread='weeks': cycle the pool across weeks (<=7/week, 1 per day).
+    // spread='cram' (or <=7/week): every week gets the full pool, packing days if >7.
+    let cursor = 0;
+    for (let w = 0; w < cfg.weeks; w++) {
+      let items: SportPoolItem[];
+      if (cfg.spread === 'weeks' && perWeek.length > 7) {
+        items = [];
+        for (let i = 0; i < 7 && perWeek.length; i++) { items.push(perWeek[cursor % perWeek.length]); cursor++; }
+      } else {
+        items = perWeek;
+      }
+      const sessions = items.map(p => sportSession(p.sessionType, cfg, p.durationMin, p.durationMax));
+      const days: Partial<Record<Weekday, Session>> = {};
+      const shuffled = pickN(WEEKDAYS, 7); // random order of all 7 days
+      const buckets = Object.fromEntries(WEEKDAYS.map(d => [d, [] as Session[]])) as Record<Weekday, Session[]>;
+      sessions.forEach((s, i) => { buckets[shuffled[i % 7]].push(s); });
+      for (const d of WEEKDAYS) days[d] = buckets[d].length ? combineSportSessions(buckets[d], cfg) : restDay();
+      weeks.push({ weekNumber: w + 1, phase: 'Build', totalKm: 0, days: days as Record<Weekday, Session> });
     }
-    weeks.push({ weekNumber: w + 1, phase: 'Build', totalKm: 0, days: days as Record<Weekday, Session> });
+  } else {
+    // per-day template repeats each week
+    for (let w = 0; w < cfg.weeks; w++) {
+      const days: Partial<Record<Weekday, Session>> = {};
+      for (const d of WEEKDAYS) {
+        const sess = cfg.sessions.find(s => s.day === d);
+        days[d] = sess ? sportSession(sess.sessionType, cfg, sess.durationMin, sess.durationMax) : restDay();
+      }
+      weeks.push({ weekNumber: w + 1, phase: 'Build', totalKm: 0, days: days as Record<Weekday, Session> });
+    }
   }
 
-  // final day celebration on the sport's busiest weekday, else a weekend day
+  // final day celebration on the last active weekday
   if (weeks.length) {
     const last = weeks[weeks.length - 1];
-    const activeDays = cfg.sessions.filter(s => s.sessionType !== 'rest').map(s => s.day);
-    const pbDay = activeDays[activeDays.length - 1] ?? (['sun', 'sat'] as Weekday[]).find(Boolean) ?? 'sun';
-    last.days[pbDay] = { type: 'sport', title: 'Congratulations — completed!', detail: 'You made it — nice work. Time to pick your next plan!', completed: false };
+    const activeDay = [...WEEKDAYS].reverse().find(d => isRunSession(last.days[d])) ?? 'sun';
+    last.days[activeDay] = { type: 'sport', title: 'Congratulations — completed!', detail: 'You made it — nice work. Time to pick your next plan!', completed: false };
   }
 
   const leadIn = buildLeadInWeek(cfg.startDate, () => restDay());

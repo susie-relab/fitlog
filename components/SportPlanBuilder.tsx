@@ -3,8 +3,8 @@ import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
 import {
-  generateSportPlan, SportConfig, SportSession, SPORT_SESSION_TYPES, PlanLevel,
-  Weekday, WEEKDAYS, WEEKDAY_LABELS, PlanRecord, PlanData,
+  generateSportPlan, SportConfig, SportSession, SportPoolItem, SPORT_SESSION_TYPES, PlanLevel,
+  Weekday, WEEKDAYS, WEEKDAY_LABELS, PlanRecord, PlanData, movePlanSession,
 } from '@/lib/runPlanGenerator';
 import {
   ExerciseType, EXERCISE_TYPE_LABELS, EXERCISE_TYPE_COLORS, EXERCISE_TYPE_ORDER,
@@ -20,6 +20,8 @@ const SUB_LABELS: Partial<Record<ExerciseType, Record<string, string>>> = {
   swim: SWIM_SUB_LABELS, solo_fitness: FITNESS_SUB_LABELS, bike: BIKE_SUB_LABELS, stretch: STRETCH_SUB_LABELS,
 };
 const LEVELS: PlanLevel[] = ['relaxed', 'moderate', 'tough'];
+const BASE_TYPES = SPORT_SESSION_TYPES.filter(t => t.key !== 'rest'); // game/training/skills/... /crosstrain
+const openPicker = (e: React.MouseEvent<HTMLInputElement>) => { try { (e.currentTarget as HTMLInputElement & { showPicker?: () => void }).showPicker?.(); } catch { /* not supported */ } };
 
 interface Props {
   existing?: PlanRecord | null;
@@ -34,15 +36,45 @@ export default function SportPlanBuilder({ existing, onSaved, onCancel }: Props)
   const [exerciseType, setExerciseType] = useState<ExerciseType>((cfg0?.exerciseType as ExerciseType) ?? 'sport');
   const [subType, setSubType] = useState(cfg0?.sportSubType ?? '');
   const [customSport, setCustomSport] = useState(cfg0 && !cfg0.sportSubType && cfg0.sportLabel !== EXERCISE_TYPE_LABELS[cfg0.exerciseType as ExerciseType] ? cfg0.sportLabel : '');
-  // weekly session template: day -> session type key ('' = rest/none)
+
+  const [assignMode, setAssignMode] = useState<'perDay' | 'random'>(cfg0?.assignMode ?? 'perDay');
+  const [spread, setSpread] = useState<'weeks' | 'cram'>(cfg0?.spread ?? 'weeks');
+
+  // custom session types (added by the user; available in every dropdown + the pick list)
+  const seededCustom = (() => {
+    const known = new Set(BASE_TYPES.map(t => t.key));
+    const fromCfg = [
+      ...(cfg0?.sessions.map(s => s.sessionType) ?? []),
+      ...(cfg0?.pool.map(p => p.sessionType) ?? []),
+    ].filter(k => k && !known.has(k) && k !== 'rest' && k !== 'crosstrain');
+    return Array.from(new Set(fromCfg));
+  })();
+  const [customTypes, setCustomTypes] = useState<string[]>(seededCustom);
+  const [newType, setNewType] = useState('');
+  const allTypes = [...BASE_TYPES.map(t => ({ key: t.key, label: t.label })), ...customTypes.map(c => ({ key: c, label: c }))];
+
+  // per-day template
   const initDays = (): Record<Weekday, string> => {
     const base = Object.fromEntries(WEEKDAYS.map(d => [d, ''])) as Record<Weekday, string>;
     cfg0?.sessions.forEach(s => { base[s.day] = s.sessionType; });
     return base;
   };
   const [daySessions, setDaySessions] = useState<Record<Weekday, string>>(initDays());
-  const [durMin, setDurMin] = useState(cfg0?.sessions[0]?.durationMin ? String(cfg0.sessions[0].durationMin) : '60');
-  const [durMax, setDurMax] = useState(cfg0?.sessions[0]?.durationMax ? String(cfg0.sessions[0].durationMax) : '90');
+  const [perDayDur, setPerDayDur] = useState<Record<Weekday, { min: string; max: string }>>(() => {
+    const base = Object.fromEntries(WEEKDAYS.map(d => [d, { min: '', max: '' }])) as Record<Weekday, { min: string; max: string }>;
+    cfg0?.sessions.forEach(s => { base[s.day] = { min: s.durationMin ? String(s.durationMin) : '', max: s.durationMax ? String(s.durationMax) : '' }; });
+    return base;
+  });
+
+  // random pool
+  const [counts, setCounts] = useState<Record<string, string>>(() => Object.fromEntries((cfg0?.pool ?? []).map(p => [p.sessionType, String(p.count)])));
+  const [perTypeDur, setPerTypeDur] = useState<Record<string, { min: string; max: string }>>(() =>
+    Object.fromEntries((cfg0?.pool ?? []).map(p => [p.sessionType, { min: p.durationMin ? String(p.durationMin) : '', max: p.durationMax ? String(p.durationMax) : '' }])));
+
+  const [durationMode, setDurationMode] = useState<'all' | 'per'>('all');
+  const [durMin, setDurMin] = useState(cfg0?.sessions[0]?.durationMin ? String(cfg0.sessions[0].durationMin) : (cfg0?.pool[0]?.durationMin ? String(cfg0.pool[0].durationMin) : '60'));
+  const [durMax, setDurMax] = useState(cfg0?.sessions[0]?.durationMax ? String(cfg0.sessions[0].durationMax) : (cfg0?.pool[0]?.durationMax ? String(cfg0.pool[0].durationMax) : '90'));
+
   const [weeks, setWeeks] = useState(cfg0?.weeks ?? existing?.weeks ?? 8);
   const [level, setLevel] = useState<PlanLevel>(cfg0?.level ?? existing?.level ?? 'moderate');
   const todayISO = todayLocalISO();
@@ -65,23 +97,36 @@ export default function SportPlanBuilder({ existing, onSaved, onCancel }: Props)
 
   const subs = SUB_LABELS[exerciseType];
   const sportLabel = customSport.trim() || (subType && subs ? subs[subType] : EXERCISE_TYPE_LABELS[exerciseType]);
+  const totalRandom = Object.values(counts).reduce((s, c) => s + (parseInt(c) || 0), 0);
+
+  const globalDur = () => ({ min: durMin ? parseInt(durMin) : undefined, max: durMax ? parseInt(durMax) : undefined });
+  const durForDay = (d: Weekday) => durationMode === 'all' ? globalDur() : { min: perDayDur[d]?.min ? parseInt(perDayDur[d].min) : undefined, max: perDayDur[d]?.max ? parseInt(perDayDur[d].max) : undefined };
+  const durForType = (t: string) => durationMode === 'all' ? globalDur() : { min: perTypeDur[t]?.min ? parseInt(perTypeDur[t].min) : undefined, max: perTypeDur[t]?.max ? parseInt(perTypeDur[t].max) : undefined };
+
+  const addCustomType = () => {
+    const t = newType.trim();
+    if (!t || allTypes.some(x => x.label.toLowerCase() === t.toLowerCase())) { setNewType(''); return; }
+    setCustomTypes(prev => [...prev, t]);
+    setNewType('');
+  };
 
   const buildConfig = (): SportConfig => {
-    const dMin = durMin ? parseInt(durMin) : undefined;
-    const dMax = durMax ? parseInt(durMax) : undefined;
-    const sessions: SportSession[] = WEEKDAYS
-      .filter(d => daySessions[d])
-      .map(d => ({ day: d, sessionType: daySessions[d], durationMin: dMin, durationMax: dMax }));
+    const sessions: SportSession[] = WEEKDAYS.filter(d => daySessions[d]).map(d => {
+      const dur = durForDay(d);
+      return { day: d, sessionType: daySessions[d], durationMin: dur.min, durationMax: dur.max };
+    });
+    const pool: SportPoolItem[] = allTypes
+      .filter(t => (parseInt(counts[t.key]) || 0) > 0)
+      .map(t => { const dur = durForType(t.key); return { sessionType: t.key, count: parseInt(counts[t.key]), durationMin: dur.min, durationMax: dur.max }; });
     return {
-      name: name.trim() || undefined, exerciseType,
-      sportSubType: subType || undefined, sportLabel,
-      sessions, weeks: effectiveWeeks, startDate, level,
+      name: name.trim() || undefined, exerciseType, sportSubType: subType || undefined, sportLabel,
+      assignMode, sessions, pool, spread, weeks: effectiveWeeks, startDate, level,
     };
   };
 
   const handleGenerate = () => {
-    const chosen = WEEKDAYS.filter(d => daySessions[d] && daySessions[d] !== 'rest');
-    if (chosen.length === 0) { setError('Assign at least one session to a day.'); return; }
+    if (assignMode === 'perDay' && WEEKDAYS.filter(d => daySessions[d] && daySessions[d] !== 'rest').length === 0) { setError('Assign at least one session to a day.'); return; }
+    if (assignMode === 'random' && totalRandom === 0) { setError('Add at least one session to the pool.'); return; }
     if (lengthMode === 'date' && !weeksFromDates) { setError('Pick an end date after the start date.'); return; }
     setError('');
     setPreview(generateSportPlan(buildConfig()));
@@ -90,11 +135,12 @@ export default function SportPlanBuilder({ existing, onSaved, onCancel }: Props)
   const handleSave = async () => {
     if (!preview || !user) return;
     setSaving(true); setError('');
+    const daysCount = assignMode === 'random' ? Math.min(7, totalRandom) : WEEKDAYS.filter(d => daySessions[d] && daySessions[d] !== 'rest').length;
     const payload = {
       user_id: user.id, plan_kind: 'sport' as const,
       distance: 'custom', custom_distance_km: 0, level, weeks: effectiveWeeks,
-      days_per_week: WEEKDAYS.filter(d => daySessions[d] && daySessions[d] !== 'rest').length,
-      days_per_week_min: 0, train_days: WEEKDAYS.filter(d => daySessions[d]),
+      days_per_week: daysCount, days_per_week_min: 0,
+      train_days: WEEKDAYS.filter(d => daySessions[d]),
       goal_time_seconds: null, start_distance_km: null,
       start_date: startDate, name: name.trim() || sportLabel, active: true, plan_data: preview,
       updated_at: new Date().toISOString(),
@@ -107,6 +153,8 @@ export default function SportPlanBuilder({ existing, onSaved, onCancel }: Props)
     if (dbErr) { setError(dbErr.message); return; }
     onSaved(data as PlanRecord);
   };
+
+  const perDur = durationMode === 'per';
 
   return (
     <div className="flex flex-col gap-5">
@@ -140,7 +188,7 @@ export default function SportPlanBuilder({ existing, onSaved, onCancel }: Props)
             <div className="bg-[#0F172A] -mx-5 px-5 pt-3 pb-4">
               <p className="text-[10px] text-[#64748B] uppercase tracking-wide font-semibold mb-2">Which one?</p>
               <div className="grid grid-cols-3 gap-1.5">
-                <button onClick={() => { setSubType(''); }} className={`py-1.5 px-2 rounded-lg text-[11px] font-medium border transition-all ${!subType && !customSport ? 'bg-blue-600 border-blue-600 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>General</button>
+                <button onClick={() => setSubType('')} className={`py-1.5 px-2 rounded-lg text-[11px] font-medium border transition-all ${!subType && !customSport ? 'bg-blue-600 border-blue-600 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>General</button>
                 {Object.entries(subs).map(([k, lbl]) => (
                   <button key={k} onClick={() => { setSubType(k); setCustomSport(''); }} className={`py-1.5 px-2 rounded-lg text-[11px] font-medium border transition-all ${subType === k ? 'bg-blue-600 border-blue-600 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>{lbl}</button>
                 ))}
@@ -153,37 +201,108 @@ export default function SportPlanBuilder({ existing, onSaved, onCancel }: Props)
         )}
       </div>
 
-      {/* Weekly session template */}
+      {/* Custom session types */}
       <div>
-        <label className="label">Weekly sessions <span className="text-[#64748B]">(choose what happens each day)</span></label>
-        <div className="flex flex-col gap-1.5">
-          {WEEKDAYS.map(d => (
-            <div key={d} className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-[#94A3B8] w-24 flex-shrink-0">{WEEKDAY_LABELS[d]}</span>
-              <select
-                className="input flex-1 text-sm"
-                value={daySessions[d]}
-                onChange={e => setDaySessions(prev => ({ ...prev, [d]: e.target.value }))}
-              >
-                <option value="">— Rest / nothing —</option>
-                {SPORT_SESSION_TYPES.filter(t => t.key !== 'rest').map(t => (
-                  <option key={t.key} value={t.key}>{t.label}</option>
-                ))}
-              </select>
-            </div>
-          ))}
+        <label className="label">Session types</label>
+        <div className="flex gap-2">
+          <input className="input flex-1" placeholder="Add your own session type (e.g. Gym, Yoga)…" value={newType}
+            onChange={e => setNewType(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCustomType(); } }} />
+          <button onClick={addCustomType} className="btn-secondary px-4 flex-shrink-0">+ Add</button>
+        </div>
+        {customTypes.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {customTypes.map(c => (
+              <span key={c} className="text-xs px-2 py-1 rounded-full bg-[#1E293B] border border-[#334155] text-[#94A3B8] flex items-center gap-1">
+                {c}
+                <button onClick={() => setCustomTypes(prev => prev.filter(x => x !== c))} className="text-[#64748B] hover:text-red-400">✕</button>
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Assign mode */}
+      <div>
+        <label className="label">How to schedule</label>
+        <div className="grid grid-cols-2 gap-1.5">
+          <button onClick={() => setAssignMode('perDay')} className={`py-1.5 rounded-lg text-xs font-semibold border transition-all ${assignMode === 'perDay' ? 'bg-blue-600 border-blue-600 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>Choose each day</button>
+          <button onClick={() => setAssignMode('random')} className={`py-1.5 rounded-lg text-xs font-semibold border transition-all ${assignMode === 'random' ? 'bg-blue-600 border-blue-600 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>Pick &amp; randomise days</button>
         </div>
       </div>
 
-      {/* Session length */}
+      {/* Duration mode */}
       <div>
-        <label className="label">Typical session length <span className="text-[#64748B]">(minutes, applied to all)</span></label>
-        <div className="flex gap-2 items-center">
-          <input type="number" className="input" placeholder="Min" min="0" value={durMin} onChange={e => setDurMin(e.target.value)} />
-          <span className="text-[#64748B]">to</span>
-          <input type="number" className="input" placeholder="Max" min="0" value={durMax} onChange={e => setDurMax(e.target.value)} />
+        <label className="label">Session length</label>
+        <div className="grid grid-cols-2 gap-1.5 mb-2">
+          <button onClick={() => setDurationMode('all')} className={`py-1.5 rounded-lg text-xs font-semibold border transition-all ${durationMode === 'all' ? 'bg-blue-600 border-blue-600 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>Same for all</button>
+          <button onClick={() => setDurationMode('per')} className={`py-1.5 rounded-lg text-xs font-semibold border transition-all ${durationMode === 'per' ? 'bg-blue-600 border-blue-600 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>Per {assignMode === 'random' ? 'session type' : 'day'}</button>
         </div>
+        {durationMode === 'all' && (
+          <div className="flex gap-2 items-center">
+            <input type="number" className="input" placeholder="Min" min="0" value={durMin} onChange={e => setDurMin(e.target.value)} />
+            <span className="text-[#64748B]">to</span>
+            <input type="number" className="input" placeholder="Max" min="0" value={durMax} onChange={e => setDurMax(e.target.value)} />
+            <span className="text-xs text-[#64748B]">min</span>
+          </div>
+        )}
       </div>
+
+      {/* Per-day assignment */}
+      {assignMode === 'perDay' && (
+        <div>
+          <label className="label">Weekly sessions <span className="text-[#64748B]">(choose what happens each day)</span></label>
+          <div className="flex flex-col gap-1.5">
+            {WEEKDAYS.map(d => (
+              <div key={d} className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-[#94A3B8] w-20 flex-shrink-0">{WEEKDAY_LABELS[d]}</span>
+                <select className="input flex-1 text-sm" value={daySessions[d]} onChange={e => setDaySessions(prev => ({ ...prev, [d]: e.target.value }))}>
+                  <option value="">— Rest / nothing —</option>
+                  {allTypes.map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
+                </select>
+                {perDur && daySessions[d] && daySessions[d] !== 'rest' && daySessions[d] !== 'crosstrain' && (
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <input type="number" className="input w-14 px-1.5 text-sm" placeholder="min" value={perDayDur[d]?.min ?? ''} onChange={e => setPerDayDur(p => ({ ...p, [d]: { ...p[d], min: e.target.value } }))} />
+                    <span className="text-[#64748B] text-xs">-</span>
+                    <input type="number" className="input w-14 px-1.5 text-sm" placeholder="max" value={perDayDur[d]?.max ?? ''} onChange={e => setPerDayDur(p => ({ ...p, [d]: { ...p[d], max: e.target.value } }))} />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Random pool */}
+      {assignMode === 'random' && (
+        <div>
+          <label className="label">Sessions to include <span className="text-[#64748B]">(how many per week)</span></label>
+          <div className="flex flex-col gap-1.5">
+            {allTypes.map(t => (
+              <div key={t.key} className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-[#94A3B8] flex-1 min-w-0 truncate">{t.label}</span>
+                {perDur && (parseInt(counts[t.key]) || 0) > 0 && (
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <input type="number" className="input w-14 px-1.5 text-sm" placeholder="min" value={perTypeDur[t.key]?.min ?? ''} onChange={e => setPerTypeDur(p => ({ ...p, [t.key]: { ...p[t.key], min: e.target.value } }))} />
+                    <span className="text-[#64748B] text-xs">-</span>
+                    <input type="number" className="input w-14 px-1.5 text-sm" placeholder="max" value={perTypeDur[t.key]?.max ?? ''} onChange={e => setPerTypeDur(p => ({ ...p, [t.key]: { ...p[t.key], max: e.target.value } }))} />
+                  </div>
+                )}
+                <input type="number" className="input w-16 text-sm flex-shrink-0" min="0" placeholder="0" value={counts[t.key] ?? ''}
+                  onChange={e => setCounts(prev => ({ ...prev, [t.key]: e.target.value }))} />
+              </div>
+            ))}
+          </div>
+          {totalRandom > 7 && (
+            <div className="mt-3">
+              <p className="text-xs text-[#64748B] mb-1.5">{totalRandom} sessions/week — more than 7 days:</p>
+              <div className="grid grid-cols-2 gap-1.5">
+                <button onClick={() => setSpread('weeks')} className={`py-1.5 rounded-lg text-xs font-semibold border transition-all ${spread === 'weeks' ? 'bg-blue-600 border-blue-600 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>Spread across weeks</button>
+                <button onClick={() => setSpread('cram')} className={`py-1.5 rounded-lg text-xs font-semibold border transition-all ${spread === 'cram' ? 'bg-blue-600 border-blue-600 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>Pack into each week</button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Level */}
       <div>
@@ -209,7 +328,7 @@ export default function SportPlanBuilder({ existing, onSaved, onCancel }: Props)
           </div>
         ) : (
           <div>
-            <input type="date" className="input" value={endDate} min={startDate} onChange={e => setEndDate(e.target.value)} />
+            <input type="date" className="input" value={endDate} min={startDate} onClick={openPicker} onChange={e => setEndDate(e.target.value)} />
             {weeksFromDates && <p className="text-xs text-[#64748B] mt-1">= {weeksFromDates} weeks</p>}
           </div>
         )}
@@ -219,20 +338,21 @@ export default function SportPlanBuilder({ existing, onSaved, onCancel }: Props)
       <div>
         <label className="label">Start date</label>
         <div className="flex gap-2">
-          <input type="date" className="input flex-1" value={startDate} onChange={e => setStartDate(e.target.value)} />
+          <input type="date" className="input flex-1" value={startDate} onClick={openPicker} onChange={e => setStartDate(e.target.value)} />
           <button type="button" onClick={() => setStartDate(todayISO)} className={`px-3 rounded-lg text-sm font-semibold border transition-all flex-shrink-0 ${startDate === todayISO ? 'bg-blue-600 border-blue-600 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>Today</button>
         </div>
       </div>
 
       <div className="flex gap-2">
-        <button onClick={handleGenerate} className="btn-primary flex-1">{preview ? 'Regenerate' : 'Generate Plan'}</button>
+        <button onClick={handleGenerate} className="btn-primary flex-1">{preview ? (assignMode === 'random' ? '🎲 Regenerate' : 'Regenerate') : 'Generate Plan'}</button>
         {preview && <button onClick={handleSave} disabled={saving} className="btn-primary flex-1" style={{ background: '#22C55E' }}>{saving ? 'Saving…' : existing ? 'Save Changes' : 'Save Plan'}</button>}
       </div>
 
       {preview && (
         <div>
           <p className="text-xs text-[#64748B] uppercase tracking-wide font-semibold mb-3">Preview — click a day to reorder before saving</p>
-          <PlanWeekTable plan={preview} onDayClick={(week, day) => setSelected({ week, day })} />
+          <PlanWeekTable plan={preview} onDayClick={(week, day) => setSelected({ week, day })}
+            onMove={(week, from, to) => setPreview(p => p && movePlanSession(p, { week, day: from }, { week, day: to }))} />
         </div>
       )}
 

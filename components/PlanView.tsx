@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import {
   PlanRecord, Session, Weekday, WEEKDAYS, WEEKDAY_LABELS, RUN_DISTANCE_LABELS,
-  isRunSession, PlanConfig, planSessionHref, todaysSession, planEndDateISO,
+  isRunSession, PlanConfig, planSessionHref, todaysSession, planEndDateISO, movePlanSession,
 } from '@/lib/runPlanGenerator';
 import PlanWeekTable, { sessionTarget } from './PlanWeekTable';
 import PlanDaySheet from './PlanDaySheet';
@@ -47,6 +47,8 @@ export default function PlanView({ plan, onChange, onEdit, onDelete, onBack, onS
   const runsCompleted = realWeeks.reduce((s, w) => s + WEEKDAYS.filter(d => w.days[d].completed).length, 0);
   const kmDone = realWeeks.reduce((s, w) => s + WEEKDAYS.reduce((k, d) => k + (w.days[d].completed ? (w.days[d].distanceKm || 0) : 0), 0), 0);
   const totalKm = realWeeks.reduce((s, w) => s + w.totalKm, 0);
+  const totalMin = realWeeks.reduce((s, w) => s + WEEKDAYS.reduce((m, d) => m + (isRunSession(w.days[d]) ? (w.days[d].timeMin || 0) : 0), 0), 0);
+  const fmtHrs = (min: number) => { const h = Math.floor(min / 60); const m = min % 60; return h > 0 ? `${h}h${m ? ` ${m}m` : ''}` : `${m}m`; };
 
   const today = todayLocalISO();
   const pos = todaysSession(plan, today);
@@ -160,8 +162,8 @@ export default function PlanView({ plan, onChange, onEdit, onDelete, onBack, onS
             </>
           ) : (
             <>
-              <div className="stat-card"><div className="stat-value">{runsCompleted}</div><div className="stat-label">Done</div></div>
-              <div className="stat-card"><div className="stat-value">{totalRuns}</div><div className="stat-label">Total</div></div>
+              <div className="stat-card"><div className="stat-value">{totalRuns}</div><div className="stat-label">Sessions</div></div>
+              <div className="stat-card"><div className="stat-value">{totalMin > 0 ? fmtHrs(totalMin) : '—'}</div><div className="stat-label">Total Time</div></div>
             </>
           )}
         </div>
@@ -200,6 +202,7 @@ export default function PlanView({ plan, onChange, onEdit, onDelete, onBack, onS
           plan={viewAll ? data : { weeks: data.weeks.filter(w => w.weekNumber === currentWeekNo) }}
           currentWeek={currentWeekNo}
           onDayClick={(week, day) => setSelected({ week, day })}
+          onMove={(week, from, to) => persist(movePlanSession(data, { week, day: from }, { week, day: to }))}
         />
       </div>
 

@@ -1,5 +1,6 @@
 'use client';
-import { PlanData, PlanWeek, Session, SessionType, Weekday, WEEKDAYS, WEEKDAY_LABELS, WEEKDAY_SHORT } from '@/lib/runPlanGenerator';
+import { useState } from 'react';
+import { PlanData, PlanWeek, Session, SessionType, Weekday, WEEKDAYS, WEEKDAY_LABELS, WEEKDAY_SHORT, isRunSession } from '@/lib/runPlanGenerator';
 import { EXERCISE_TYPE_COLORS, ExerciseType } from '@/types';
 
 export const SESSION_COLORS: Record<SessionType, string> = {
@@ -18,9 +19,25 @@ export const SESSION_COLORS: Record<SessionType, string> = {
   sport: '#3B82F6',
 };
 
-/** Colour for a session — sport/custom sessions use their exercise-type colour. */
+// Distinct colour per sport-plan session type.
+const SPORT_SESSION_COLORS: Record<string, string> = {
+  game: '#EF4444',
+  training: '#3B82F6',
+  skills: '#8B5CF6',
+  conditioning: '#F97316',
+  recovery: '#22C55E',
+  solo: '#06B6D4',
+  easy: '#60A5FA',
+  crosstrain: '#64748B',
+  mixed: '#A855F7',
+};
+
+/** Colour for a session — sport-plan sessions colour by session type, then exercise type. */
 export function sessionColor(s: Session): string {
-  if (s.type === 'sport' && s.exerciseType) return EXERCISE_TYPE_COLORS[s.exerciseType as ExerciseType] || SESSION_COLORS.sport;
+  if (s.type === 'sport') {
+    if (s.sportSessionType && SPORT_SESSION_COLORS[s.sportSessionType]) return SPORT_SESSION_COLORS[s.sportSessionType];
+    if (s.exerciseType) return EXERCISE_TYPE_COLORS[s.exerciseType as ExerciseType] || SESSION_COLORS.sport;
+  }
   return SESSION_COLORS[s.type];
 }
 
@@ -37,13 +54,31 @@ function target(s: Session): string {
   return '';
 }
 
+/** Per-week summary: distance for run weeks, else session count + total minutes. */
+function weekSummary(w: PlanWeek): string {
+  if (w.totalKm > 0) return `${w.totalKm} km`;
+  const trainable = WEEKDAYS.filter(d => isRunSession(w.days[d]));
+  const mins = trainable.reduce((t, d) => t + (w.days[d].timeMin || 0), 0);
+  const n = trainable.length;
+  const sessionStr = `${n} session${n === 1 ? '' : 's'}`;
+  if (mins <= 0) return sessionStr;
+  const h = Math.floor(mins / 60), m = mins % 60;
+  const timeStr = h > 0 ? `${h}h${m ? ` ${m}m` : ''}` : `${m}m`;
+  return `${sessionStr} · ${timeStr}`;
+}
+
 interface Props {
   plan: PlanData;
   currentWeek?: number;
   onDayClick?: (weekNumber: number, day: Weekday) => void;
+  /** Enables drag-to-reorder within a week. */
+  onMove?: (weekNumber: number, from: Weekday, to: Weekday) => void;
 }
 
-function DayCell({ s, onClick, compact }: { s: Session; onClick?: () => void; compact?: boolean }) {
+function DayCell({ s, onClick, compact, drag }: {
+  s: Session; onClick?: () => void; compact?: boolean;
+  drag?: { onDragStart: () => void; onDrop: () => void; isDragging: boolean };
+}) {
   if (s.beforeStart) {
     return <div className={`w-full rounded-lg border border-dashed border-[#1E293B] ${compact ? 'h-8' : 'p-2.5 h-[52px]'}`} />;
   }
@@ -54,9 +89,13 @@ function DayCell({ s, onClick, compact }: { s: Session; onClick?: () => void; co
   return (
     <button
       onClick={onClick}
+      draggable={!!drag}
+      onDragStart={drag?.onDragStart}
+      onDragOver={drag ? (e => e.preventDefault()) : undefined}
+      onDrop={drag ? (e => { e.preventDefault(); drag.onDrop(); }) : undefined}
       className={`w-full text-left rounded-lg p-2.5 border transition-colors ${
         s.completed ? 'border-green-600/60 bg-green-900/15' : 'border-[#293548] bg-[#0F172A] hover:border-[#475569]'
-      } ${compact ? 'flex items-center gap-2' : ''}`}
+      } ${compact ? 'flex items-center gap-2' : ''} ${drag ? 'cursor-grab active:cursor-grabbing' : ''} ${drag?.isDragging ? 'opacity-40' : ''}`}
     >
       {compact && <span className="w-1.5 h-8 rounded-full flex-shrink-0" style={{ background: color }} />}
       <div className="min-w-0 flex-1">
@@ -82,12 +121,21 @@ function WeekHeader({ w }: { w: PlanWeek }) {
       <span className="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded" style={{ background: PHASE_COLORS[w.phase] + '22', color: PHASE_COLORS[w.phase] }}>
         {w.weekNumber === 0 ? 'Lead-in' : `${w.phase} Phase`}
       </span>
-      <span className="text-xs text-[#64748B] ml-auto">{w.totalKm} km</span>
+      <span className="text-xs text-[#64748B] ml-auto">{weekSummary(w)}</span>
     </div>
   );
 }
 
-export default function PlanWeekTable({ plan, currentWeek, onDayClick }: Props) {
+export default function PlanWeekTable({ plan, currentWeek, onDayClick, onMove }: Props) {
+  const [dragFrom, setDragFrom] = useState<{ week: number; day: Weekday } | null>(null);
+  const dragProps = (week: number, day: Weekday) => onMove ? {
+    onDragStart: () => setDragFrom({ week, day }),
+    onDrop: () => { if (dragFrom && dragFrom.week === week && dragFrom.day !== day) onMove(week, dragFrom.day, day); setDragFrom(null); },
+    isDragging: dragFrom?.week === week && dragFrom?.day === day,
+  } : undefined;
+  // any week without distance is treated as a "sessions" plan for the column header
+  const anyKm = plan.weeks.some(w => w.totalKm > 0);
+
   return (
     <>
       {/* Desktop: full week × day table */}
@@ -95,7 +143,7 @@ export default function PlanWeekTable({ plan, currentWeek, onDayClick }: Props) 
         <table className="w-full border-separate" style={{ borderSpacing: '4px' }}>
           <thead>
             <tr>
-              <th className="text-left text-xs font-semibold text-[#94A3B8] uppercase tracking-wide px-2 py-2 w-32">Week &amp; Total (km)</th>
+              <th className="text-left text-xs font-semibold text-[#94A3B8] uppercase tracking-wide px-2 py-2 w-32">Week &amp; {anyKm ? 'Total (km)' : 'Sessions'}</th>
               {WEEKDAYS.map(d => (
                 <th key={d} className="text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide px-1 py-2">{WEEKDAY_SHORT[d]}</th>
               ))}
@@ -108,19 +156,20 @@ export default function PlanWeekTable({ plan, currentWeek, onDayClick }: Props) 
                   <div className="flex flex-col gap-1">
                     <span className="text-sm font-bold text-white">Week {w.weekNumber}</span>
                     <span className="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded self-start" style={{ background: PHASE_COLORS[w.phase] + '22', color: PHASE_COLORS[w.phase] }}>{w.weekNumber === 0 ? 'Lead-in' : w.phase}</span>
-                    <span className="text-xs text-[#60A5FA] font-bold">{w.totalKm} km</span>
+                    <span className="text-xs text-[#60A5FA] font-bold">{weekSummary(w)}</span>
                     {w.focus && <span className="text-[10px] text-[#64748B] leading-snug mt-0.5">{w.focus}</span>}
                   </div>
                 </td>
                 {WEEKDAYS.map(d => (
                   <td key={d} className="align-top" style={{ minWidth: '7rem' }}>
-                    <DayCell s={w.days[d]} onClick={onDayClick ? () => onDayClick(w.weekNumber, d) : undefined} />
+                    <DayCell s={w.days[d]} onClick={onDayClick ? () => onDayClick(w.weekNumber, d) : undefined} drag={dragProps(w.weekNumber, d)} />
                   </td>
                 ))}
               </tr>
             ))}
           </tbody>
         </table>
+        {onMove && <p className="text-[10px] text-[#475569] mt-1">Tip: drag a session onto another day to swap them (same week). Tap a day for cross-week moves.</p>}
       </div>
 
       {/* Mobile: stacked week cards */}
