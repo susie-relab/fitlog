@@ -2,7 +2,8 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
-import { PlanRecord, RUN_DISTANCE_LABELS, WEEKDAYS, isRunSession } from '@/lib/runPlanGenerator';
+import { PlanRecord, PlanData, RUN_DISTANCE_LABELS, WEEKDAYS, isRunSession, planEndDateISO, todaysSession } from '@/lib/runPlanGenerator';
+import { formatDate, todayLocalISO } from '@/lib/utils';
 import PlanBuilder from '@/components/PlanBuilder';
 import SportPlanBuilder from '@/components/SportPlanBuilder';
 import CustomPlanBuilder from '@/components/CustomPlanBuilder';
@@ -24,9 +25,19 @@ function planTitle(p: PlanRecord) {
   return p.name || 'Sport Plan';
 }
 
-function PlanCard({ p, onClick, onSwitch, onDeactivate, onActivate, onDelete }: {
+function planTiming(p: PlanRecord): string {
+  const today = todayLocalISO();
+  const end = planEndDateISO(p);
+  if (today < p.start_date) return `Starts ${formatDate(p.start_date)} · ends ${formatDate(end)}`;
+  if (today > end) return `Ended ${formatDate(end)}`;
+  const pos = todaysSession(p, today);
+  const wk = pos ? Math.max(1, pos.week) : 1;
+  return `Week ${wk} of ${p.weeks} · ends ${formatDate(end)}`;
+}
+
+function PlanCard({ p, onClick, onSwitch, onDeactivate, onActivate, onDelete, onDuplicate }: {
   p: PlanRecord; onClick: () => void;
-  onSwitch?: () => void; onDeactivate: () => void; onActivate: () => void; onDelete: () => void;
+  onSwitch?: () => void; onDeactivate: () => void; onActivate: () => void; onDelete: () => void; onDuplicate: () => void;
 }) {
   const { runs, done } = planProgress(p);
   const pct = runs > 0 ? Math.round((done / runs) * 100) : 0;
@@ -45,7 +56,10 @@ function PlanCard({ p, onClick, onSwitch, onDeactivate, onActivate, onDelete }: 
         <div className="w-full bg-[#0F172A] rounded-full h-2 overflow-hidden">
           <div className="h-2 rounded-full bg-green-500 transition-all" style={{ width: `${pct}%` }} />
         </div>
-        <p className="text-xs text-[#64748B] mt-1.5">{done} of {runs} {noun} completed</p>
+        <div className="flex items-center justify-between mt-1.5">
+          <p className="text-xs text-[#64748B]">{done} of {runs} {noun} completed</p>
+          <p className="text-xs text-[#475569]">{planTiming(p)}</p>
+        </div>
       </button>
       <div className="flex items-center gap-2 mt-3 flex-wrap">
         {p.active ? (
@@ -55,6 +69,7 @@ function PlanCard({ p, onClick, onSwitch, onDeactivate, onActivate, onDelete }: 
         ) : (
           <button onClick={onActivate} className="text-xs text-[#64748B] hover:text-white transition-colors px-2 py-1.5">Reactivate</button>
         )}
+        <button onClick={onDuplicate} className="text-xs text-[#64748B] hover:text-white transition-colors px-2 py-1.5">⧉ Duplicate</button>
         <button onClick={onDelete} className="text-xs text-red-500/70 hover:text-red-400 transition-colors px-2 py-1.5 ml-auto">Delete</button>
       </div>
     </div>
@@ -112,6 +127,28 @@ export default function PlanPage() {
     };
     setPlans(prev => prev.map(applyFlags));
     setSelected(prev => (prev ? applyFlags(prev) : prev));
+  };
+
+  const handleDuplicate = async (p: PlanRecord) => {
+    if (!user) return;
+    // Fresh copy: clear all completed flags so progress starts at zero.
+    const freshData: PlanData = {
+      ...p.plan_data,
+      weeks: p.plan_data.weeks.map(w => ({
+        ...w, days: Object.fromEntries(WEEKDAYS.map(d => [d, { ...w.days[d], completed: false, completedActivityId: null }])) as typeof w.days,
+      })),
+    };
+    const baseName = p.plan_kind === 'run' ? RUN_DISTANCE_LABELS[p.distance] : (p.name || 'Plan');
+    const willActivate = p.plan_kind === 'run' ? !plans.some(x => x.plan_kind === 'run' && x.active) : true;
+    const payload = {
+      user_id: user.id, plan_kind: p.plan_kind, distance: p.distance, custom_distance_km: p.custom_distance_km,
+      level: p.level, weeks: p.weeks, days_per_week: p.days_per_week, days_per_week_min: p.days_per_week_min,
+      train_days: p.train_days, goal_time_seconds: p.goal_time_seconds, start_distance_km: p.start_distance_km,
+      long_run_cap_km: p.long_run_cap_km ?? null, start_date: p.start_date, name: `${baseName} (copy)`,
+      active: willActivate, plan_data: freshData, updated_at: new Date().toISOString(),
+    };
+    const { data } = await supabase.from('training_plans').insert(payload).select().single();
+    if (data) setPlans(prev => [data as PlanRecord, ...prev]);
   };
 
   const setActiveFlag = async (plan: PlanRecord, active: boolean) => {
@@ -226,7 +263,7 @@ export default function PlanPage() {
                           <PlanCard key={p.id} p={p} onClick={() => setSelected(p)}
                             onDeactivate={() => setPendingAction({ kind: 'deactivate', plan: p })}
                             onActivate={() => setPendingAction({ kind: 'activate', plan: p })}
-                            onDelete={() => setPendingAction({ kind: 'delete', plan: p })} />
+                            onDelete={() => setPendingAction({ kind: 'delete', plan: p })} onDuplicate={() => handleDuplicate(p)} />
                         ))}
                       </div>
                     )}
@@ -238,7 +275,7 @@ export default function PlanPage() {
                             onSwitch={p.plan_kind === 'run' ? () => setPendingAction({ kind: 'switch', plan: p }) : undefined}
                             onDeactivate={() => setPendingAction({ kind: 'deactivate', plan: p })}
                             onActivate={() => setPendingAction({ kind: 'activate', plan: p })}
-                            onDelete={() => setPendingAction({ kind: 'delete', plan: p })} />
+                            onDelete={() => setPendingAction({ kind: 'delete', plan: p })} onDuplicate={() => handleDuplicate(p)} />
                         ))}
                       </div>
                     )}
