@@ -24,7 +24,10 @@ function planTitle(p: PlanRecord) {
   return p.name || 'Sport Plan';
 }
 
-function PlanCard({ p, onClick, onSwitch }: { p: PlanRecord; onClick: () => void; onSwitch?: () => void }) {
+function PlanCard({ p, onClick, onSwitch, onDeactivate, onActivate, onDelete }: {
+  p: PlanRecord; onClick: () => void;
+  onSwitch?: () => void; onDeactivate: () => void; onActivate: () => void; onDelete: () => void;
+}) {
   const { runs, done } = planProgress(p);
   const pct = runs > 0 ? Math.round((done / runs) * 100) : 0;
   const noun = p.plan_kind === 'run' ? 'runs' : 'sessions';
@@ -44,9 +47,16 @@ function PlanCard({ p, onClick, onSwitch }: { p: PlanRecord; onClick: () => void
         </div>
         <p className="text-xs text-[#64748B] mt-1.5">{done} of {runs} {noun} completed</p>
       </button>
-      {onSwitch && (
-        <button onClick={onSwitch} className="btn-secondary text-xs px-3 py-1.5 mt-3 w-full">↻ Switch to this plan</button>
-      )}
+      <div className="flex items-center gap-2 mt-3 flex-wrap">
+        {p.active ? (
+          <button onClick={onDeactivate} className="text-xs text-[#64748B] hover:text-white transition-colors px-2 py-1.5">Deactivate</button>
+        ) : onSwitch ? (
+          <button onClick={onSwitch} className="btn-secondary text-xs px-3 py-1.5">↻ Switch to this plan</button>
+        ) : (
+          <button onClick={onActivate} className="text-xs text-[#64748B] hover:text-white transition-colors px-2 py-1.5">Reactivate</button>
+        )}
+        <button onClick={onDelete} className="text-xs text-red-500/70 hover:text-red-400 transition-colors px-2 py-1.5 ml-auto">Delete</button>
+      </div>
     </div>
   );
 }
@@ -60,7 +70,7 @@ export default function PlanPage() {
   const [buildKind, setBuildKind] = useState<BuildKind | null>(null);
   const [choosing, setChoosing] = useState(false);
   const [editing, setEditing] = useState<PlanRecord | null>(null);
-  const [switchTarget, setSwitchTarget] = useState<PlanRecord | null>(null);
+  const [pendingAction, setPendingAction] = useState<{ kind: 'switch' | 'deactivate' | 'activate' | 'delete'; plan: PlanRecord } | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -102,7 +112,22 @@ export default function PlanPage() {
     };
     setPlans(prev => prev.map(applyFlags));
     setSelected(prev => (prev ? applyFlags(prev) : prev));
-    setSwitchTarget(null);
+  };
+
+  const setActiveFlag = async (plan: PlanRecord, active: boolean) => {
+    setPlans(prev => prev.map(p => p.id === plan.id ? { ...p, active } : p));
+    setSelected(prev => (prev && prev.id === plan.id ? { ...prev, active } : prev));
+    await supabase.from('training_plans').update({ active }).eq('id', plan.id);
+  };
+
+  const runPendingAction = async () => {
+    if (!pendingAction) return;
+    const { kind, plan } = pendingAction;
+    if (kind === 'delete') await handleDelete(plan.id);
+    else if (kind === 'switch') await handleSwitch(plan);
+    else if (kind === 'deactivate') await setActiveFlag(plan, false);
+    else if (kind === 'activate') await setActiveFlag(plan, true);
+    setPendingAction(null);
   };
 
   const cancelBuild = () => { setBuildKind(null); setEditing(null); };
@@ -131,7 +156,7 @@ export default function PlanPage() {
           onEdit={() => setEditing(selected)}
           onDelete={() => handleDelete(selected.id)}
           onBack={() => setSelected(null)}
-          onSwitchToThis={selected.plan_kind === 'run' ? () => setSwitchTarget(selected) : undefined}
+          onSwitchToThis={selected.plan_kind === 'run' ? () => setPendingAction({ kind: 'switch', plan: selected }) : undefined}
         />
       </div>
     );
@@ -197,7 +222,12 @@ export default function PlanPage() {
                     {active.length > 0 && (
                       <div className="flex flex-col gap-3">
                         <p className="text-xs text-[#64748B] uppercase tracking-wide font-semibold">Active</p>
-                        {active.map(p => <PlanCard key={p.id} p={p} onClick={() => setSelected(p)} />)}
+                        {active.map(p => (
+                          <PlanCard key={p.id} p={p} onClick={() => setSelected(p)}
+                            onDeactivate={() => setPendingAction({ kind: 'deactivate', plan: p })}
+                            onActivate={() => setPendingAction({ kind: 'activate', plan: p })}
+                            onDelete={() => setPendingAction({ kind: 'delete', plan: p })} />
+                        ))}
                       </div>
                     )}
                     {inactive.length > 0 && (
@@ -205,7 +235,10 @@ export default function PlanPage() {
                         <p className="text-xs text-[#64748B] uppercase tracking-wide font-semibold">{active.length > 0 ? 'Other Plans' : 'All Plans'}</p>
                         {inactive.map(p => (
                           <PlanCard key={p.id} p={p} onClick={() => setSelected(p)}
-                            onSwitch={p.plan_kind === 'run' ? () => setSwitchTarget(p) : undefined} />
+                            onSwitch={p.plan_kind === 'run' ? () => setPendingAction({ kind: 'switch', plan: p }) : undefined}
+                            onDeactivate={() => setPendingAction({ kind: 'deactivate', plan: p })}
+                            onActivate={() => setPendingAction({ kind: 'activate', plan: p })}
+                            onDelete={() => setPendingAction({ kind: 'delete', plan: p })} />
                         ))}
                       </div>
                     )}
@@ -217,23 +250,46 @@ export default function PlanPage() {
         </div>
       )}
 
-      {/* Switch confirmation */}
-      {switchTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)' }}>
-          <div className="bg-[#1E293B] border border-[#334155] rounded-2xl p-6 max-w-sm w-full">
-            <h2 className="text-white font-bold text-lg mb-2">Switch to this plan?</h2>
-            <p className="text-[#94A3B8] text-sm mb-5">
-              {activeRunPlan
-                ? <>This will end your current run plan, <strong className="text-white">{planTitle(activeRunPlan)}</strong>.</>
-                : 'This will make it your active run plan.'}
-            </p>
-            <div className="flex gap-3">
-              <button onClick={() => setSwitchTarget(null)} className="btn-secondary flex-1">Cancel</button>
-              <button onClick={() => handleSwitch(switchTarget)} className="btn-primary flex-1">Switch</button>
+      {/* Unified confirm modal */}
+      {pendingAction && (() => {
+        const { kind, plan } = pendingAction;
+        const copy = {
+          switch: {
+            title: 'Switch to this plan?',
+            body: activeRunPlan && activeRunPlan.id !== plan.id
+              ? <>This will end your current run plan, <strong className="text-white">{planTitle(activeRunPlan)}</strong>, and make <strong className="text-white">{planTitle(plan)}</strong> active.</>
+              : <>This will make <strong className="text-white">{planTitle(plan)}</strong> your active run plan.</>,
+            cta: 'Switch', danger: false,
+          },
+          deactivate: {
+            title: 'Deactivate this plan?',
+            body: <>It&apos;ll move to Other Plans and stop showing on your Dash. Your progress is kept — you can reactivate it anytime.</>,
+            cta: 'Deactivate', danger: false,
+          },
+          activate: {
+            title: 'Reactivate this plan?',
+            body: <>It&apos;ll show as active again and appear on your Dash.</>,
+            cta: 'Reactivate', danger: false,
+          },
+          delete: {
+            title: 'Delete this plan?',
+            body: <>This permanently deletes <strong className="text-white">{planTitle(plan)}</strong> and all its progress. This can&apos;t be undone.</>,
+            cta: 'Delete', danger: true,
+          },
+        }[kind];
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)' }}>
+            <div className="bg-[#1E293B] border border-[#334155] rounded-2xl p-6 max-w-sm w-full">
+              <h2 className="text-white font-bold text-lg mb-2">{copy.title}</h2>
+              <p className="text-[#94A3B8] text-sm mb-5">{copy.body}</p>
+              <div className="flex gap-3">
+                <button onClick={() => setPendingAction(null)} className="btn-secondary flex-1">Cancel</button>
+                <button onClick={runPendingAction} className={`flex-1 py-2.5 rounded-lg font-semibold text-sm ${copy.danger ? 'bg-red-900/50 border border-red-700 text-red-200' : 'btn-primary'}`}>{copy.cta}</button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }

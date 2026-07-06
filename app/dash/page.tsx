@@ -60,14 +60,15 @@ export default function DashPage() {
     });
   }, [user]);
 
-  // Today's scheduled sessions across active plans
+  // Today's scheduled sessions across active plans (deactivated plans are hidden from the Dash)
   const todayISO = todayLocalISO();
-  const todayPlanItems = plans
+  const activePlans = plans.filter(p => p.active);
+  const todayPlanItems = activePlans
     .map(p => ({ plan: p, today: todaysSession(p, todayISO) }))
     .filter((x): x is { plan: PlanRecord; today: NonNullable<ReturnType<typeof todaysSession>> } => !!x.today);
 
-  // Next upcoming run (strictly after today) across all run plans — the soonest one.
-  const nextRun = plans
+  // Next upcoming run (strictly after today) across active run plans — the soonest one.
+  const nextRun = activePlans
     .filter(p => p.plan_kind === 'run')
     .map(p => ({ plan: p, next: nextSession(p, todayISO, isRunSession, { after: true }) }))
     .filter((x): x is { plan: PlanRecord; next: NonNullable<ReturnType<typeof nextSession>> } => !!x.next)
