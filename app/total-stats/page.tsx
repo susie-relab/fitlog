@@ -114,6 +114,33 @@ function getBestWeek(acts: Activity[]): { count: number; start: string; end: str
   return best.count > 0 ? best : null;
 }
 
+// Pure UTC calendar-date arithmetic — avoids shifting dates backward in timezones ahead of UTC.
+function mondayOfUTC(dateISO: string): string {
+  const [y, m, d] = dateISO.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  const day = dt.getUTCDay();
+  dt.setUTCDate(dt.getUTCDate() - day + (day === 0 ? -6 : 1));
+  return dt.toISOString().split('T')[0];
+}
+
+function getLongestWeekStreak(acts: Activity[]): number {
+  if (acts.length === 0) return 0;
+  const weekKeys = [...new Set(acts.map(a => mondayOfUTC(a.date)))].sort();
+  let max = 1, cur = 1;
+  for (let i = 1; i < weekKeys.length; i++) {
+    const prev = new Date(weekKeys[i - 1] + 'T00:00:00Z').getTime();
+    const curr = new Date(weekKeys[i] + 'T00:00:00Z').getTime();
+    const diffDays = Math.round((curr - prev) / (1000 * 60 * 60 * 24));
+    if (diffDays === 7) {
+      cur++;
+      if (cur > max) max = cur;
+    } else {
+      cur = 1;
+    }
+  }
+  return max;
+}
+
 function getLongestStreak(acts: Activity[]): number {
   if (acts.length === 0) return 0;
   const days = [...new Set(acts.map(a => a.date))].sort();
@@ -192,6 +219,7 @@ export default function TotalStatsPage() {
 
   const bestWeek = getBestWeek(allActivities);
   const streak = getLongestStreak(allActivities);
+  const weekStreak = getLongestWeekStreak(allActivities);
 
   // Extra charts (respect the current period + type filter via `activities`)
   const weeklyDistance = weeklySeries(activities, a => a.distance_km, 'sum');
@@ -372,6 +400,11 @@ export default function TotalStatsPage() {
           <p className="text-xs text-[#64748B] uppercase tracking-wide font-semibold mb-2">Longest Streak</p>
           <p className="text-2xl font-bold text-white">{streak}</p>
           <p className="text-xs text-[#94A3B8] mt-1">consecutive days</p>
+        </div>
+        <div className="card">
+          <p className="text-xs text-[#64748B] uppercase tracking-wide font-semibold mb-2">Longest Weekly Streak</p>
+          <p className="text-2xl font-bold text-white">{weekStreak}</p>
+          <p className="text-xs text-[#94A3B8] mt-1">consecutive weeks</p>
         </div>
       </div>
 
