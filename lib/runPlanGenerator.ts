@@ -138,6 +138,17 @@ export const RUN_DISTANCE_LABELS: Record<RunDistance, string> = {
   custom: 'Custom Distance',
 };
 
+/** Distance-goal plans get a "Plan" suffix (e.g. "5K Plan"); fitness/speed plans already read fine as-is. */
+const DISTANCE_GOAL_TYPES: RunDistance[] = ['5k', '10k', 'half', 'marathon', 'ultra_50k', 'ultra_100k', 'ultra_100mile', 'custom'];
+
+/** Display name for a run plan, e.g. "5K Plan", "Half Marathon Plan", "Keep Run Fit". */
+export function runPlanDisplayName(distance: RunDistance, customKm?: number): string {
+  const base = RUN_DISTANCE_LABELS[distance];
+  const suffix = DISTANCE_GOAL_TYPES.includes(distance) ? ' Plan' : '';
+  const customTxt = distance === 'custom' && customKm ? ` (${customKm} km)` : '';
+  return `${base}${customTxt}${suffix}`;
+}
+
 /** The final PB-day label for the plan. */
 export function finalDayLabel(distance: RunDistance, customKm?: number): string {
   switch (distance) {

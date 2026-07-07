@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
-import { PlanRecord, PlanData, RUN_DISTANCE_LABELS, WEEKDAYS, isRunSession, planEndDateISO, todaysSession } from '@/lib/runPlanGenerator';
+import { PlanRecord, PlanData, runPlanDisplayName, WEEKDAYS, isRunSession, planEndDateISO, todaysSession } from '@/lib/runPlanGenerator';
 import { formatDate, todayLocalISO } from '@/lib/utils';
 import PlanBuilder from '@/components/PlanBuilder';
 import SportPlanBuilder from '@/components/SportPlanBuilder';
@@ -21,7 +21,7 @@ function planProgress(p: PlanRecord) {
 }
 
 function planTitle(p: PlanRecord) {
-  if (p.plan_kind === 'run') return `${RUN_DISTANCE_LABELS[p.distance]}${p.distance === 'custom' && p.custom_distance_km ? ` (${p.custom_distance_km} km)` : ''}`;
+  if (p.plan_kind === 'run') return runPlanDisplayName(p.distance, p.custom_distance_km);
   return p.name || 'Sport Plan';
 }
 
@@ -138,7 +138,7 @@ export default function PlanPage() {
         ...w, days: Object.fromEntries(WEEKDAYS.map(d => [d, { ...w.days[d], completed: false, completedActivityId: null }])) as typeof w.days,
       })),
     };
-    const baseName = p.plan_kind === 'run' ? RUN_DISTANCE_LABELS[p.distance] : (p.name || 'Plan');
+    const baseName = p.plan_kind === 'run' ? runPlanDisplayName(p.distance, p.custom_distance_km) : (p.name || 'Plan');
     const willActivate = p.plan_kind === 'run' ? !plans.some(x => x.plan_kind === 'run' && x.active) : true;
     const payload = {
       user_id: user.id, plan_kind: p.plan_kind, distance: p.distance, custom_distance_km: p.custom_distance_km,

@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import {
-  PlanRecord, Session, Weekday, WEEKDAYS, WEEKDAY_LABELS, RUN_DISTANCE_LABELS,
+  PlanRecord, Session, Weekday, WEEKDAYS, WEEKDAY_LABELS, runPlanDisplayName,
   isRunSession, PlanConfig, planSessionHref, todaysSession, planEndDateISO, movePlanSession, addSessionToDay,
 } from '@/lib/runPlanGenerator';
 import PlanWeekTable, { sessionTarget } from './PlanWeekTable';
@@ -39,7 +39,7 @@ export default function PlanView({ plan, onChange, onEdit, onDelete, onBack, onS
   const data = plan.plan_data;
   const isRun = plan.plan_kind === 'run';
   const planTitle = isRun
-    ? `${RUN_DISTANCE_LABELS[plan.distance]}${plan.distance === 'custom' && plan.custom_distance_km ? ` (${plan.custom_distance_km} km)` : ''}`
+    ? runPlanDisplayName(plan.distance, plan.custom_distance_km)
     : (plan.name || 'Custom Plan');
   const noun = isRun ? 'RUN' : 'SESSION';
   const realWeeks = data.weeks.filter(w => w.weekNumber > 0);
