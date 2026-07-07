@@ -622,32 +622,60 @@ function sumKm(days: Record<Weekday, Session>): number {
   return WEEKDAYS.reduce((s, d) => s + (days[d].distanceKm || days[d].estKm || 0), 0);
 }
 
+// Session types with plain, single-number detail text that can be safely
+// regenerated when the displayed distance/time is rescaled. Structured
+// sessions (tempo, fartlek, long intervals, sprint reps, hill reps) have
+// multi-part detail text (warm-up/reps/cooldown numbers) that would go stale
+// if only the headline number changed, so those are never rescaled — they
+// stay exactly as generated, both number and text always in sync.
+const ADJUSTABLE_TYPES: SessionType[] = ['easy', 'recovery', 'long', 'trail', 'progression'];
+
+function adjustableDetail(type: SessionType, title: string, km?: number, min?: number): string {
+  if (type === 'easy') return min != null
+    ? `${min} min at a comfortable, conversational pace.`
+    : `${km} km at a comfortable pace — you should be able to hold a conversation.`;
+  if (type === 'recovery') return `${km} km very easy. Let your body recover — keep it gentle.`;
+  if (type === 'progression') return `${km} km steady, increasing your pace each km. Your last km should be your fastest.`;
+  if (type === 'trail') return `${km} km on hilly trails — the hardest terrain option. Run by effort, hike the steep bits.`;
+  if (type === 'long') {
+    if (title.includes('Progression')) return `${km} km. Start slow and increase the pace slightly each km — your last km should be your fastest.`;
+    if (title.includes('Sprint Finish')) return `${km} km at a comfortable pace, but run the last 500 m as fast as you can — pretend you're finishing a race.`;
+    if (title.includes('Race Pace')) return `${km} km easy, with a few sections at your goal race pace built in.`;
+    return `${km} km at a comfortable, conversational pace.`;
+  }
+  return title;
+}
+
+function rebuildAdjustable(s: Session, factor: number): Session {
+  if (s.distanceKm != null) {
+    const km = Math.max(minKmForType(s.type), round(s.distanceKm * factor, 0.5));
+    return { ...s, distanceKm: km, detail: adjustableDetail(s.type, s.title, km) };
+  }
+  if (s.timeMin != null) {
+    const t = Math.max(10, Math.round(s.timeMin * factor));
+    return { ...s, timeMin: t, estKm: round(t / 6, 0.5), detail: adjustableDetail(s.type, s.title, undefined, t) };
+  }
+  return s;
+}
+
 /**
- * Scale every running session in a week toward a target total distance.
- * Distance-goal sessions (long run, tempo, etc.) scale distanceKm, clamped to
- * their category floor. Time-based sessions scale their minutes (and the
- * invisible estKm derived from them) — this never shows a contradicting
- * distance since only the time is displayed. Rep-based sessions (long
- * intervals/sprint/hill) only have an invisible estKm, which also flexes.
- * If floors alone exceed the target, the result lands as close as possible
- * from above rather than violating them.
+ * Scale a week's total toward a target distance by adjusting ONLY the simple
+ * sessions (easy/recovery/long/trail/progression) — their detail text is
+ * regenerated to match exactly. Structured sessions (tempo/fartlek/intervals/
+ * sprint/hill) are left completely untouched so their text never goes stale,
+ * and count as a fixed contribution to the total. If floors + fixed sessions
+ * alone exceed the target, the result lands as close as possible from above.
  */
 function scaleWeekToTarget(full: Record<Weekday, Session>, targetKm: number) {
-  const totalNow = sumKm(full);
-  if (totalNow <= 0 || !targetKm || targetKm <= 0) return;
-  const factor = targetKm / totalNow;
-  for (const d of WEEKDAYS) {
-    const s = full[d];
-    if (s.type === 'rest' || s.type === 'crosstrain') continue;
-    if (s.distanceKm != null) {
-      s.distanceKm = Math.max(minKmForType(s.type), round(s.distanceKm * factor, 0.5));
-    } else if (s.timeMin != null && s.estKm != null) {
-      s.timeMin = Math.max(10, Math.round(s.timeMin * factor));
-      s.estKm = round(s.timeMin / 6, 0.5);
-    } else if (s.estKm != null) {
-      s.estKm = Math.max(1, round(s.estKm * factor, 0.5));
-    }
-  }
+  if (!targetKm || targetKm <= 0) return;
+  const adjustableDays = WEEKDAYS.filter(d => ADJUSTABLE_TYPES.includes(full[d].type));
+  if (!adjustableDays.length) return;
+  const fixedKm = WEEKDAYS.reduce((s, d) => ADJUSTABLE_TYPES.includes(full[d].type) ? s : s + (full[d].distanceKm || full[d].estKm || 0), 0);
+  const adjustableSum = adjustableDays.reduce((s, d) => s + (full[d].distanceKm || full[d].estKm || 0), 0);
+  if (adjustableSum <= 0) return;
+  const remaining = targetKm - fixedKm;
+  const factor = remaining > 0 ? remaining / adjustableSum : 0.1;
+  for (const d of adjustableDays) full[d] = rebuildAdjustable(full[d], factor);
 }
 
 // ---------- final week / PB day ----------
