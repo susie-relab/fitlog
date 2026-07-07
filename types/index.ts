@@ -69,7 +69,7 @@ export type SwimSubType = 'ocean' | 'pool';
 export type FitnessSubType = 'boxing' | 'jump_rope' | 'dance' | 'skateboard' | 'rock_climbing' | 'trampoline' | 'martial_arts' | 'cleaning';
 export type BikeSubType = 'mtb' | 'commute' | 'road' | 'indoor_spin';
 export type StretchSubType = 'pilates' | 'flexibility' | 'physio';
-export type WalkSubType = 'multi_day' | 'outdoor' | 'treadmill';
+export type WalkSubType = 'multi_day' | 'outdoor' | 'treadmill' | 'speed' | 'stroll';
 
 export const SPORT_SUB_LABELS: Record<SportSubType, string> = {
   football: 'Football', tennis: 'Tennis', netball: 'Netball', volleyball: 'Volleyball',
@@ -99,7 +99,7 @@ export const STRETCH_SUB_LABELS: Record<StretchSubType, string> = {
   pilates: 'Pilates', flexibility: 'Flexibility', physio: 'Physio',
 };
 export const WALK_SUB_LABELS: Record<WalkSubType, string> = {
-  multi_day: 'Multi-day', outdoor: 'Outdoor', treadmill: 'Treadmill',
+  multi_day: 'Multi-day', outdoor: 'Outdoor', treadmill: 'Treadmill', speed: 'Speed', stroll: 'Stroll',
 };
 
 // All subtype labels in one map + a helper to display a (possibly comma-joined) sub_type value.
