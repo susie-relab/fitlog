@@ -31,6 +31,7 @@ export default function AddPage() {
   const [gymTypes, setGymTypes] = useState<string[]>([]);
   const [hours, setHours] = useState('');
   const [mins, setMins] = useState('');
+  const [secs, setSecs] = useState('');
   const [effort, setEffort] = useState<number | null>(null);
   const [distance, setDistance] = useState('');
   const [notes, setNotes] = useState('');
@@ -69,7 +70,7 @@ export default function AddPage() {
     if (planId && week && day) setPlanLink({ planId, week: parseInt(week), day });
   }, []);
 
-  const isDirty = !!(name || exerciseType || hours || mins || distance || notes || effort);
+  const isDirty = !!(name || exerciseType || hours || mins || secs || distance || notes || effort);
 
   useEffect(() => {
     setDirty(isDirty);
@@ -83,7 +84,8 @@ export default function AddPage() {
     return () => window.removeEventListener('beforeunload', handler);
   }, [isDirty]);
 
-  const durationMinutes = (parseInt(hours || '0') * 60) + parseInt(mins || '0');
+  const durationSeconds = (parseInt(hours || '0') * 3600) + (parseInt(mins || '0') * 60) + parseInt(secs || '0');
+  const durationMinutes = Math.round(durationSeconds / 60);
 
   const paceToDecimal = (m: string, s: string) => {
     if (!m && !s) return undefined;
@@ -150,7 +152,7 @@ export default function AddPage() {
       setConfettiColor(accentColor);
       setTimeout(() => setConfettiColor(null), 2200);
       // Reset form
-      setName(''); setExerciseType(''); setRunType(''); setSubType(''); setGymTypes([]); setHours(''); setMins('');
+      setName(''); setExerciseType(''); setRunType(''); setSubType(''); setGymTypes([]); setHours(''); setMins(''); setSecs('');
       setEffort(null); setDistance(''); setNotes(''); setIntensityMins('');
       setPaceMin(''); setPaceSec(''); setMaxPaceMin(''); setMaxPaceSec('');
       setMaxHr(''); setAvgHr(''); setElevationGain(''); setIsPb(false); setPbDesc('');
@@ -382,10 +384,22 @@ export default function AddPage() {
                 onChange={e => setMins(e.target.value)}
               />
             </div>
+            <div className="flex-1">
+              <input
+                type="number"
+                className="input"
+                placeholder="Seconds"
+                min="0"
+                max="59"
+                value={secs}
+                onChange={e => setSecs(e.target.value)}
+              />
+            </div>
           </div>
-          {durationMinutes > 0 && (
+          {durationSeconds > 0 && (
             <p className="text-xs text-[#64748B] mt-1">
-              {Math.floor(durationMinutes / 60) > 0 ? `${Math.floor(durationMinutes / 60)}h ` : ''}{durationMinutes % 60 > 0 ? `${durationMinutes % 60}m` : ''}
+              {Math.floor(durationSeconds / 3600) > 0 ? `${Math.floor(durationSeconds / 3600)}h ` : ''}{Math.floor((durationSeconds % 3600) / 60) > 0 ? `${Math.floor((durationSeconds % 3600) / 60)}m ` : ''}{durationSeconds % 60 > 0 ? `${durationSeconds % 60}s` : ''}
+              {durationSeconds % 60 > 0 ? ` (saved as ${durationMinutes}m)` : ''}
             </p>
           )}
         </div>

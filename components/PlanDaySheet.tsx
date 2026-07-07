@@ -3,6 +3,7 @@ import { useState } from 'react';
 import {
   PlanData, Session, Weekday, WEEKDAYS, WEEKDAY_LABELS,
   switchDifficulty, isRunSession, movePlanSession, addSessionToDay, updateSessionDetails, PlanConfig,
+  sessionCount, MAX_SESSIONS_PER_DAY,
 } from '@/lib/runPlanGenerator';
 import { sessionColor, sessionTarget } from './PlanWeekTable';
 
@@ -54,8 +55,11 @@ export default function PlanDaySheet({ data, selected, onSave, onClose, onLogAnd
     }
   };
 
+  const combinedCountIfAdded = pendingDaySession ? sessionCount(pendingDaySession) + sessionCount(sel) : 0;
+  const addWouldExceedMax = combinedCountIfAdded > MAX_SESSIONS_PER_DAY;
+
   const confirmSwap = () => { if (!pendingDay) return; onSave(movePlanSession(data, selected, { week: targetWeek, day: pendingDay })); onClose(); };
-  const confirmAdd = () => { if (!pendingDay) return; onSave(addSessionToDay(data, selected, { week: targetWeek, day: pendingDay })); onClose(); };
+  const confirmAdd = () => { if (!pendingDay || addWouldExceedMax) return; onSave(addSessionToDay(data, selected, { week: targetWeek, day: pendingDay })); onClose(); };
 
   const saveEdit = () => {
     onSave(updateSessionDetails(data, selected, {
@@ -158,8 +162,14 @@ export default function PlanDaySheet({ data, selected, onSave, onClose, onLogAnd
                     <p className="text-xs text-[#94A3B8] mb-2">{WEEKDAY_LABELS[pendingDay]} already has a session — swap it, or add this one alongside it?</p>
                     <div className="grid grid-cols-2 gap-2">
                       <button onClick={confirmSwap} className="py-1.5 rounded-lg border border-[#334155] text-[#94A3B8] text-xs hover:border-[#475569]">Swap</button>
-                      <button onClick={confirmAdd} className="py-1.5 rounded-lg border border-[#334155] text-[#94A3B8] text-xs hover:border-[#475569]">Add to that day</button>
+                      <button onClick={confirmAdd} disabled={addWouldExceedMax}
+                        className={`py-1.5 rounded-lg border text-xs ${addWouldExceedMax ? 'border-[#334155] text-[#475569] cursor-not-allowed opacity-60' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>
+                        Add to that day
+                      </button>
                     </div>
+                    {addWouldExceedMax && (
+                      <p className="text-[10px] text-amber-400/80 mt-1.5">That day already has {MAX_SESSIONS_PER_DAY} sessions — the max per day.</p>
+                    )}
                   </div>
                 )}
               </div>

@@ -40,6 +40,8 @@ export interface Session {
   variant?: 'easier' | 'harder' | null;
   /** A filler slot in the lead-in "Week 0" that falls before the plan's actual start date. */
   beforeStart?: boolean;
+  /** How many original sessions are merged into this slot (undefined/1 = a single session). */
+  count?: number;
 }
 
 export type Phase = 'Base' | 'Build' | 'Peak' | 'Taper';
@@ -1139,6 +1141,15 @@ export function movePlanSession(data: PlanData, from: { week: number; day: Weekd
 }
 
 /** Merge multiple sessions into one combined entry — plan-kind agnostic (run/sport/custom). */
+/** Max number of individual sessions that may be squished into a single day via reordering. */
+export const MAX_SESSIONS_PER_DAY = 3;
+
+/** How many individual sessions are represented by this day's slot (1 for a normal/rest day). */
+export function sessionCount(s: Session): number {
+  if (s.type === 'rest' || s.type === 'crosstrain') return 0;
+  return s.count ?? 1;
+}
+
 export function combineSessions(list: Session[]): Session {
   const real = list.filter(s => s.type !== 'rest' && s.type !== 'crosstrain');
   if (real.length === 0) return list[0];
@@ -1150,6 +1161,7 @@ export function combineSessions(list: Session[]): Session {
     title: real.map(s => s.title).join(' + '),
     detail: real.map(s => s.detail).filter(Boolean).join('\n\n'),
     completed: false,
+    count: real.reduce((t, s) => t + (s.count ?? 1), 0),
   };
   if (allHaveDistance) {
     combined.distanceKm = round(real.reduce((t, s) => t + (s.distanceKm || 0), 0), 0.5);
@@ -1161,7 +1173,8 @@ export function combineSessions(list: Session[]): Session {
   return combined;
 }
 
-/** Add a session on top of another day's existing session (combined), leaving the source day empty. Pure. */
+/** Add a session on top of another day's existing session (combined), leaving the source day empty. Pure.
+ *  No-ops if the target day is already at MAX_SESSIONS_PER_DAY — callers should guard with sessionCount() first. */
 export function addSessionToDay(data: PlanData, from: { week: number; day: Weekday }, to: { week: number; day: Weekday }): PlanData {
   if (from.week === to.week && from.day === to.day) return data;
   const weeks = data.weeks.map(w => (w.weekNumber === from.week || w.weekNumber === to.week) ? { ...w, days: { ...w.days } } : w);
@@ -1169,7 +1182,9 @@ export function addSessionToDay(data: PlanData, from: { week: number; day: Weekd
   const toWeek = weeks.find(w => w.weekNumber === to.week);
   if (!fromWeek || !toWeek) return data;
   const moved = fromWeek.days[from.day];
-  toWeek.days[to.day] = combineSessions([toWeek.days[to.day], moved]);
+  const existing = toWeek.days[to.day];
+  if (sessionCount(existing) + sessionCount(moved) > MAX_SESSIONS_PER_DAY) return data;
+  toWeek.days[to.day] = combineSessions([existing, moved]);
   fromWeek.days[from.day] = restDay();
   fromWeek.totalKm = round(sumKm(fromWeek.days), 0.5);
   toWeek.totalKm = round(sumKm(toWeek.days), 0.5);
