@@ -51,7 +51,7 @@ export default function ProfilePage() {
   }, [user]);
 
   return (
-    <div className="max-w-lg mx-auto">
+    <div className="max-w-lg lg:max-w-2xl mx-auto">
       <h1 className="text-xl font-bold text-white mb-1">Profile</h1>
       <p className="text-sm text-[#64748B] mb-5">{user?.email}</p>
 

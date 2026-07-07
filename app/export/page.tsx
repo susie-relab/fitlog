@@ -55,7 +55,7 @@ export default function ExportPage() {
   };
 
   return (
-    <div className="max-w-lg mx-auto">
+    <div className="max-w-lg lg:max-w-2xl mx-auto">
       <h1 className="text-xl font-bold text-white mb-1">Export Data</h1>
       <p className="text-sm text-[#64748B] mb-6">Download your activity data as a CSV file.</p>
 

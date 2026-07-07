@@ -167,7 +167,7 @@ export default function AddPage() {
     : '#3B82F6';
 
   return (
-    <div className="max-w-lg mx-auto">
+    <div className="max-w-lg lg:max-w-2xl mx-auto">
       <h1 className="text-xl font-bold text-white mb-5">Add Exercise</h1>
 
       {confettiColor && <ConfettiBurst color={confettiColor} />}

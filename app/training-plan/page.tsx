@@ -175,7 +175,7 @@ export default function PlanPage() {
   const activeKind: BuildKind = editing ? (editing.plan_kind as BuildKind) : (buildKind ?? 'run');
   if (buildKind || editing) {
     return (
-      <div className="max-w-2xl mx-auto">
+      <div className="max-w-2xl lg:max-w-4xl mx-auto">
         {activeKind === 'custom' ? <CustomPlanBuilder existing={editing} onSaved={handleSaved} onCancel={cancelBuild} />
           : activeKind === 'sport' ? <SportPlanBuilder existing={editing} onSaved={handleSaved} onCancel={cancelBuild} />
           : <PlanBuilder existing={editing} hasActiveRunPlan={!!activeRunPlan} onSaved={handleSaved} onCancel={cancelBuild} />}
@@ -186,7 +186,7 @@ export default function PlanPage() {
   // Viewing a single plan
   if (selected) {
     return (
-      <div className="max-w-3xl mx-auto">
+      <div className="max-w-3xl lg:max-w-5xl mx-auto">
         <PlanView
           plan={selected}
           onChange={updated => { setSelected(updated); setPlans(prev => prev.map(p => p.id === updated.id ? updated : p)); }}
@@ -221,7 +221,7 @@ export default function PlanPage() {
   );
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="max-w-2xl lg:max-w-4xl mx-auto">
       <h1 className="text-xl font-bold text-white mb-4">Training Plan</h1>
 
       {/* Mode toggle */}

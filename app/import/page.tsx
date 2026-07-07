@@ -199,7 +199,7 @@ export default function ImportPage() {
   };
 
   return (
-    <div className="max-w-lg mx-auto">
+    <div className="max-w-lg lg:max-w-2xl mx-auto">
       <h1 className="text-xl font-bold text-white mb-2">Import Data</h1>
       <p className="text-sm text-[#64748B] mb-6">Import your Garmin Connect activity history via CSV export.</p>
 
