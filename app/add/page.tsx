@@ -14,7 +14,7 @@ import {
 import DistancePicker from '@/components/DistancePicker';
 import { useDirtyForm } from '@/components/DirtyFormContext';
 import ConfettiBurst from '@/components/ConfettiBurst';
-import { todayLocalISO } from '@/lib/utils';
+import { todayLocalISO, openDatePicker } from '@/lib/utils';
 
 const RUN_TYPES: RunType[] = ['easy', 'long', 'tempo', 'fartlek', 'speed_intervals', 'hill_reps', 'trail', 'long_intervals'];
 
@@ -192,7 +192,7 @@ export default function AddPage() {
         {/* Date */}
         <div>
           <label className="label">Date *</label>
-          <input type="date" className="input" value={date} onChange={e => setDate(e.target.value)} />
+          <input type="date" className="input" value={date} onClick={openDatePicker} onChange={e => setDate(e.target.value)} />
         </div>
 
         {/* Exercise Type */}

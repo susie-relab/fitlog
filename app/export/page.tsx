@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
 import { Activity } from '@/types';
 import { activitiesToCsv, downloadCsv } from '@/lib/exportCsv';
+import { openDatePicker } from '@/lib/utils';
 
 type ExportFilter = 'all' | 'run' | 'year' | 'custom';
 
@@ -97,11 +98,11 @@ export default function ExportPage() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="label">From</label>
-              <input type="date" className="input" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
+              <input type="date" className="input" value={dateFrom} onClick={openDatePicker} onChange={e => setDateFrom(e.target.value)} />
             </div>
             <div>
               <label className="label">To</label>
-              <input type="date" className="input" value={dateTo} onChange={e => setDateTo(e.target.value)} />
+              <input type="date" className="input" value={dateTo} onClick={openDatePicker} onChange={e => setDateTo(e.target.value)} />
             </div>
           </div>
         )}

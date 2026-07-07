@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
 import { Activity, EXERCISE_TYPE_LABELS, EXERCISE_TYPE_COLORS } from '@/types';
-import { formatDate, todayLocalISO } from '@/lib/utils';
+import { formatDate, todayLocalISO, openDatePicker } from '@/lib/utils';
 
 interface StandaloneNote {
   id: string;
@@ -184,6 +184,7 @@ export default function NotesPage() {
               type="date"
               className="input"
               value={date}
+              onClick={openDatePicker}
               onChange={e => setDate(e.target.value)}
             />
             <textarea

@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
 import { Activity, ExerciseType, RunType, EXERCISE_TYPE_LABELS, RUN_TYPE_LABELS } from '@/types';
-import { formatPaceMinKm, formatDuration, formatDate } from '@/lib/utils';
+import { formatPaceMinKm, formatDuration, formatDate, openDatePicker } from '@/lib/utils';
 
 const DISTANCE_PB_KM = [0.1, 0.2, 0.4, 0.8, 1, 1.6, 2, 3, 5, 10, 15, 20, 21.1, 25, 30, 40, 42.2, 50];
 const DISTANCE_LABELS: Record<number, string> = {
@@ -367,7 +367,7 @@ export default function PBsPage() {
               </div>
               <div>
                 <label className="label">Date</label>
-                <input type="date" className="input" value={manualDate} onChange={e => setManualDate(e.target.value)} />
+                <input type="date" className="input" value={manualDate} onClick={openDatePicker} onChange={e => setManualDate(e.target.value)} />
               </div>
               <div className="flex gap-2">
                 <button onClick={saveManualPB} className="btn-primary flex-1">Save</button>

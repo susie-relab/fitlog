@@ -1,3 +1,8 @@
+/** Open the native calendar popup on click, not just when the tiny icon is clicked. */
+export function openDatePicker(e: { currentTarget: HTMLInputElement }): void {
+  try { (e.currentTarget as HTMLInputElement & { showPicker?: () => void }).showPicker?.(); } catch { /* not supported */ }
+}
+
 export function formatDuration(minutes: number): string {
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;

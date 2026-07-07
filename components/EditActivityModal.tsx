@@ -10,6 +10,7 @@ import {
   SPORT_SUB_LABELS, GYM_SUB_LABELS, WATER_SNOW_SUB_LABELS, SWIM_SUB_LABELS, FITNESS_SUB_LABELS, BIKE_SUB_LABELS, STRETCH_SUB_LABELS,
 } from '@/types';
 import DistancePicker from './DistancePicker';
+import { openDatePicker } from '@/lib/utils';
 
 const RUN_TYPES: RunType[] = ['easy', 'long', 'tempo', 'fartlek', 'speed_intervals', 'hill_reps', 'trail', 'long_intervals'];
 
@@ -135,7 +136,7 @@ export default function EditActivityModal({ activity, onClose, onSaved, onDelete
           {/* Date */}
           <div>
             <label className="label">Date *</label>
-            <input type="date" className="input" value={date} onChange={e => setDate(e.target.value)} />
+            <input type="date" className="input" value={date} onClick={openDatePicker} onChange={e => setDate(e.target.value)} />
           </div>
 
           {/* Exercise Type */}

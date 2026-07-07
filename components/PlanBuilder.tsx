@@ -8,7 +8,7 @@ import {
 } from '@/lib/runPlanGenerator';
 import PlanWeekTable from './PlanWeekTable';
 import PlanDaySheet from './PlanDaySheet';
-import { todayLocalISO } from '@/lib/utils';
+import { todayLocalISO, openDatePicker } from '@/lib/utils';
 
 const DISTANCES: RunDistance[] = ['5k', '10k', 'half', 'marathon', 'keep_fit', 'speed', 'ultra_50k', 'ultra_100k', 'ultra_100mile', 'custom'];
 const LEVELS: { value: PlanLevel; label: string; desc: string }[] = [
@@ -191,7 +191,7 @@ export default function PlanBuilder({ existing, hasActiveRunPlan, onSaved, onCan
           </div>
         ) : (
           <div>
-            <input type="date" className="input" value={endDate} min={startDate} onChange={e => setEndDate(e.target.value)} />
+            <input type="date" className="input" value={endDate} min={startDate} onClick={openDatePicker} onChange={e => setEndDate(e.target.value)} />
             {weeksFromDates && <p className="text-xs text-[#64748B] mt-1">= {weeksFromDates} weeks</p>}
           </div>
         )}
@@ -259,7 +259,7 @@ export default function PlanBuilder({ existing, hasActiveRunPlan, onSaved, onCan
       <div>
         <label className="label">Start date</label>
         <div className="flex gap-2">
-          <input type="date" className="input flex-1" value={startDate} onChange={e => setStartDate(e.target.value)} />
+          <input type="date" className="input flex-1" value={startDate} onClick={openDatePicker} onChange={e => setStartDate(e.target.value)} />
           <button type="button" onClick={() => setStartDate(todayISO)}
             className={`px-3 rounded-lg text-sm font-semibold border transition-all flex-shrink-0 ${startDate === todayISO ? 'bg-blue-600 border-blue-600 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>
             Today
