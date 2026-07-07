@@ -3,13 +3,19 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
-import { Activity, ExerciseType, EXERCISE_TYPE_LABELS, EXERCISE_TYPE_COLORS, subTypeLabel } from '@/types';
+import { Activity, ExerciseType, EXERCISE_TYPE_LABELS, EXERCISE_TYPE_COLORS, subTypeLabel, RUN_TYPE_LABELS } from '@/types';
 import { formatDuration, daysAgo, calcDayStreak, calcWeekStreak, todayLocalISO } from '@/lib/utils';
 import { PlanRecord, PlanData, Session, Weekday, RUN_DISTANCE_LABELS, todaysSession, nextSession, isRunSession, planSessionHref, WEEKDAYS, movePlanSession, addSessionToDay, sessionCount, sessionParts, MAX_SESSIONS_PER_DAY, WEEKDAY_LABELS } from '@/lib/runPlanGenerator';
 import { sessionColor, sessionTarget } from '@/components/PlanWeekTable';
 import PlanDaySheet from '@/components/PlanDaySheet';
 import Link from 'next/link';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+
+/** The subtype label for any activity — sub_type for most types, run_type for runs. */
+function activitySubLabel(a: Activity): string | null {
+  if (a.exercise_type === 'run') return a.run_type ? RUN_TYPE_LABELS[a.run_type] : null;
+  return a.sub_type ? subTypeLabel(a.sub_type) : null;
+}
 
 // --- streak drill-down helpers ---
 function mondayOf(dateISO: string): string {
@@ -204,8 +210,8 @@ export default function DashPage() {
   const subtypeByType: Partial<Record<ExerciseType, Record<string, number>>> = {};
   for (const a of last14) {
     byType[a.exercise_type] = (byType[a.exercise_type] || 0) + 1;
-    if (a.sub_type) {
-      const key = subTypeLabel(a.sub_type);
+    const key = activitySubLabel(a);
+    if (key) {
       const bucket = subtypeByType[a.exercise_type] || (subtypeByType[a.exercise_type] = {});
       bucket[key] = (bucket[key] || 0) + 1;
     }
@@ -223,7 +229,7 @@ export default function DashPage() {
     const detail: Partial<Record<ExerciseType, Record<string, number>>> = {};
     for (const a of dayActs) {
       row[a.exercise_type] = ((row[a.exercise_type] as number) || 0) + 1;
-      const key = a.sub_type ? subTypeLabel(a.sub_type) : null;
+      const key = activitySubLabel(a);
       if (key) {
         const bucket = detail[a.exercise_type] || (detail[a.exercise_type] = {});
         bucket[key] = (bucket[key] || 0) + 1;
