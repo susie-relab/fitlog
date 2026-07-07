@@ -322,7 +322,7 @@ export default function AddPage() {
         {exerciseType === 'bike' && (
           <div>
             <label className="label">Ride Type <span className="text-[#64748B]">(optional)</span></label>
-            <div className="grid grid-cols-2 gap-1.5">
+            <div className="grid grid-cols-3 gap-1.5">
               {(Object.keys(BIKE_SUB_LABELS) as BikeSubType[]).map(t => (
                 <button key={t} onClick={() => setSubType(subType === t ? '' : t)}
                   className={`px-2 py-2 rounded-lg text-xs font-medium border transition-all text-center ${subType === t ? 'border-yellow-500 bg-yellow-500/20 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>

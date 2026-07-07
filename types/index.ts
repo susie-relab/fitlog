@@ -67,7 +67,7 @@ export type GymSubType = 'hiit_workout' | 'strength' | 'conditioning' | 'crossfi
 export type WaterSnowSubType = 'kayak' | 'sailing' | 'surf' | 'rowing' | 'waka_ama' | 'sup' | 'snowboard' | 'skiing';
 export type SwimSubType = 'ocean' | 'pool';
 export type FitnessSubType = 'boxing' | 'jump_rope' | 'dance' | 'skateboard' | 'rock_climbing' | 'trampoline' | 'martial_arts' | 'cleaning';
-export type BikeSubType = 'mtb' | 'commute' | 'road' | 'indoor_spin';
+export type BikeSubType = 'mixed_terrain' | 'commute' | 'mtb' | 'road' | 'electric' | 'indoor_spin' | 'bmx' | 'track' | 'bikepacking';
 export type StretchSubType = 'pilates' | 'flexibility' | 'physio';
 export type WalkSubType = 'multi_day' | 'outdoor' | 'treadmill' | 'speed' | 'stroll';
 
@@ -93,7 +93,8 @@ export const FITNESS_SUB_LABELS: Record<FitnessSubType, string> = {
   rock_climbing: 'Rock Climbing', trampoline: 'Trampoline', martial_arts: 'Martial Arts', cleaning: 'Cleaning',
 };
 export const BIKE_SUB_LABELS: Record<BikeSubType, string> = {
-  mtb: 'MTB', commute: 'Commute', road: 'Road', indoor_spin: 'Indoor Spin',
+  mixed_terrain: 'Mixed Terrain', commute: 'Commute', mtb: 'MTB', road: 'Road', electric: 'Electric',
+  indoor_spin: 'Indoor Spin', bmx: 'BMX', track: 'Track', bikepacking: 'Bikepacking',
 };
 export const STRETCH_SUB_LABELS: Record<StretchSubType, string> = {
   pilates: 'Pilates', flexibility: 'Flexibility', physio: 'Physio',
