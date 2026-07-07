@@ -9,6 +9,57 @@ import { PlanRecord, PlanData, Session, Weekday, RUN_DISTANCE_LABELS, todaysSess
 import { sessionColor, sessionTarget } from '@/components/PlanWeekTable';
 import PlanDaySheet from '@/components/PlanDaySheet';
 import Link from 'next/link';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+
+// --- streak drill-down helpers ---
+function mondayOf(dateISO: string): string {
+  const d = new Date(dateISO + 'T00:00:00');
+  const day = d.getDay();
+  d.setDate(d.getDate() - day + (day === 0 ? -6 : 1));
+  return d.toISOString().split('T')[0];
+}
+function addDaysLocal(dateISO: string, n: number): string {
+  const d = new Date(dateISO + 'T00:00:00');
+  d.setDate(d.getDate() + n);
+  return d.toISOString().split('T')[0];
+}
+/** Last N days (oldest first), each marked active if any activity happened that day. */
+function buildDayTimeline(dates: string[], count: number) {
+  const set = new Set(dates);
+  const today = todayLocalISO();
+  return Array.from({ length: count }, (_, i) => {
+    const date = addDaysLocal(today, -(count - 1 - i));
+    return { date, active: set.has(date) };
+  });
+}
+/** Last N Monday-start weeks (oldest first), each marked active if any activity fell in it. */
+function buildWeekTimeline(dates: string[], count: number) {
+  const activeWeeks = new Set(dates.map(mondayOf));
+  const thisWeek = mondayOf(todayLocalISO());
+  return Array.from({ length: count }, (_, i) => {
+    const weekStart = addDaysLocal(thisWeek, -(count - 1 - i) * 7);
+    return { date: weekStart, active: activeWeeks.has(weekStart) };
+  });
+}
+/** The date/week the current active streak began (walking backward from today until a gap). */
+function currentStreakStart(dates: string[], unit: 'day' | 'week'): string | null {
+  const keyOf = unit === 'day' ? (d: string) => d : mondayOf;
+  const set = new Set(dates.map(keyOf));
+  const step = unit === 'day' ? -1 : -7;
+  let cur = keyOf(todayLocalISO());
+  if (!set.has(cur)) {
+    const prev = addDaysLocal(cur, step);
+    if (!set.has(prev)) return null;
+    cur = prev;
+  }
+  let start = cur;
+  while (set.has(addDaysLocal(start, step))) start = addDaysLocal(start, step);
+  return start;
+}
+function fmtNice(dateISO: string): string {
+  const [y, m, d] = dateISO.split('-');
+  return `${d}/${m}/${y}`;
+}
 
 const planLabel = (p: PlanRecord) => p.plan_kind === 'run' ? RUN_DISTANCE_LABELS[p.distance] : (p.name || 'Custom Plan');
 type DetailSel = { planId: string; week: number; day: Weekday };
@@ -51,6 +102,7 @@ export default function DashPage() {
   const [loading, setLoading] = useState(true);
   const [detail, setDetail] = useState<DetailSel | null>(null);
   const [showWeek, setShowWeek] = useState(false);
+  const [streakModal, setStreakModal] = useState<'day' | 'week' | null>(null);
 
   const detailPlan = detail ? plans.find(p => p.id === detail.planId) : undefined;
   const persistDetailPlan = async (newData: PlanData) => {
@@ -146,6 +198,23 @@ export default function DashPage() {
   for (const a of last14) {
     byType[a.exercise_type] = (byType[a.exercise_type] || 0) + 1;
   }
+  const presentTypes14 = Object.keys(byType) as ExerciseType[];
+
+  // 14-day stacked-by-type chart: one row per day, one key per activity type present.
+  const day14Chart = Array.from({ length: 14 }, (_, i) => {
+    const date = addDaysLocal(todayLocalISO(), -(13 - i));
+    const dayActs = activities.filter(a => a.date === date);
+    const row: Record<string, number | string> = { date: date.slice(5).split('-').reverse().join('/') };
+    for (const a of dayActs) row[a.exercise_type] = ((row[a.exercise_type] as number) || 0) + 1;
+    return row;
+  });
+
+  // Streak drill-down timelines
+  const allDates = activities.map(a => a.date);
+  const dayTimeline = buildDayTimeline(allDates, 30);
+  const weekTimeline = buildWeekTimeline(allDates, 12);
+  const dayStreakStart = currentStreakStart(allDates, 'day');
+  const weekStreakStart = currentStreakStart(allDates, 'week');
 
   const greeting = () => {
     const h = new Date().getHours();
@@ -157,7 +226,7 @@ export default function DashPage() {
   if (loading) return <div className="text-[#64748B] text-sm">Loading...</div>;
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="max-w-2xl lg:max-w-5xl mx-auto">
       <div className="flex items-start justify-between mb-5">
         <div>
           <h1 className="text-2xl font-bold text-white">{greeting()}{user?.user_metadata?.username ? `, ${user.user_metadata.username}` : ''} 👋</h1>
@@ -177,6 +246,9 @@ export default function DashPage() {
         </div>
       </div>
 
+      {/* Desktop: plan + streaks/14-day side by side instead of one long column */}
+      <div className="lg:grid lg:grid-cols-2 lg:gap-5 lg:items-start">
+      <div>
       {/* Today's Plan / what's next */}
       {(todayPlanItems.length > 0 || nextRun) && (
         <div className="card mb-5">
@@ -237,58 +309,25 @@ export default function DashPage() {
             </div>
           )}
 
-          {/* This week's plan (expandable) */}
-          {todayPlanItems.length > 0 && (
-            <div className="mt-3 pt-3 border-t border-[#293548]">
-              <button onClick={() => setShowWeek(v => !v)} className="text-xs font-semibold text-[#94A3B8] hover:text-white transition-colors">
-                {showWeek ? '▼' : '▶'} This week&apos;s plan
-              </button>
-              {showWeek && todayPlanItems.map(({ plan, today }) => {
-                const week = plan.plan_data.weeks.find(w => w.weekNumber === today.week);
-                if (!week) return null;
-                return (
-                  <div key={plan.id} className="mt-2">
-                    <p className="text-[10px] text-[#64748B] uppercase tracking-wide mb-1">{planLabel(plan)} · Week {today.week}</p>
-                    <div className="flex flex-col gap-1">
-                      {WEEKDAYS.map(d => {
-                        const s = week.days[d];
-                        if (s.beforeStart) return null;
-                        const muted = s.type === 'rest' || s.type === 'crosstrain';
-                        const isToday = d === today.day;
-                        return (
-                          <button key={d} onClick={() => setDetail({ planId: plan.id, week: today.week, day: d })}
-                            className={`flex items-center gap-2 py-1.5 px-2 rounded-lg text-left ${isToday ? 'bg-blue-500/10 border border-blue-500/30' : 'hover:bg-[#0F172A]'}`}>
-                            <span className="text-[10px] font-semibold text-[#64748B] uppercase w-8 flex-shrink-0">{d.slice(0, 3)}</span>
-                            <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: sessionColor(s) }} />
-                            <span className={`text-xs truncate flex-1 ${muted ? 'text-[#64748B]' : 'text-white'}`}>{s.title}</span>
-                            {sessionTarget(s) && <span className="text-[10px] text-[#64748B] flex-shrink-0">{sessionTarget(s)}</span>}
-                            {s.completed && <span className="text-green-400 text-[10px] flex-shrink-0">✓</span>}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
         </div>
       )}
+      </div>
 
-      {/* Streaks */}
+      <div>
+      {/* Streaks — tap to see when the streak started/broke */}
       <div className="grid grid-cols-2 gap-3 mb-5">
-        <div className="card text-center border-orange-500/30" style={{ background: 'rgba(249,115,22,0.08)' }}>
+        <button onClick={() => setStreakModal('day')} className="card text-center border-orange-500/30 hover:border-orange-500/60 transition-colors" style={{ background: 'rgba(249,115,22,0.08)' }}>
           <div className="text-3xl font-extrabold text-orange-400" style={{ fontFamily: 'var(--font-display)' }}>
             {dayStreak}
           </div>
           <div className="text-xs text-orange-400/70 mt-1 uppercase tracking-wide font-semibold">Day Streak 🔥</div>
-        </div>
-        <div className="card text-center border-yellow-500/30" style={{ background: 'rgba(234,179,8,0.08)' }}>
+        </button>
+        <button onClick={() => setStreakModal('week')} className="card text-center border-yellow-500/30 hover:border-yellow-500/60 transition-colors" style={{ background: 'rgba(234,179,8,0.08)' }}>
           <div className="text-3xl font-extrabold text-yellow-400" style={{ fontFamily: 'var(--font-display)' }}>
             {weekStreak}
           </div>
           <div className="text-xs text-yellow-400/70 mt-1 uppercase tracking-wide font-semibold">Week Streak ⚡</div>
-        </div>
+        </button>
       </div>
 
       {/* 14-day snapshot */}
@@ -303,6 +342,109 @@ export default function DashPage() {
         <StatCard value={String(intensity14)} label="Intensity Mins" color="#06B6D4" />
         <StatCard value={String(total14 > 0 ? Math.round(dist14 / total14 * 10) / 10 : 0)} label="Avg km/session" color="#A78BFA" />
       </div>
+
+      </div>
+      </div>
+
+      {/* This week's plan — full width; table on desktop, list on mobile */}
+      {todayPlanItems.length > 0 && (
+        <div className="card mb-5">
+          <button onClick={() => setShowWeek(v => !v)} className="text-sm font-semibold text-[#94A3B8] hover:text-white transition-colors uppercase tracking-wide">
+            {showWeek ? '▼' : '▶'} This Week&apos;s Plan
+          </button>
+          {showWeek && (
+            <div className="mt-3">
+              {/* Desktop table */}
+              <div className="hidden lg:block overflow-x-auto">
+                <table className="w-full border-separate" style={{ borderSpacing: '4px' }}>
+                  <thead>
+                    <tr>
+                      <th className="text-left text-xs font-semibold text-[#94A3B8] uppercase tracking-wide px-2 py-1 w-32">Plan</th>
+                      {WEEKDAYS.map(d => <th key={d} className="text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide px-1 py-1">{d.slice(0, 3)}</th>)}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {todayPlanItems.map(({ plan, today }) => {
+                      const week = plan.plan_data.weeks.find(w => w.weekNumber === today.week);
+                      if (!week) return null;
+                      return (
+                        <tr key={plan.id}>
+                          <td className="align-top px-2 py-2 rounded-lg bg-[#0F172A] border border-[#293548] text-sm font-semibold text-white">{planLabel(plan)}</td>
+                          {WEEKDAYS.map(d => {
+                            const s = week.days[d];
+                            if (s.beforeStart) return <td key={d} />;
+                            const muted = s.type === 'rest' || s.type === 'crosstrain';
+                            const isToday = d === today.day;
+                            return (
+                              <td key={d} className="align-top">
+                                <button onClick={() => setDetail({ planId: plan.id, week: today.week, day: d })}
+                                  className={`w-full text-left rounded-lg p-2 border transition-colors ${isToday ? 'border-blue-500/50 bg-blue-500/10' : 'border-[#293548] bg-[#0F172A] hover:border-[#475569]'}`}>
+                                  <span className="w-1.5 h-1.5 rounded-full inline-block mr-1" style={{ background: sessionColor(s) }} />
+                                  <span className={`text-xs font-semibold ${muted ? 'text-[#64748B]' : 'text-white'}`}>{s.title}</span>
+                                  {sessionTarget(s) && <div className="text-[10px] text-[#64748B] mt-0.5">{sessionTarget(s)}</div>}
+                                  {s.completed && <span className="text-green-400 text-[10px] ml-1">✓</span>}
+                                </button>
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile list */}
+              <div className="lg:hidden flex flex-col gap-3">
+                {todayPlanItems.map(({ plan, today }) => {
+                  const week = plan.plan_data.weeks.find(w => w.weekNumber === today.week);
+                  if (!week) return null;
+                  return (
+                    <div key={plan.id}>
+                      <p className="text-[10px] text-[#64748B] uppercase tracking-wide mb-1">{planLabel(plan)} · Week {today.week}</p>
+                      <div className="flex flex-col gap-1">
+                        {WEEKDAYS.map(d => {
+                          const s = week.days[d];
+                          if (s.beforeStart) return null;
+                          const muted = s.type === 'rest' || s.type === 'crosstrain';
+                          const isToday = d === today.day;
+                          return (
+                            <button key={d} onClick={() => setDetail({ planId: plan.id, week: today.week, day: d })}
+                              className={`flex items-center gap-2 py-1.5 px-2 rounded-lg text-left ${isToday ? 'bg-blue-500/10 border border-blue-500/30' : 'hover:bg-[#0F172A]'}`}>
+                              <span className="text-[10px] font-semibold text-[#64748B] uppercase w-8 flex-shrink-0">{d.slice(0, 3)}</span>
+                              <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: sessionColor(s) }} />
+                              <span className={`text-xs truncate flex-1 ${muted ? 'text-[#64748B]' : 'text-white'}`}>{s.title}</span>
+                              {sessionTarget(s) && <span className="text-[10px] text-[#64748B] flex-shrink-0">{sessionTarget(s)}</span>}
+                              {s.completed && <span className="text-green-400 text-[10px] flex-shrink-0">✓</span>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 14-day activity mix — stacked by type, one bar per day (full width) */}
+      {presentTypes14.length > 0 && (
+        <div className="card mb-5">
+          <h2 className="text-sm font-semibold text-[#94A3B8] mb-3 uppercase tracking-wide">14-Day Activity Mix</h2>
+          <ResponsiveContainer width="100%" height={160}>
+            <BarChart data={day14Chart} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+              <XAxis dataKey="date" tick={{ fill: '#475569', fontSize: 9 }} tickLine={false} axisLine={false} />
+              <YAxis allowDecimals={false} tick={{ fill: '#475569', fontSize: 9 }} tickLine={false} axisLine={false} width={24} />
+              <Tooltip contentStyle={{ background: '#1E293B', border: '1px solid #334155', borderRadius: 8, color: '#F1F5F9', fontSize: 12 }} />
+              {presentTypes14.map(t => (
+                <Bar key={t} dataKey={t} stackId="a" fill={EXERCISE_TYPE_COLORS[t]} name={EXERCISE_TYPE_LABELS[t]} radius={presentTypes14[presentTypes14.length - 1] === t ? [3, 3, 0, 0] : undefined} />
+              ))}
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
 
       {/* By type */}
       {Object.keys(byType).length > 0 && (
@@ -432,6 +574,32 @@ export default function DashPage() {
           onClose={() => setDetail(null)}
           onLogAndComplete={(s) => router.push(planSessionHref(s, detailPlan.id, detail.week, detail.day))}
         />
+      )}
+
+      {/* Streak drill-down: when did the current streak start, and where were the gaps */}
+      {streakModal && (
+        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setStreakModal(null)} />
+          <div className="relative w-full md:max-w-md bg-[#1E293B] border border-[#334155] rounded-t-2xl md:rounded-2xl p-5">
+            <h3 className="text-lg font-bold text-white mb-1">{streakModal === 'day' ? 'Day Streak' : 'Week Streak'}</h3>
+            <p className="text-sm text-[#94A3B8] mb-4">
+              {streakModal === 'day'
+                ? (dayStreakStart ? <>Current streak started <strong className="text-white">{fmtNice(dayStreakStart)}</strong> ({dayStreak} day{dayStreak === 1 ? '' : 's'}).</> : 'No active streak — log something today to start one!')
+                : (weekStreakStart ? <>Current streak started the week of <strong className="text-white">{fmtNice(weekStreakStart)}</strong> ({weekStreak} week{weekStreak === 1 ? '' : 's'}).</> : 'No active streak — log something this week to start one!')}
+            </p>
+            <p className="text-xs text-[#64748B] uppercase tracking-wide font-semibold mb-2">
+              {streakModal === 'day' ? 'Last 30 days' : 'Last 12 weeks'}
+            </p>
+            <div className={`grid gap-1 ${streakModal === 'day' ? 'grid-cols-10' : 'grid-cols-12'}`}>
+              {(streakModal === 'day' ? dayTimeline : weekTimeline).map(({ date, active }) => (
+                <div key={date} title={fmtNice(date)}
+                  className={`aspect-square rounded ${active ? (streakModal === 'day' ? 'bg-orange-400' : 'bg-yellow-400') : 'bg-[#293548]'}`} />
+              ))}
+            </div>
+            <p className="text-xs text-[#475569] mt-3">Gaps (grey) show where the streak broke before restarting.</p>
+            <button onClick={() => setStreakModal(null)} className="text-sm text-[#64748B] hover:text-white py-1 mt-3">Close</button>
+          </div>
+        </div>
       )}
     </div>
   );

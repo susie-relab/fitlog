@@ -2,11 +2,48 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
-import { Activity, ExerciseType, EXERCISE_TYPE_LABELS, EXERCISE_TYPE_COLORS } from '@/types';
+import { Activity, ExerciseType, EXERCISE_TYPE_LABELS, EXERCISE_TYPE_COLORS, subTypeLabel } from '@/types';
 import { formatDuration, formatPaceMinKm } from '@/lib/utils';
 import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid
+  BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid
 } from 'recharts';
+
+function weekKey(dateStr: string): string {
+  const d = new Date(dateStr + 'T00:00:00');
+  const day = d.getDay();
+  d.setDate(d.getDate() - day + (day === 0 ? -6 : 1));
+  return d.toISOString().split('T')[0];
+}
+
+/** Group activities into Monday-start weeks and aggregate a picked numeric field. */
+function weeklySeries(acts: Activity[], pick: (a: Activity) => number | null | undefined, mode: 'sum' | 'avg' | 'max'): { week: string; value: number }[] {
+  const groups: Record<string, number[]> = {};
+  for (const a of acts) {
+    const v = pick(a);
+    if (v == null) continue;
+    const k = weekKey(a.date);
+    (groups[k] ||= []).push(v);
+  }
+  return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b)).slice(-12).map(([week, vals]) => ({
+    week: new Date(week + 'T00:00:00').toLocaleDateString('en-NZ', { day: 'numeric', month: 'short' }),
+    value: mode === 'sum' ? Math.round(vals.reduce((s, v) => s + v, 0) * 10) / 10
+      : mode === 'avg' ? Math.round((vals.reduce((s, v) => s + v, 0) / vals.length) * 100) / 100
+      : Math.max(...vals),
+  }));
+}
+
+/** Count sessions per sub-type (splitting comma-joined multi-select values like gym focus). */
+function subTypeBreakdown(acts: Activity[]): { name: string; count: number }[] {
+  const counts: Record<string, number> = {};
+  for (const a of acts) {
+    if (!a.sub_type) continue;
+    for (const key of a.sub_type.split(',')) {
+      const label = subTypeLabel(key.trim());
+      if (label) counts[label] = (counts[label] || 0) + 1;
+    }
+  }
+  return Object.entries(counts).sort(([, a], [, b]) => b - a).slice(0, 8).map(([name, count]) => ({ name, count }));
+}
 
 type Period = '30d' | '3m' | '6m' | '1y' | 'all';
 
@@ -156,10 +193,18 @@ export default function TotalStatsPage() {
   const bestWeek = getBestWeek(allActivities);
   const streak = getLongestStreak(allActivities);
 
+  // Extra charts (respect the current period + type filter via `activities`)
+  const weeklyDistance = weeklySeries(activities, a => a.distance_km, 'sum');
+  const weeklyIntensity = weeklySeries(activities, a => a.intensity_minutes, 'sum');
+  const weeklyEffort = weeklySeries(activities, a => a.effort, 'avg');
+  const weeklyMaxHr = weeklySeries(activities, a => a.max_hr, 'max');
+  const weeklyPace = weeklySeries(activities.filter(a => a.exercise_type === 'run'), a => a.pace_min_km, 'avg');
+  const subtypeData = subTypeBreakdown(activities);
+
   if (loading) return <div className="text-[#64748B] text-sm">Loading...</div>;
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="max-w-2xl lg:max-w-5xl mx-auto">
       <h1 className="text-xl font-bold text-white mb-5">Stats</h1>
 
       {/* Period selector */}
@@ -328,6 +373,94 @@ export default function TotalStatsPage() {
           <p className="text-2xl font-bold text-white">{streak}</p>
           <p className="text-xs text-[#94A3B8] mt-1">consecutive days</p>
         </div>
+      </div>
+
+      {/* Deeper stats — weekly trends (last 12 weeks in the current filter) */}
+      <h2 className="text-sm font-semibold text-[#64748B] uppercase tracking-wide mt-6 mb-3">Deeper Stats</h2>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {weeklyDistance.length > 0 && (
+          <div className="card">
+            <p className="text-xs text-[#64748B] uppercase tracking-wide font-semibold mb-3">Weekly Distance</p>
+            <ResponsiveContainer width="100%" height={140}>
+              <BarChart data={weeklyDistance} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                <XAxis dataKey="week" tick={{ fill: '#475569', fontSize: 9 }} tickLine={false} axisLine={false} />
+                <YAxis tick={{ fill: '#475569', fontSize: 9 }} tickLine={false} axisLine={false} width={28} />
+                <Tooltip contentStyle={TooltipStyle} formatter={(v) => [`${v} km`, 'Distance']} />
+                <Bar dataKey="value" fill="#60A5FA" radius={[3, 3, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+
+        {weeklyIntensity.length > 0 && (
+          <div className="card">
+            <p className="text-xs text-[#64748B] uppercase tracking-wide font-semibold mb-3">Intensity Minutes by Week</p>
+            <ResponsiveContainer width="100%" height={140}>
+              <BarChart data={weeklyIntensity} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                <XAxis dataKey="week" tick={{ fill: '#475569', fontSize: 9 }} tickLine={false} axisLine={false} />
+                <YAxis tick={{ fill: '#475569', fontSize: 9 }} tickLine={false} axisLine={false} width={28} />
+                <Tooltip contentStyle={TooltipStyle} formatter={(v) => [`${v} min`, 'Intensity']} />
+                <Bar dataKey="value" fill="#06B6D4" radius={[3, 3, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+
+        {weeklyPace.length > 0 && (
+          <div className="card">
+            <p className="text-xs text-[#64748B] uppercase tracking-wide font-semibold mb-3">Avg Run Pace by Week</p>
+            <ResponsiveContainer width="100%" height={140}>
+              <LineChart data={weeklyPace} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                <XAxis dataKey="week" tick={{ fill: '#475569', fontSize: 9 }} tickLine={false} axisLine={false} />
+                <YAxis reversed tick={{ fill: '#475569', fontSize: 9 }} tickLine={false} axisLine={false} width={28} tickFormatter={(v) => formatPaceMinKm(v)} />
+                <Tooltip contentStyle={TooltipStyle} formatter={(v) => [formatPaceMinKm(v as number), 'Avg Pace']} />
+                <Line type="monotone" dataKey="value" stroke="#3B82F6" strokeWidth={2} dot={{ r: 3 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+
+        {weeklyMaxHr.length > 0 && (
+          <div className="card">
+            <p className="text-xs text-[#64748B] uppercase tracking-wide font-semibold mb-3">Max Heart Rate by Week</p>
+            <ResponsiveContainer width="100%" height={140}>
+              <LineChart data={weeklyMaxHr} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                <XAxis dataKey="week" tick={{ fill: '#475569', fontSize: 9 }} tickLine={false} axisLine={false} />
+                <YAxis tick={{ fill: '#475569', fontSize: 9 }} tickLine={false} axisLine={false} width={28} />
+                <Tooltip contentStyle={TooltipStyle} formatter={(v) => [`${v} bpm`, 'Max HR']} />
+                <Line type="monotone" dataKey="value" stroke="#F87171" strokeWidth={2} dot={{ r: 3 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+
+        {weeklyEffort.length > 0 && (
+          <div className="card">
+            <p className="text-xs text-[#64748B] uppercase tracking-wide font-semibold mb-3">Avg Effort by Week</p>
+            <ResponsiveContainer width="100%" height={140}>
+              <LineChart data={weeklyEffort} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                <XAxis dataKey="week" tick={{ fill: '#475569', fontSize: 9 }} tickLine={false} axisLine={false} />
+                <YAxis domain={[0, 10]} tick={{ fill: '#475569', fontSize: 9 }} tickLine={false} axisLine={false} width={20} />
+                <Tooltip contentStyle={TooltipStyle} formatter={(v) => [v, 'Avg Effort']} />
+                <Line type="monotone" dataKey="value" stroke="#F59E0B" strokeWidth={2} dot={{ r: 3 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+
+        {subtypeData.length > 0 && (
+          <div className="card">
+            <p className="text-xs text-[#64748B] uppercase tracking-wide font-semibold mb-3">Top Subtypes</p>
+            <ResponsiveContainer width="100%" height={140}>
+              <BarChart data={subtypeData} layout="vertical" margin={{ top: 4, right: 12, left: 0, bottom: 0 }}>
+                <XAxis type="number" allowDecimals={false} tick={{ fill: '#475569', fontSize: 9 }} tickLine={false} axisLine={false} />
+                <YAxis type="category" dataKey="name" tick={{ fill: '#94A3B8', fontSize: 10 }} tickLine={false} axisLine={false} width={90} />
+                <Tooltip contentStyle={TooltipStyle} formatter={(v) => [v, 'Sessions']} />
+                <Bar dataKey="count" fill="#A78BFA" radius={[0, 3, 3, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
       </div>
     </div>
   );
