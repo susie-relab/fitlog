@@ -1199,6 +1199,41 @@ export function addSessionToDay(data: PlanData, from: { week: number; day: Weekd
   return { ...data, weeks };
 }
 
+/** Move a single session out of a day that has multiple squished together, leaving the rest behind. Pure.
+ *  'add' combines the moved session onto the target day (no-ops past MAX_SESSIONS_PER_DAY — guard with
+ *  sessionCount() first); 'swap' exchanges it with the target day's whole content instead. */
+export function movePartToDay(
+  data: PlanData,
+  from: { week: number; day: Weekday },
+  partIndex: number,
+  to: { week: number; day: Weekday },
+  mode: 'add' | 'swap',
+): PlanData {
+  if (from.week === to.week && from.day === to.day) return data;
+  const weeks = data.weeks.map(w => (w.weekNumber === from.week || w.weekNumber === to.week) ? { ...w, days: { ...w.days } } : w);
+  const fromWeek = weeks.find(w => w.weekNumber === from.week);
+  const toWeek = weeks.find(w => w.weekNumber === to.week);
+  if (!fromWeek || !toWeek) return data;
+  const parts = sessionParts(fromWeek.days[from.day]);
+  if (partIndex < 0 || partIndex >= parts.length) return data;
+  const moving = parts[partIndex];
+  const remaining = parts.filter((_, i) => i !== partIndex);
+  const existing = toWeek.days[to.day];
+
+  if (mode === 'swap') {
+    const newFromParts = isRunSession(existing) ? [...remaining, existing] : remaining;
+    fromWeek.days[from.day] = newFromParts.length === 0 ? restDay() : combineSessions(newFromParts);
+    toWeek.days[to.day] = moving;
+  } else {
+    if (sessionCount(existing) + sessionCount(moving) > MAX_SESSIONS_PER_DAY) return data;
+    toWeek.days[to.day] = combineSessions([existing, moving]);
+    fromWeek.days[from.day] = remaining.length === 0 ? restDay() : combineSessions(remaining);
+  }
+  fromWeek.totalKm = round(sumKm(fromWeek.days), 0.5);
+  toWeek.totalKm = round(sumKm(toWeek.days), 0.5);
+  return { ...data, weeks };
+}
+
 /** Overwrite a session's editable fields (title/detail/duration/distance) — for custom user edits. Pure. */
 export function updateSessionDetails(data: PlanData, target: { week: number; day: Weekday }, patch: Partial<Pick<Session, 'title' | 'detail' | 'timeMin' | 'distanceKm'>>): PlanData {
   const weeks = data.weeks.map(w => w.weekNumber !== target.week ? w : {

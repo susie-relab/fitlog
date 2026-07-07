@@ -3,7 +3,7 @@ import { useState } from 'react';
 import {
   PlanData, Session, Weekday, WEEKDAYS, WEEKDAY_LABELS,
   switchDifficulty, isRunSession, movePlanSession, addSessionToDay, updateSessionDetails, PlanConfig,
-  sessionCount, sessionParts, MAX_SESSIONS_PER_DAY,
+  sessionCount, sessionParts, MAX_SESSIONS_PER_DAY, movePartToDay,
 } from '@/lib/runPlanGenerator';
 import { sessionColor, sessionTarget, exerciseTypeTag } from './PlanWeekTable';
 
@@ -22,6 +22,9 @@ export default function PlanDaySheet({ data, selected, onSave, onClose, onLogAnd
   const [targetWeek, setTargetWeek] = useState(selected.week);
   const [pendingDay, setPendingDay] = useState<Weekday | null>(null);
   const [editing, setEditing] = useState(false);
+  const [movingPart, setMovingPart] = useState<number | null>(null);
+  const [partTargetWeek, setPartTargetWeek] = useState(selected.week);
+  const [pendingPartDay, setPendingPartDay] = useState<Weekday | null>(null);
   const week = data.weeks.find(w => w.weekNumber === selected.week);
   const sel = week?.days[selected.day];
   const [editTitle, setEditTitle] = useState(sel?.title ?? '');
@@ -60,6 +63,32 @@ export default function PlanDaySheet({ data, selected, onSave, onClose, onLogAnd
 
   const confirmSwap = () => { if (!pendingDay) return; onSave(movePlanSession(data, selected, { week: targetWeek, day: pendingDay })); onClose(); };
   const confirmAdd = () => { if (!pendingDay || addWouldExceedMax) return; onSave(addSessionToDay(data, selected, { week: targetWeek, day: pendingDay })); onClose(); };
+
+  const movingPartSession = movingPart !== null ? sessionParts(sel)[movingPart] : null;
+  const pendingPartDaySession = pendingPartDay ? data.weeks.find(w => w.weekNumber === partTargetWeek)?.days[pendingPartDay] : undefined;
+  const partTargetHasSession = !!pendingPartDaySession && isRunSession(pendingPartDaySession);
+  const partAddWouldExceedMax = pendingPartDaySession && movingPartSession
+    ? sessionCount(pendingPartDaySession) + sessionCount(movingPartSession) > MAX_SESSIONS_PER_DAY
+    : false;
+
+  const startMovingPart = (i: number) => {
+    setMovingPart(i);
+    setPartTargetWeek(selected.week);
+    setPendingPartDay(null);
+  };
+  const choosePartDay = (d: Weekday) => {
+    if (movingPart === null) return;
+    if (partTargetWeek === selected.week && d === selected.day) return;
+    const target = data.weeks.find(w => w.weekNumber === partTargetWeek)?.days[d];
+    if (target && isRunSession(target)) {
+      setPendingPartDay(d);
+    } else {
+      onSave(movePartToDay(data, selected, movingPart, { week: partTargetWeek, day: d }, 'add'));
+      onClose();
+    }
+  };
+  const confirmPartSwap = () => { if (!pendingPartDay || movingPart === null) return; onSave(movePartToDay(data, selected, movingPart, { week: partTargetWeek, day: pendingPartDay }, 'swap')); onClose(); };
+  const confirmPartAdd = () => { if (!pendingPartDay || movingPart === null || partAddWouldExceedMax) return; onSave(movePartToDay(data, selected, movingPart, { week: partTargetWeek, day: pendingPartDay }, 'add')); onClose(); };
 
   const saveEdit = () => {
     onSave(updateSessionDetails(data, selected, {
@@ -112,11 +141,60 @@ export default function PlanDaySheet({ data, selected, onSave, onClose, onLogAnd
               <div className="flex flex-col gap-3">
                 {sessionParts(sel).map((p, i) => (
                   <div key={i} className="rounded-lg border border-[#334155] bg-[#0F172A] p-3">
-                    <h3 className="text-base font-bold text-white">{p.title}</h3>
-                    {exerciseTypeTag(p) && <p className="text-xs text-[#64748B]">{exerciseTypeTag(p)}</p>}
-                    {sessionTarget(p) && <p className="text-sm font-semibold mt-0.5" style={{ color: sessionColor(p) }}>{sessionTarget(p)}</p>}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <h3 className="text-base font-bold text-white">{p.title}</h3>
+                        {exerciseTypeTag(p) && <p className="text-xs text-[#64748B]">{exerciseTypeTag(p)}</p>}
+                        {sessionTarget(p) && <p className="text-sm font-semibold mt-0.5" style={{ color: sessionColor(p) }}>{sessionTarget(p)}</p>}
+                      </div>
+                      <button onClick={() => movingPart === i ? setMovingPart(null) : startMovingPart(i)}
+                        className="text-[10px] text-[#64748B] hover:text-white border border-[#334155] hover:border-[#475569] rounded px-1.5 py-1 flex-shrink-0">
+                        {movingPart === i ? 'Cancel' : 'Move'}
+                      </button>
+                    </div>
                     {p.detail && <p className="text-sm text-[#94A3B8] mt-1.5 whitespace-pre-line leading-relaxed">{p.detail}</p>}
                     {p.completed && <span className="text-green-400 text-xs mt-1 inline-block">✓ Completed</span>}
+
+                    {movingPart === i && (
+                      <div className="mt-3 pt-3 border-t border-[#334155]">
+                        <p className="text-xs text-[#64748B] mb-1.5">Move this session to {weekNumbers.length > 1 ? 'another day/week' : 'another day'}</p>
+                        {weekNumbers.length > 1 && (
+                          <select
+                            className="input mb-1.5 text-sm"
+                            value={partTargetWeek}
+                            onChange={e => { setPartTargetWeek(parseInt(e.target.value)); setPendingPartDay(null); }}
+                          >
+                            {weekNumbers.map(w => <option key={w} value={w}>Week {w}</option>)}
+                          </select>
+                        )}
+                        <div className="grid grid-cols-7 gap-1">
+                          {WEEKDAYS.map(d => (
+                            <button key={d} disabled={partTargetWeek === selected.week && d === selected.day}
+                              onClick={() => choosePartDay(d)}
+                              className={`py-1.5 rounded text-[10px] font-semibold border transition-all ${
+                                (partTargetWeek === selected.week && d === selected.day) || pendingPartDay === d ? 'border-blue-500 bg-blue-500/20 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'
+                              }`}>
+                              {WEEKDAY_LABELS[d].slice(0, 1)}
+                            </button>
+                          ))}
+                        </div>
+                        {pendingPartDay && partTargetHasSession && (
+                          <div className="mt-2 p-2.5 rounded-lg bg-[#1E293B] border border-[#334155]">
+                            <p className="text-xs text-[#94A3B8] mb-2">{WEEKDAY_LABELS[pendingPartDay]} already has a session — swap it, or add this one alongside it?</p>
+                            <div className="grid grid-cols-2 gap-2">
+                              <button onClick={confirmPartSwap} className="py-1.5 rounded-lg border border-[#334155] text-[#94A3B8] text-xs hover:border-[#475569]">Swap</button>
+                              <button onClick={confirmPartAdd} disabled={partAddWouldExceedMax}
+                                className={`py-1.5 rounded-lg border text-xs ${partAddWouldExceedMax ? 'border-[#334155] text-[#475569] cursor-not-allowed opacity-60' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>
+                                Add to that day
+                              </button>
+                            </div>
+                            {partAddWouldExceedMax && (
+                              <p className="text-[10px] text-amber-400/80 mt-1.5">That day already has {MAX_SESSIONS_PER_DAY} sessions — the max per day.</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
