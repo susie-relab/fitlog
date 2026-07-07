@@ -608,29 +608,43 @@ function assignWeek(cfg: PlanConfig, weekIdx: number): PlanWeek {
 
   const full = days as Record<Weekday, Session>;
 
-  // ----- scale week 1's total to the user's requested "Week 1's total distance" -----
-  // Time-based sessions contribute a fixed (6 min/km) estimate that is never itself
-  // rescaled or shown — only the true distance-goal sessions flex to hit the target.
-  let totalKm = sumKm(full);
-  if (weekIdx === 0 && cfg.startDistanceKm && totalKm > 0) {
-    const fixedKm = WEEKDAYS.reduce((s, d) => s + (!full[d].distanceKm ? (full[d].estKm || 0) : 0), 0);
-    const distanceKmSum = WEEKDAYS.reduce((s, d) => s + (full[d].distanceKm || 0), 0);
-    const remaining = cfg.startDistanceKm - fixedKm;
-    if (distanceKmSum > 0 && remaining > 0) {
-      const factor = remaining / distanceKmSum;
-      for (const d of WEEKDAYS) {
-        const s = full[d];
-        if (s.distanceKm) s.distanceKm = Math.max(minKmForType(s.type), round(s.distanceKm * factor, 0.5));
-      }
-    }
-    totalKm = sumKm(full);
-  }
+  // Scale week 1's total to the user's requested "Week 1's total distance".
+  if (weekIdx === 0 && cfg.startDistanceKm) scaleWeekToTarget(full, cfg.startDistanceKm);
+  const totalKm = sumKm(full);
 
   return { weekNumber: weekIdx + 1, phase, totalKm: round(totalKm, 0.5), days: full };
 }
 
 function sumKm(days: Record<Weekday, Session>): number {
   return WEEKDAYS.reduce((s, d) => s + (days[d].distanceKm || days[d].estKm || 0), 0);
+}
+
+/**
+ * Scale every running session in a week toward a target total distance.
+ * Distance-goal sessions (long run, tempo, etc.) scale distanceKm, clamped to
+ * their category floor. Time-based sessions scale their minutes (and the
+ * invisible estKm derived from them) — this never shows a contradicting
+ * distance since only the time is displayed. Rep-based sessions (long
+ * intervals/sprint/hill) only have an invisible estKm, which also flexes.
+ * If floors alone exceed the target, the result lands as close as possible
+ * from above rather than violating them.
+ */
+function scaleWeekToTarget(full: Record<Weekday, Session>, targetKm: number) {
+  const totalNow = sumKm(full);
+  if (totalNow <= 0 || !targetKm || targetKm <= 0) return;
+  const factor = targetKm / totalNow;
+  for (const d of WEEKDAYS) {
+    const s = full[d];
+    if (s.type === 'rest' || s.type === 'crosstrain') continue;
+    if (s.distanceKm != null) {
+      s.distanceKm = Math.max(minKmForType(s.type), round(s.distanceKm * factor, 0.5));
+    } else if (s.timeMin != null && s.estKm != null) {
+      s.timeMin = Math.max(10, Math.round(s.timeMin * factor));
+      s.estKm = round(s.timeMin / 6, 0.5);
+    } else if (s.estKm != null) {
+      s.estKm = Math.max(1, round(s.estKm * factor, 0.5));
+    }
+  }
 }
 
 // ---------- final week / PB day ----------
@@ -672,6 +686,59 @@ function weeklyFocus(week: PlanWeek, prev: PlanWeek | undefined, isLast: boolean
   }
 }
 
+// Spread n picks evenly across an ordered array (so runs don't cluster on
+// consecutive lead-in days when there's room to space them out).
+function spreadPick<T>(arr: T[], n: number): T[] {
+  if (n >= arr.length) return arr;
+  const step = arr.length / n;
+  const idx = new Set<number>();
+  for (let i = 0; i < n; i++) idx.add(Math.min(arr.length - 1, Math.round(i * step)));
+  return arr.filter((_, i) => idx.has(i));
+}
+
+/**
+ * A scaled-down, same-shape lead-in "Week 0" for a run plan: uses the lower
+ * end of the runs/week range (capped to however many lead-in days exist,
+ * per spec), a smaller long run than Week 1's, a rest day, and is clamped to
+ * land strictly below Week 1's total distance.
+ */
+function buildRunLeadInWeek(cfg: PlanConfig, week1: PlanWeek): PlanWeek | null {
+  const anchor = firstMonday(cfg.startDate);
+  if (anchor === cfg.startDate) return null;
+  const leadInDays: Weekday[] = [];
+  for (let d = cfg.startDate; d < anchor; d = addDaysISO(d, 1)) leadInDays.push(weekdayOf(d));
+  if (!leadInDays.length) return null;
+
+  const lowerBound = Math.max(1, cfg.daysPerWeekMin ?? cfg.daysPerWeek);
+  const runDays = Math.min(lowerBound, leadInDays.length);
+
+  const week1LongKm = Math.max(...WEEKDAYS.map(d => {
+    const s = week1.days[d];
+    return (s.type === 'long' || s.type === 'trail') ? (s.distanceKm || 0) : 0;
+  }));
+
+  const sessions: Session[] = [];
+  if (runDays >= 1) {
+    const smallLong = Math.max(MIN_KM_STANDARD, round((week1LongKm || 6) * 0.5, 0.5));
+    sessions.push({ type: 'easy', title: 'Easy Run', distanceKm: smallLong,
+      detail: `${smallLong} km at a comfortable, easy pace — a gentle intro before Week 1 begins.` });
+  }
+  while (sessions.length < runDays) sessions.push(chance(0.5) ? recoveryRun() : easyRun(cfg));
+
+  const days: Partial<Record<Weekday, Session>> = {};
+  const runOnDays = spreadPick(leadInDays, runDays);
+  runOnDays.forEach((d, i) => { days[d] = sessions[i]; });
+  for (const d of leadInDays) if (!days[d]) days[d] = chance(0.5) ? restDay() : crosstrain();
+  for (const d of WEEKDAYS) if (!leadInDays.includes(d)) days[d] = { type: 'rest', title: '', detail: '', completed: false, beforeStart: true };
+
+  const full = days as Record<Weekday, Session>;
+  // Guarantee strictly less than Week 1's total, however tight the floors are.
+  const week1Total = week1.totalKm || sumKm(week1.days);
+  if (week1Total > 0 && sumKm(full) >= week1Total) scaleWeekToTarget(full, week1Total * 0.7);
+
+  return { weekNumber: 0, phase: 'Base', totalKm: round(sumKm(full), 0.5), days: full };
+}
+
 // ---------- public API ----------
 export function generateRunPlan(cfg: PlanConfig): PlanData {
   const weeks: PlanWeek[] = [];
@@ -679,8 +746,8 @@ export function generateRunPlan(cfg: PlanConfig): PlanData {
   const plan: PlanData = { weeks };
   applyFinalDay(plan, cfg);
   weeks.forEach((w, i) => { w.focus = weeklyFocus(w, weeks[i - 1], i === weeks.length - 1, cfg); });
-  const leadIn = buildLeadInWeek(cfg.startDate, () => recoveryRun());
-  if (leadIn) { leadIn.focus = 'Lead-in — a few easy days before Week 1 begins on Monday.'; weeks.unshift(leadIn); }
+  const leadIn = buildRunLeadInWeek(cfg, weeks[0]);
+  if (leadIn) { leadIn.focus = 'Lead-in — a smaller week before Week 1 begins on Monday.'; weeks.unshift(leadIn); }
   return plan;
 }
 
