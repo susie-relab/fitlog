@@ -27,6 +27,8 @@ export default function PlanDaySheet({ data, selected, onSave, onClose, onLogAnd
   const [partTargetWeek, setPartTargetWeek] = useState(selected.week);
   const [pendingPartDay, setPendingPartDay] = useState<Weekday | null>(null);
   const [editingPart, setEditingPart] = useState<number | null>(null);
+  const [confirmRest, setConfirmRest] = useState(false);
+  const [confirmRemovePart, setConfirmRemovePart] = useState<number | null>(null);
   const week = data.weeks.find(w => w.weekNumber === selected.week);
   const sel = week?.days[selected.day];
   const [editTitle, setEditTitle] = useState(sel?.title ?? '');
@@ -217,8 +219,18 @@ export default function PlanDaySheet({ data, selected, onSave, onClose, onLogAnd
                               className="py-1.5 rounded-lg border border-[#334155] text-[#94A3B8] text-[10px] hover:border-[#475569]">
                               {movingPart === i ? 'Cancel move' : '↔ Move'}
                             </button>
-                            <button onClick={() => makePartRestDay(i)} className="py-1.5 rounded-lg border border-[#334155] text-[#94A3B8] text-[10px] hover:border-[#475569]">Remove</button>
+                            {confirmRemovePart === i ? (
+                              <button onClick={() => makePartRestDay(i)} className="py-1.5 rounded-lg border border-red-700 bg-red-900/40 text-red-300 text-[10px]">Confirm remove</button>
+                            ) : (
+                              <button onClick={() => setConfirmRemovePart(i)} className="py-1.5 rounded-lg border border-[#334155] text-[#94A3B8] text-[10px] hover:border-[#475569]">Remove</button>
+                            )}
                           </div>
+                          {confirmRemovePart === i && (
+                            <div className="flex items-center justify-between gap-2 text-[10px]">
+                              <span className="text-amber-400/80">Remove this session from the day?</span>
+                              <button onClick={() => setConfirmRemovePart(null)} className="text-[#64748B] hover:text-white">Cancel</button>
+                            </div>
+                          )}
                           {cfg && isRunSession(p) && (
                             <div className="grid grid-cols-3 gap-1.5">
                               <button onClick={() => mutatePart(i, s => switchDifficulty(s, 'easier', cfg))} className="py-1.5 rounded-lg border border-[#334155] text-[#94A3B8] text-[10px] hover:border-[#475569]">Easier</button>
@@ -302,8 +314,16 @@ export default function PlanDaySheet({ data, selected, onSave, onClose, onLogAnd
                     </div>
                   )}
                   {sel.type !== 'rest' && (
-                    <button onClick={() => mutateSelf(() => ({ type: 'rest', title: 'Rest', detail: 'Take a full day off. Recovery is where the gains happen.', completed: false }))}
-                      className="py-2 rounded-lg border border-[#334155] text-[#94A3B8] text-xs hover:border-[#475569]">Make this a Rest day</button>
+                    confirmRest ? (
+                      <div className="flex gap-2">
+                        <button onClick={() => mutateSelf(() => ({ type: 'rest', title: 'Rest', detail: 'Take a full day off. Recovery is where the gains happen.', completed: false }))}
+                          className="flex-1 py-2 rounded-lg border border-red-700 bg-red-900/40 text-red-300 text-xs">Yes, make it a Rest day</button>
+                        <button onClick={() => setConfirmRest(false)} className="flex-1 py-2 rounded-lg border border-[#334155] text-[#94A3B8] text-xs hover:border-[#475569]">Cancel</button>
+                      </div>
+                    ) : (
+                      <button onClick={() => setConfirmRest(true)}
+                        className="py-2 rounded-lg border border-[#334155] text-[#94A3B8] text-xs hover:border-[#475569]">Make this a Rest day</button>
+                    )
                   )}
                 </>
               )}
