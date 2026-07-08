@@ -201,7 +201,7 @@ export default function PlanPage() {
 
   const chooseCard = (
     <div className="card">
-      <p className="text-sm font-semibold text-white mb-3">What kind of plan?</p>
+      <p className="text-sm font-semibold text-white mb-3">Customisable plan options:</p>
       <div className="flex flex-col gap-2">
         <button onClick={() => { setChoosing(false); setBuildKind('run'); }} className="py-3 px-4 rounded-lg border border-[#334155] hover:border-blue-500 text-white text-sm font-semibold transition-colors text-left">
           🏃 Run plan
