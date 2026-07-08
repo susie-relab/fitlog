@@ -12,6 +12,8 @@ export default function ProfilePage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
+  const [streakReminder, setStreakReminder] = useState(true);
+  const [reminderHour, setReminderHour] = useState(17);
 
   const flash = (text: string, ok: boolean) => {
     setMsg({ text, ok });
@@ -46,8 +48,17 @@ export default function ProfilePage() {
     if (!error) { setCurrentPassword(''); setNewPassword(''); setConfirmPassword(''); }
   };
 
+  const saveStreakPrefs = async (reminder: boolean, hour: number) => {
+    setSaving(true);
+    const { error } = await supabase.auth.updateUser({ data: { ...user?.user_metadata, streak_reminder: reminder, streak_reminder_hour: hour } });
+    setSaving(false);
+    flash(error ? error.message : 'Preferences saved!', !error);
+  };
+
   useEffect(() => {
     if (user?.user_metadata?.username) setUsername(user.user_metadata.username);
+    if (user?.user_metadata?.streak_reminder !== undefined) setStreakReminder(user.user_metadata.streak_reminder);
+    if (user?.user_metadata?.streak_reminder_hour !== undefined) setReminderHour(user.user_metadata.streak_reminder_hour);
   }, [user]);
 
   return (
@@ -60,6 +71,8 @@ export default function ProfilePage() {
           {msg.text}
         </div>
       )}
+
+      <p className="text-xs font-semibold text-[#64748B] uppercase tracking-wide mb-2">Account</p>
 
       {/* Username */}
       <div className="card mb-4">
@@ -112,6 +125,69 @@ export default function ProfilePage() {
           <button onClick={handleUpdatePassword} disabled={saving || !newPassword} className="btn-primary w-full">
             Update Password
           </button>
+        </div>
+      </div>
+
+      {/* Connections */}
+      <p className="text-xs font-semibold text-[#64748B] uppercase tracking-wide mb-2 mt-6">Connections</p>
+      <div className="card mb-6">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="text-sm font-semibold text-white flex items-center gap-2">
+              <span>🔗</span> Strava
+            </h2>
+            <p className="text-xs text-[#64748B] mt-1">Auto-sync your Garmin &amp; other activities via Strava.</p>
+          </div>
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-[#64748B] border border-[#334155] rounded-full px-2 py-1 flex-shrink-0">Coming soon</span>
+        </div>
+      </div>
+
+      {/* Preferences */}
+      <p className="text-xs font-semibold text-[#64748B] uppercase tracking-wide mb-2">Preferences</p>
+      <div className="card mb-6 flex flex-col gap-4">
+        {/* Evening streak reminder */}
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="text-sm font-semibold text-white">Evening streak reminder</h2>
+            <p className="text-xs text-[#64748B] mt-0.5">Nudge me to log if my streak is at risk.</p>
+          </div>
+          <button
+            onClick={() => { const v = !streakReminder; setStreakReminder(v); saveStreakPrefs(v, reminderHour); }}
+            role="switch" aria-checked={streakReminder}
+            className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${streakReminder ? 'bg-blue-600' : 'bg-[#334155]'}`}
+          >
+            <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${streakReminder ? 'translate-x-5' : ''}`} />
+          </button>
+        </div>
+        {streakReminder && (
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-sm text-[#94A3B8]">Remind me after</span>
+            <select
+              className="input w-auto text-sm"
+              value={reminderHour}
+              onChange={e => { const h = parseInt(e.target.value); setReminderHour(h); saveStreakPrefs(streakReminder, h); }}
+            >
+              {[15, 16, 17, 18, 19, 20, 21].map(h => (
+                <option key={h} value={h}>{h > 12 ? `${h - 12}pm` : `${h}am`}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        <div className="border-t border-[#334155] pt-3 flex flex-col gap-2.5">
+          {[
+            { label: 'Units', desc: 'Kilometres or miles' },
+            { label: 'Week start day', desc: 'Currently Monday' },
+            { label: 'Light theme', desc: 'Dark or light appearance' },
+          ].map(o => (
+            <div key={o.label} className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm text-[#94A3B8]">{o.label}</p>
+                <p className="text-xs text-[#64748B]">{o.desc}</p>
+              </div>
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-[#64748B] border border-[#334155] rounded-full px-2 py-1 flex-shrink-0">Coming soon</span>
+            </div>
+          ))}
         </div>
       </div>
 

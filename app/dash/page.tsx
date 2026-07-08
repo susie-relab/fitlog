@@ -175,10 +175,12 @@ export default function DashPage() {
   const dayStreak = calcDayStreak(activities.map(a => a.date));
   const weekStreak = calcWeekStreak(activities.map(a => a.date));
 
-  // Evening nudge: after 5pm, if there's a streak to protect but nothing logged today yet.
+  // Evening nudge: after the user's reminder hour, if there's a streak to protect but nothing logged today.
+  const reminderOn = user?.user_metadata?.streak_reminder !== false; // default on
+  const reminderHour = user?.user_metadata?.streak_reminder_hour ?? 17;
   const loggedToday = activities.some(a => a.date === todayLocalISO());
-  const isEvening = new Date().getHours() >= 17;
-  const showStreakNudge = isEvening && !loggedToday && dayStreak > 0;
+  const isEvening = new Date().getHours() >= reminderHour;
+  const showStreakNudge = reminderOn && isEvening && !loggedToday && dayStreak > 0;
 
   // 14-day summaries
   const total14 = last14.length;
