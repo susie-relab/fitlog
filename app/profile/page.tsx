@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
+import FeedbackForm from '@/components/FeedbackForm';
 
 export default function ProfilePage() {
   const { user, signOut } = useAuth();
@@ -189,6 +190,14 @@ export default function ProfilePage() {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Support / feedback */}
+      <p className="text-xs font-semibold text-[#64748B] uppercase tracking-wide mb-2">Support</p>
+      <div className="card mb-6">
+        <h2 className="text-sm font-semibold text-white mb-1">Feedback &amp; feature requests</h2>
+        <p className="text-xs text-[#64748B] mb-3">Spotted a bug or have an idea? Send it straight to the developer.</p>
+        <FeedbackForm defaultEmail={user?.email ?? undefined} />
       </div>
 
       {/* Sign out */}
