@@ -86,9 +86,9 @@ export default function PlanView({ plan, onChange, onEdit, onDelete, onBack, onS
     setConfirmRestart(false);
   };
 
-  const logSession = (s: Session) => {
+  const logSession = (s: Session, partIndex?: number) => {
     if (!selected) return;
-    router.push(planSessionHref(s, plan.id, selected.week, selected.day));
+    router.push(planSessionHref(s, plan.id, selected.week, selected.day, partIndex));
   };
 
   const copyPlan = async () => {

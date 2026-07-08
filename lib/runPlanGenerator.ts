@@ -1016,7 +1016,7 @@ export function sessionRunType(type: SessionType): string | null {
 }
 
 /** Build the /add prefill href for logging a plan session. */
-export function planSessionHref(s: Session, planId: string, week: number, day: Weekday): string {
+export function planSessionHref(s: Session, planId: string, week: number, day: Weekday, partIndex?: number): string {
   const p = new URLSearchParams();
   p.set('title', s.title);
   const exType = s.type === 'sport' && s.exerciseType ? s.exerciseType : 'run';
@@ -1031,6 +1031,7 @@ export function planSessionHref(s: Session, planId: string, week: number, day: W
   p.set('planId', planId);
   p.set('week', String(week));
   p.set('day', day);
+  if (partIndex != null) p.set('part', String(partIndex));
   return `/add?${p.toString()}`;
 }
 
@@ -1242,6 +1243,33 @@ export function movePartToDay(
   }
   fromWeek.totalKm = round(sumKm(fromWeek.days), 0.5);
   toWeek.totalKm = round(sumKm(toWeek.days), 0.5);
+  return { ...data, weeks };
+}
+
+/** Apply fn to one session within a (possibly combined) day and recombine the result. Pure.
+ *  Use for per-session edits/completion/difficulty when a day has multiple sessions squished together. */
+export function updateSessionPart(data: PlanData, target: { week: number; day: Weekday }, partIndex: number, fn: (s: Session) => Session): PlanData {
+  const weeks = data.weeks.map(w => w.weekNumber !== target.week ? w : { ...w, days: { ...w.days } });
+  const week = weeks.find(w => w.weekNumber === target.week);
+  if (!week) return data;
+  const parts = sessionParts(week.days[target.day]);
+  if (partIndex < 0 || partIndex >= parts.length) return data;
+  const newParts = parts.map((p, i) => i === partIndex ? fn(p) : p);
+  week.days[target.day] = newParts.length === 1 ? newParts[0] : combineSessions(newParts);
+  week.totalKm = round(sumKm(week.days), 0.5);
+  return { ...data, weeks };
+}
+
+/** Remove one session from a combined day (e.g. turning it into a rest day) — the rest stay behind. Pure. */
+export function removeSessionPart(data: PlanData, target: { week: number; day: Weekday }, partIndex: number): PlanData {
+  const weeks = data.weeks.map(w => w.weekNumber !== target.week ? w : { ...w, days: { ...w.days } });
+  const week = weeks.find(w => w.weekNumber === target.week);
+  if (!week) return data;
+  const parts = sessionParts(week.days[target.day]);
+  if (partIndex < 0 || partIndex >= parts.length) return data;
+  const remaining = parts.filter((_, i) => i !== partIndex);
+  week.days[target.day] = remaining.length === 0 ? restDay() : (remaining.length === 1 ? remaining[0] : combineSessions(remaining));
+  week.totalKm = round(sumKm(week.days), 0.5);
   return { ...data, weeks };
 }
 

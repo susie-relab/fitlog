@@ -13,6 +13,7 @@ import {
 } from '@/types';
 import DistancePicker from '@/components/DistancePicker';
 import { useDirtyForm } from '@/components/DirtyFormContext';
+import { sessionParts, combineSessions } from '@/lib/runPlanGenerator';
 import ConfettiBurst from '@/components/ConfettiBurst';
 import { todayLocalISO, openDatePicker } from '@/lib/utils';
 
@@ -53,7 +54,7 @@ export default function AddPage() {
   const [error, setError] = useState('');
   const { setDirty, showWarning, setShowWarning, pendingHref } = useDirtyForm();
   const router = useRouter();
-  const [planLink, setPlanLink] = useState<{ planId: string; week: number; day: string } | null>(null);
+  const [planLink, setPlanLink] = useState<{ planId: string; week: number; day: string; part?: number } | null>(null);
 
   // Prefill from query params (e.g. clicking a session in a training plan)
   useEffect(() => {
@@ -67,7 +68,8 @@ export default function AddPage() {
     const time = params.get('time');
     if (time) { const m = parseInt(time); if (m > 0) { setHours(Math.floor(m / 60) ? String(Math.floor(m / 60)) : ''); setMins(m % 60 ? String(m % 60) : ''); } }
     const planId = params.get('planId'), week = params.get('week'), day = params.get('day');
-    if (planId && week && day) setPlanLink({ planId, week: parseInt(week), day });
+    const part = params.get('part');
+    if (planId && week && day) setPlanLink({ planId, week: parseInt(week), day, part: part != null ? parseInt(part) : undefined });
   }, []);
 
   const isDirty = !!(name || exerciseType || hours || mins || secs || distance || notes || effort);
@@ -135,8 +137,10 @@ export default function AddPage() {
         const pd = planRow.plan_data;
         const wk = pd.weeks.find((w: { weekNumber: number }) => w.weekNumber === planLink.week);
         if (wk && wk.days[planLink.day]) {
-          wk.days[planLink.day].completed = true;
-          wk.days[planLink.day].completedActivityId = inserted?.id ?? null;
+          const parts = sessionParts(wk.days[planLink.day]);
+          const idx = planLink.part != null && planLink.part < parts.length ? planLink.part : 0;
+          const newParts = parts.map((p, i) => i === idx ? { ...p, completed: true, completedActivityId: inserted?.id ?? null } : p);
+          wk.days[planLink.day] = newParts.length === 1 ? newParts[0] : combineSessions(newParts);
           await supabase.from('training_plans').update({ plan_data: pd, updated_at: new Date().toISOString() }).eq('id', planLink.planId);
         }
       }

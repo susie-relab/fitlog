@@ -3,7 +3,7 @@ import { useState } from 'react';
 import {
   PlanData, Session, Weekday, WEEKDAYS, WEEKDAY_LABELS,
   switchDifficulty, isRunSession, movePlanSession, addSessionToDay, updateSessionDetails, PlanConfig,
-  sessionCount, sessionParts, MAX_SESSIONS_PER_DAY, movePartToDay,
+  sessionCount, sessionParts, MAX_SESSIONS_PER_DAY, movePartToDay, updateSessionPart, removeSessionPart,
 } from '@/lib/runPlanGenerator';
 import { sessionColor, sessionTarget, exerciseTypeTag } from './PlanWeekTable';
 
@@ -12,8 +12,9 @@ interface Props {
   selected: { week: number; day: Weekday };
   onSave: (newData: PlanData) => void;
   onClose: () => void;
-  /** Only present in a saved/live plan — enables log-and-complete + mark-done. */
-  onLogAndComplete?: (session: Session) => void;
+  /** Only present in a saved/live plan — enables log-and-complete + mark-done. partIndex identifies
+   *  which session within a combined day is being logged (omitted/0 for a single-session day). */
+  onLogAndComplete?: (session: Session, partIndex?: number) => void;
   /** Needed for the easier/harder/reset buttons; omit to hide them. */
   cfg?: PlanConfig;
 }
@@ -25,6 +26,7 @@ export default function PlanDaySheet({ data, selected, onSave, onClose, onLogAnd
   const [movingPart, setMovingPart] = useState<number | null>(null);
   const [partTargetWeek, setPartTargetWeek] = useState(selected.week);
   const [pendingPartDay, setPendingPartDay] = useState<Weekday | null>(null);
+  const [editingPart, setEditingPart] = useState<number | null>(null);
   const week = data.weeks.find(w => w.weekNumber === selected.week);
   const sel = week?.days[selected.day];
   const [editTitle, setEditTitle] = useState(sel?.title ?? '');
@@ -100,6 +102,28 @@ export default function PlanDaySheet({ data, selected, onSave, onClose, onLogAnd
     onClose();
   };
 
+  const mutatePart = (i: number, fn: (s: Session) => Session) => { onSave(updateSessionPart(data, selected, i, fn)); onClose(); };
+  const makePartRestDay = (i: number) => { onSave(removeSessionPart(data, selected, i)); onClose(); };
+  const startEditingPart = (i: number) => {
+    const p = sessionParts(sel)[i];
+    setEditTitle(p.title);
+    setEditDetail(p.detail);
+    setEditMin(p.timeMin ? String(p.timeMin) : '');
+    setEditKm(p.distanceKm ? String(p.distanceKm) : '');
+    setEditingPart(i);
+  };
+  const savePartEdit = () => {
+    if (editingPart === null) return;
+    onSave(updateSessionPart(data, selected, editingPart, s => ({
+      ...s,
+      title: editTitle.trim() || s.title,
+      detail: editDetail,
+      timeMin: editMin ? parseInt(editMin) : undefined,
+      distanceKm: editKm ? parseFloat(editKm) : undefined,
+    })));
+    onClose();
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
@@ -141,19 +165,70 @@ export default function PlanDaySheet({ data, selected, onSave, onClose, onLogAnd
               <div className="flex flex-col gap-3">
                 {sessionParts(sel).map((p, i) => (
                   <div key={i} className="rounded-lg border border-[#334155] bg-[#0F172A] p-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <h3 className="text-base font-bold text-white">{p.title}</h3>
-                        {exerciseTypeTag(p) && <p className="text-xs text-[#64748B]">{exerciseTypeTag(p)}</p>}
-                        {sessionTarget(p) && <p className="text-sm font-semibold mt-0.5" style={{ color: sessionColor(p) }}>{sessionTarget(p)}</p>}
+                    {editingPart === i ? (
+                      <div className="flex flex-col gap-3">
+                        <div>
+                          <label className="label">Title</label>
+                          <input className="input" value={editTitle} onChange={e => setEditTitle(e.target.value)} />
+                        </div>
+                        <div>
+                          <label className="label">Description / goal</label>
+                          <textarea className="input" rows={3} value={editDetail} onChange={e => setEditDetail(e.target.value)} style={{ resize: 'vertical' }} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="label">Time (min)</label>
+                            <input type="number" className="input" min="0" placeholder="—" value={editMin} onChange={e => { setEditMin(e.target.value); if (e.target.value) setEditKm(''); }} />
+                          </div>
+                          <div>
+                            <label className="label">Distance (km)</label>
+                            <input type="number" className="input" min="0" step="0.1" placeholder="—" value={editKm} onChange={e => { setEditKm(e.target.value); if (e.target.value) setEditMin(''); }} />
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <button onClick={savePartEdit} className="btn-primary flex-1">Save</button>
+                          <button onClick={() => setEditingPart(null)} className="btn-secondary flex-1">Cancel</button>
+                        </div>
                       </div>
-                      <button onClick={() => movingPart === i ? setMovingPart(null) : startMovingPart(i)}
-                        className="text-[10px] text-[#64748B] hover:text-white border border-[#334155] hover:border-[#475569] rounded px-1.5 py-1 flex-shrink-0">
-                        {movingPart === i ? 'Cancel' : 'Move'}
-                      </button>
-                    </div>
-                    {p.detail && <p className="text-sm text-[#94A3B8] mt-1.5 whitespace-pre-line leading-relaxed">{p.detail}</p>}
-                    {p.completed && <span className="text-green-400 text-xs mt-1 inline-block">✓ Completed</span>}
+                    ) : (
+                      <>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <h3 className="text-base font-bold text-white">{p.title}</h3>
+                            {exerciseTypeTag(p) && <p className="text-xs text-[#64748B]">{exerciseTypeTag(p)}</p>}
+                            {sessionTarget(p) && <p className="text-sm font-semibold mt-0.5" style={{ color: sessionColor(p) }}>{sessionTarget(p)}</p>}
+                          </div>
+                          {p.completed && <span className="text-green-400 text-xs flex-shrink-0">✓ Completed</span>}
+                        </div>
+                        {p.detail && <p className="text-sm text-[#94A3B8] mt-1.5 whitespace-pre-line leading-relaxed">{p.detail}</p>}
+
+                        <div className="flex flex-col gap-1.5 mt-3">
+                          {onLogAndComplete && isRunSession(p) && !p.completed && (
+                            <button onClick={() => { onLogAndComplete(p, i); onClose(); }} className="btn-primary w-full text-sm py-1.5">✓ Log &amp; Complete</button>
+                          )}
+                          {onLogAndComplete && isRunSession(p) && (
+                            <button onClick={() => mutatePart(i, s => ({ ...s, completed: !s.completed }))} className="btn-secondary w-full text-xs py-1.5">
+                              {p.completed ? 'Mark as not done' : 'Mark done (without logging)'}
+                            </button>
+                          )}
+                          <div className="grid grid-cols-3 gap-1.5">
+                            <button onClick={() => startEditingPart(i)} className="py-1.5 rounded-lg border border-[#334155] text-[#94A3B8] text-[10px] hover:border-[#475569]">✎ Edit</button>
+                            <button onClick={() => movingPart === i ? setMovingPart(null) : startMovingPart(i)}
+                              className="py-1.5 rounded-lg border border-[#334155] text-[#94A3B8] text-[10px] hover:border-[#475569]">
+                              {movingPart === i ? 'Cancel move' : '↔ Move'}
+                            </button>
+                            <button onClick={() => makePartRestDay(i)} className="py-1.5 rounded-lg border border-[#334155] text-[#94A3B8] text-[10px] hover:border-[#475569]">Remove</button>
+                          </div>
+                          {cfg && isRunSession(p) && (
+                            <div className="grid grid-cols-3 gap-1.5">
+                              <button onClick={() => mutatePart(i, s => switchDifficulty(s, 'easier', cfg))} className="py-1.5 rounded-lg border border-[#334155] text-[#94A3B8] text-[10px] hover:border-[#475569]">Easier</button>
+                              <button onClick={() => mutatePart(i, s => switchDifficulty(s, 'reset', cfg))} className="py-1.5 rounded-lg border border-[#334155] text-[#94A3B8] text-[10px] hover:border-[#475569]">Reset</button>
+                              <button onClick={() => mutatePart(i, s => switchDifficulty(s, 'harder', cfg))} className="py-1.5 rounded-lg border border-[#334155] text-[#94A3B8] text-[10px] hover:border-[#475569]">Harder</button>
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    )}
 
                     {movingPart === i && (
                       <div className="mt-3 pt-3 border-t border-[#334155]">
@@ -208,25 +283,29 @@ export default function PlanDaySheet({ data, selected, onSave, onClose, onLogAnd
             )}
 
             <div className="flex flex-col gap-2 mt-4">
-              {onLogAndComplete && isRunSession(sel) && !sel.completed && (
-                <button onClick={() => { onLogAndComplete(sel); onClose(); }} className="btn-primary w-full">✓ Log &amp; Complete</button>
-              )}
-              {onLogAndComplete && isRunSession(sel) && (
-                <button onClick={() => mutateSelf(s => ({ ...s, completed: !s.completed }))} className="btn-secondary w-full">
-                  {sel.completed ? 'Mark as not done' : 'Mark done (without logging)'}
-                </button>
-              )}
-              <button onClick={() => setEditing(true)} className="py-2 rounded-lg border border-[#334155] text-[#94A3B8] text-xs hover:border-[#475569]">✎ Edit details / goal</button>
-              {cfg && isRunSession(sel) && (
-                <div className="grid grid-cols-3 gap-2">
-                  <button onClick={() => mutateSelf(s => switchDifficulty(s, 'easier', cfg))} className="py-2 rounded-lg border border-[#334155] text-[#94A3B8] text-xs hover:border-[#475569]">Easier</button>
-                  <button onClick={() => mutateSelf(s => switchDifficulty(s, 'reset', cfg))} className="py-2 rounded-lg border border-[#334155] text-[#94A3B8] text-xs hover:border-[#475569]">Reset</button>
-                  <button onClick={() => mutateSelf(s => switchDifficulty(s, 'harder', cfg))} className="py-2 rounded-lg border border-[#334155] text-[#94A3B8] text-xs hover:border-[#475569]">Harder</button>
-                </div>
-              )}
-              {sel.type !== 'rest' && (
-                <button onClick={() => mutateSelf(() => ({ type: 'rest', title: 'Rest', detail: 'Take a full day off. Recovery is where the gains happen.', completed: false }))}
-                  className="py-2 rounded-lg border border-[#334155] text-[#94A3B8] text-xs hover:border-[#475569]">Make this a Rest day</button>
+              {sessionParts(sel).length === 1 && (
+                <>
+                  {onLogAndComplete && isRunSession(sel) && !sel.completed && (
+                    <button onClick={() => { onLogAndComplete(sel, 0); onClose(); }} className="btn-primary w-full">✓ Log &amp; Complete</button>
+                  )}
+                  {onLogAndComplete && isRunSession(sel) && (
+                    <button onClick={() => mutateSelf(s => ({ ...s, completed: !s.completed }))} className="btn-secondary w-full">
+                      {sel.completed ? 'Mark as not done' : 'Mark done (without logging)'}
+                    </button>
+                  )}
+                  <button onClick={() => setEditing(true)} className="py-2 rounded-lg border border-[#334155] text-[#94A3B8] text-xs hover:border-[#475569]">✎ Edit details / goal</button>
+                  {cfg && isRunSession(sel) && (
+                    <div className="grid grid-cols-3 gap-2">
+                      <button onClick={() => mutateSelf(s => switchDifficulty(s, 'easier', cfg))} className="py-2 rounded-lg border border-[#334155] text-[#94A3B8] text-xs hover:border-[#475569]">Easier</button>
+                      <button onClick={() => mutateSelf(s => switchDifficulty(s, 'reset', cfg))} className="py-2 rounded-lg border border-[#334155] text-[#94A3B8] text-xs hover:border-[#475569]">Reset</button>
+                      <button onClick={() => mutateSelf(s => switchDifficulty(s, 'harder', cfg))} className="py-2 rounded-lg border border-[#334155] text-[#94A3B8] text-xs hover:border-[#475569]">Harder</button>
+                    </div>
+                  )}
+                  {sel.type !== 'rest' && (
+                    <button onClick={() => mutateSelf(() => ({ type: 'rest', title: 'Rest', detail: 'Take a full day off. Recovery is where the gains happen.', completed: false }))}
+                      className="py-2 rounded-lg border border-[#334155] text-[#94A3B8] text-xs hover:border-[#475569]">Make this a Rest day</button>
+                  )}
+                </>
               )}
 
               {/* Move to another day — same week or a different week */}

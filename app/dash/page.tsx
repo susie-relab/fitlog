@@ -673,7 +673,7 @@ export default function DashPage() {
           selected={{ week: detail.week, day: detail.day }}
           onSave={persistDetailPlan}
           onClose={() => setDetail(null)}
-          onLogAndComplete={(s) => router.push(planSessionHref(s, detailPlan.id, detail.week, detail.day))}
+          onLogAndComplete={(s, partIndex) => router.push(planSessionHref(s, detailPlan.id, detail.week, detail.day, partIndex))}
         />
       )}
 
