@@ -11,9 +11,10 @@ import PlanPrintTable from './PlanPrintTable';
 import PlanDaySheet from './PlanDaySheet';
 import RunTypeGlossary from './RunTypeGlossary';
 import ShareCard, { ShareStat } from './ShareCard';
+import PlanShareBook, { OverviewStat } from './PlanShareBook';
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { todayLocalISO } from '@/lib/utils';
-import { Target, TrendingUp } from 'lucide-react';
+import { TrendingUp, Trophy } from 'lucide-react';
 
 const PHASE_COLORS: Record<string, string> = { Base: '#3B82F6', Build: '#8B5CF6', Peak: '#F97316', Taper: '#22C55E' };
 const LEVEL_LABELS: Record<string, string> = { relaxed: 'Relaxed', moderate: 'Moderate', tough: 'Tough' };
@@ -46,7 +47,8 @@ export default function PlanView({ plan, onChange, onEdit, onDelete, onBack, onS
   const [confirmDel, setConfirmDel] = useState(false);
   const [confirmRestart, setConfirmRestart] = useState(false);
   const [viewAll, setViewAll] = useState(false);
-  const [sharingKind, setSharingKind] = useState<'plan' | 'progress' | null>(null);
+  const [sharingKind, setSharingKind] = useState<'progress' | 'completed' | null>(null);
+  const [sharingPlanBook, setSharingPlanBook] = useState(false);
 
   const data = plan.plan_data;
   const isRun = plan.plan_kind === 'run';
@@ -140,6 +142,7 @@ export default function PlanView({ plan, onChange, onEdit, onDelete, onBack, onS
 
 
   const isRace = isRun && plan.distance !== 'keep_fit' && plan.distance !== 'speed';
+  const isCompleted = totalRuns > 0 && runsCompleted >= totalRuns;
 
   return (
     <div className="flex flex-col gap-5">
@@ -148,8 +151,11 @@ export default function PlanView({ plan, onChange, onEdit, onDelete, onBack, onS
         <div className="flex gap-2 flex-wrap">
           <button onClick={copyPlan} className="btn-secondary text-xs px-3 py-1.5">{copied ? '✓ Copied' : '⧉ Copy'}</button>
           <button onClick={handlePrint} className="btn-secondary text-xs px-3 py-1.5">🖨 Print / PDF</button>
-          <button onClick={() => setSharingKind('plan')} className="btn-secondary text-xs px-3 py-1.5">↗ Share Plan</button>
+          <button onClick={() => setSharingPlanBook(true)} className="btn-secondary text-xs px-3 py-1.5">↗ Share Plan</button>
           <button onClick={() => setSharingKind('progress')} className="btn-secondary text-xs px-3 py-1.5">↗ Share Progress</button>
+          {isCompleted && (
+            <button onClick={() => setSharingKind('completed')} className="text-xs px-3 py-1.5 rounded-lg border border-yellow-600/50 bg-yellow-500/10 text-yellow-300 hover:bg-yellow-500/20">🏆 Share Completed Plan</button>
+          )}
           <button onClick={onEdit} className="btn-secondary text-xs px-3 py-1.5">✎ Edit</button>
         </div>
       </div>
@@ -298,22 +304,21 @@ export default function PlanView({ plan, onChange, onEdit, onDelete, onBack, onS
         />
       )}
 
-      {sharingKind === 'plan' && (
-        <ShareCard
-          badge={planTitle}
-          title=""
-          icon={Target}
-          availableStats={[
-            { label: 'Weeks', value: String(plan.weeks) },
-            { label: isRun ? 'Runs/Week' : 'Sessions/Week', value: runsPerWeekText.split(' ')[0] },
-            { label: 'Level', value: levelText },
-            week1Km ? { label: 'Week 1 Distance', value: `${week1Km} km` } : null,
-            plan.goal_time_seconds ? { label: 'Goal Time', value: fmtGoalTime(plan.goal_time_seconds) } : null,
-            longestLongRunKm > 0 ? { label: 'Longest Long Run', value: `${longestLongRunKm} km` } : null,
-          ].filter(Boolean) as ShareStat[]}
+      {sharingPlanBook && (
+        <PlanShareBook
+          planData={data}
+          planTitle={planTitle}
+          overviewStats={[
+            { key: 'weeks', label: 'Weeks', value: String(plan.weeks) },
+            { key: 'perweek', label: isRun ? 'Runs/Week' : 'Sessions/Week', value: runsPerWeekText.split(' ')[0] },
+            { key: 'level', label: 'Level', value: levelText },
+            week1Km ? { key: 'week1km', label: 'Week 1 Distance', value: `${week1Km} km` } : null,
+            plan.goal_time_seconds ? { key: 'goaltime', label: 'Goal Time', value: fmtGoalTime(plan.goal_time_seconds) } : null,
+            longestLongRunKm > 0 ? { key: 'longestrun', label: 'Longest Long Run', value: `${longestLongRunKm} km` } : null,
+          ].filter(Boolean) as OverviewStat[]}
           dateLabel={isRace ? `Goal day ${fmtNiceDate(goalDate)}` : `Starts ${fmtNiceDate(plan.start_date)}`}
           accentColor="#3B82F6"
-          onClose={() => setSharingKind(null)}
+          onClose={() => setSharingPlanBook(false)}
         />
       )}
       {sharingKind === 'progress' && (
@@ -329,6 +334,23 @@ export default function PlanView({ plan, onChange, onEdit, onDelete, onBack, onS
           ] as ShareStat[]}
           dateLabel={isRace ? `Goal day ${fmtNiceDate(goalDate)}` : `Week ${currentWeekNo} of ${plan.weeks}`}
           accentColor="#22C55E"
+          onClose={() => setSharingKind(null)}
+        />
+      )}
+      {sharingKind === 'completed' && (
+        <ShareCard
+          badge="Plan Completed!"
+          title={planTitle}
+          icon={Trophy}
+          availableStats={[
+            { label: 'Weeks', value: String(plan.weeks) },
+            { label: isRun ? 'Runs Completed' : 'Sessions Completed', value: String(runsCompleted) },
+            isRun ? { label: 'Total Distance', value: `${totalKm.toFixed(0)} km` } : { label: 'Total Time', value: totalMin > 0 ? fmtHrs(totalMin) : '—' },
+            longestLongRunKm > 0 ? { label: 'Longest Long Run', value: `${longestLongRunKm} km` } : null,
+            { label: 'Level', value: levelText },
+          ].filter(Boolean) as ShareStat[]}
+          dateLabel={isRace ? `Goal day ${fmtNiceDate(goalDate)}` : `Completed`}
+          accentColor="#EAB308"
           onClose={() => setSharingKind(null)}
         />
       )}
