@@ -38,10 +38,13 @@ export async function POST(request: Request) {
       ['Reason for wanting an account', body.reason],
     ];
   } else {
-    if (!body.message?.trim()) return Response.json({ error: 'Please enter a message.' }, { status: 400 });
-    subject = `SportLog ${body.category || 'feedback'} — ${(body.message || '').slice(0, 40)}`;
+    if (!body.name?.trim()) return Response.json({ error: 'Name is required.' }, { status: 400 });
+    if (!body.fromEmail?.trim()) return Response.json({ error: 'Email is required.' }, { status: 400 });
+    if (!body.message?.trim()) return Response.json({ error: 'Please enter a description.' }, { status: 400 });
+    subject = `SportLog ${body.category || 'feedback'} — ${body.name}`;
     rows = [
       ['Type', body.category],
+      ['Name', body.name],
       ['From', body.fromEmail],
       ['Message', body.message],
     ];

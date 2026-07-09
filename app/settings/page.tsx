@@ -1,12 +1,11 @@
 'use client';
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
-import FeedbackForm from '@/components/FeedbackForm';
 
 export default function SettingsPage() {
   const { user, signOut } = useAuth();
-  const [newEmail, setNewEmail] = useState('');
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
   const [streakReminder, setStreakReminder] = useState(true);
@@ -15,15 +14,6 @@ export default function SettingsPage() {
   const flash = (text: string, ok: boolean) => {
     setMsg({ text, ok });
     setTimeout(() => setMsg(null), 4000);
-  };
-
-  const handleUpdateEmail = async () => {
-    if (!newEmail.trim()) return;
-    setSaving(true);
-    const { error } = await supabase.auth.updateUser({ email: newEmail.trim() });
-    setSaving(false);
-    flash(error ? error.message : 'Confirmation sent to new email address.', !error);
-    if (!error) setNewEmail('');
   };
 
   const saveStreakPrefs = async (reminder: boolean, hour: number) => {
@@ -49,14 +39,15 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {/* Account */}
-      <p className="text-xs font-semibold text-[#64748B] uppercase tracking-wide mb-2">Account</p>
-      <div className="card mb-4">
-        <h2 className="text-sm font-semibold text-white mb-3">Change Email</h2>
-        <p className="text-xs text-[#64748B] mb-3">Current: {user?.email}</p>
-        <input type="email" className="input mb-3" placeholder="New email address" value={newEmail} onChange={e => setNewEmail(e.target.value)} />
-        <button onClick={handleUpdateEmail} disabled={saving || !newEmail} className="btn-primary w-full">Update Email</button>
-      </div>
+      {/* Data */}
+      <p className="text-xs font-semibold text-[#64748B] uppercase tracking-wide mb-2">Data</p>
+      <Link href="/import" className="flex items-center justify-between card hover:border-[#475569] transition-colors mb-6">
+        <div>
+          <h2 className="text-sm font-semibold text-white">Import data</h2>
+          <p className="text-xs text-[#64748B] mt-0.5">Bring in activities from a file (e.g. Garmin export).</p>
+        </div>
+        <span className="text-[#64748B]">›</span>
+      </Link>
 
       {/* Connections */}
       <p className="text-xs font-semibold text-[#64748B] uppercase tracking-wide mb-2">Connections</p>
@@ -109,14 +100,6 @@ export default function SettingsPage() {
             </div>
           ))}
         </div>
-      </div>
-
-      {/* Support */}
-      <p className="text-xs font-semibold text-[#64748B] uppercase tracking-wide mb-2">Support</p>
-      <div className="card mb-6">
-        <h2 className="text-sm font-semibold text-white mb-1">Feedback &amp; feature requests</h2>
-        <p className="text-xs text-[#64748B] mb-3">Spotted a bug or have an idea? Send it straight to the developer.</p>
-        <FeedbackForm defaultEmail={user?.email ?? undefined} />
       </div>
 
       {/* Sign out */}

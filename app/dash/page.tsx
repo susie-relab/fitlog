@@ -275,7 +275,9 @@ export default function DashPage() {
           <p className="text-[#64748B] text-sm mt-0.5">Here's your training at a glance</p>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
-          <Link href="/import" className="btn-secondary text-xs px-3 py-1.5">↑ Import</Link>
+          <Link href="/help" aria-label="Help" className="w-9 h-9 rounded-full bg-[#1E293B] border border-[#334155] flex items-center justify-center text-[#94A3B8] hover:border-[#475569] hover:text-white transition-colors text-base">
+            ?
+          </Link>
           <Link href="/settings" aria-label="Settings" className="w-9 h-9 rounded-full bg-[#1E293B] border border-[#334155] flex items-center justify-center text-[#94A3B8] hover:border-[#475569] hover:text-white transition-colors text-base">
             ⚙
           </Link>

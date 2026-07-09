@@ -15,6 +15,7 @@ export default function ProfilePage() {
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [newEmail, setNewEmail] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
 
   const flash = (text: string, ok: boolean) => {
@@ -44,6 +45,15 @@ export default function ProfilePage() {
     setSaving(false);
     flash(error ? error.message : 'Password updated!', !error);
     if (!error) { setNewPassword(''); setConfirmPassword(''); }
+  };
+
+  const handleUpdateEmail = async () => {
+    if (!newEmail.trim()) return;
+    setSaving(true);
+    const { error } = await supabase.auth.updateUser({ email: newEmail.trim() });
+    setSaving(false);
+    flash(error ? error.message : 'Confirmation sent to new email address.', !error);
+    if (!error) setNewEmail('');
   };
 
   const handlePickAvatar = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -105,6 +115,14 @@ export default function ProfilePage() {
         <h2 className="text-sm font-semibold text-white mb-3">Display Name</h2>
         <input className="input mb-3" placeholder="Enter a username" value={username} onChange={e => setUsername(e.target.value)} />
         <button onClick={handleUpdateUsername} disabled={saving} className="btn-primary w-full">Save Display Name</button>
+      </div>
+
+      {/* Change email */}
+      <div className="card mb-6">
+        <h2 className="text-sm font-semibold text-white mb-3">Change Email</h2>
+        <p className="text-xs text-[#64748B] mb-3">Current: {user?.email}</p>
+        <input type="email" className="input mb-3" placeholder="New email address" value={newEmail} onChange={e => setNewEmail(e.target.value)} />
+        <button onClick={handleUpdateEmail} disabled={saving || !newEmail} className="btn-primary w-full">Update Email</button>
       </div>
 
       {/* Change password */}
