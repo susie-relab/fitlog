@@ -91,7 +91,7 @@ export default function PlanView({ plan, onChange, onEdit, onDelete, onBack, onS
     router.push(planSessionHref(s, plan.id, selected.week, selected.day, partIndex));
   };
 
-  const copyPlan = async () => {
+  const planText = () => {
     const lines: string[] = [`${planTitle} Training Plan — ${plan.weeks} weeks, ${plan.level}`, ''];
     for (const w of data.weeks) {
       lines.push(`Week ${w.weekNumber}${w.weekNumber === 0 ? ' (Lead-in)' : ` (${w.phase})`} — ${w.totalKm} km`);
@@ -101,20 +101,51 @@ export default function PlanView({ plan, onChange, onEdit, onDelete, onBack, onS
       }
       lines.push('');
     }
-    await navigator.clipboard.writeText(lines.join('\n'));
+    return lines.join('\n');
+  };
+
+  const copyPlan = async () => {
+    await navigator.clipboard.writeText(planText());
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handlePrint = () => {
+    // Print always shows the full plan, regardless of the This week / Full plan toggle.
+    const wasFull = viewAll;
+    setViewAll(true);
+    setTimeout(() => {
+      window.print();
+      setViewAll(wasFull);
+    }, 50);
+  };
+
+  const sharePlan = async () => {
+    const title = `${planTitle} Training Plan`;
+    const text = planText();
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share({ title, text });
+        return;
+      } catch {
+        // user cancelled or share failed — fall through to email
+      }
+    }
+    const subject = encodeURIComponent(title);
+    const body = encodeURIComponent(text);
+    window.location.href = `mailto:?subject=${subject}&body=${body}`;
   };
 
   const isRace = isRun && plan.distance !== 'keep_fit' && plan.distance !== 'speed';
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex items-center justify-between gap-2 plan-no-print">
         <button onClick={onBack} className="text-sm text-[#64748B] hover:text-white">← All plans</button>
         <div className="flex gap-2">
           <button onClick={copyPlan} className="btn-secondary text-xs px-3 py-1.5">{copied ? '✓ Copied' : '⧉ Copy'}</button>
-          <button onClick={() => window.print()} className="btn-secondary text-xs px-3 py-1.5">🖨 Print</button>
+          <button onClick={handlePrint} className="btn-secondary text-xs px-3 py-1.5">🖨 Print / PDF</button>
+          <button onClick={sharePlan} className="btn-secondary text-xs px-3 py-1.5">↗ Share</button>
           <button onClick={onEdit} className="btn-secondary text-xs px-3 py-1.5">✎ Edit</button>
         </div>
       </div>
