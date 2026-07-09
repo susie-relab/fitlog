@@ -629,7 +629,7 @@ function assignWeek(cfg: PlanConfig, weekIdx: number): PlanWeek {
   const full = days as Record<Weekday, Session>;
 
   // Scale week 1's total to the user's requested "Week 1's total distance".
-  if (weekIdx === 0 && cfg.startDistanceKm) scaleWeekToTarget(full, cfg.startDistanceKm);
+  if (weekIdx === 0 && cfg.startDistanceKm) scaleWeekToTarget(full, cfg.startDistanceKm, true);
   const totalKm = sumKm(full);
 
   return { weekNumber: weekIdx + 1, phase, totalKm: round(totalKm, 0.5), days: full };
@@ -663,13 +663,15 @@ function adjustableDetail(type: SessionType, title: string, km?: number, min?: n
   return title;
 }
 
-function rebuildAdjustable(s: Session, factor: number): Session {
+function rebuildAdjustable(s: Session, factor: number, minKmOverride?: number): Session {
   if (s.distanceKm != null) {
-    const km = Math.max(minKmForType(s.type), round(s.distanceKm * factor, 0.5));
+    const floor = minKmOverride ?? minKmForType(s.type);
+    const km = Math.max(floor, round(s.distanceKm * factor, 0.5));
     return { ...s, distanceKm: km, detail: adjustableDetail(s.type, s.title, km) };
   }
   if (s.timeMin != null) {
-    const t = Math.max(10, Math.round(s.timeMin * factor));
+    const floorMin = minKmOverride != null ? Math.max(5, Math.round(minKmOverride * 6)) : 10;
+    const t = Math.max(floorMin, Math.round(s.timeMin * factor));
     return { ...s, timeMin: t, estKm: round(t / 6, 0.5), detail: adjustableDetail(s.type, s.title, undefined, t) };
   }
   return s;
@@ -680,10 +682,18 @@ function rebuildAdjustable(s: Session, factor: number): Session {
  * sessions (easy/recovery/long/trail/progression) — their detail text is
  * regenerated to match exactly. Structured sessions (tempo/fartlek/intervals/
  * sprint/hill) are left completely untouched so their text never goes stale,
- * and count as a fixed contribution to the total. If floors + fixed sessions
- * alone exceed the target, the result lands as close as possible from above.
+ * and count as a fixed contribution to the total.
+ *
+ * By default each adjustable session still respects its normal per-type
+ * minimum (e.g. a long/trail run never generated below 5 km), so if floors +
+ * fixed sessions alone exceed the target, the result lands as close as
+ * possible from above. Pass `honorTarget: true` (used for the user's explicit
+ * "Week 1's total distance" input) to allow shrinking below those normal
+ * floors — down to a small absolute minimum — but ONLY as far as actually
+ * needed to hit the requested total; when the target is easily reachable
+ * within normal floors, this has no effect.
  */
-function scaleWeekToTarget(full: Record<Weekday, Session>, targetKm: number) {
+function scaleWeekToTarget(full: Record<Weekday, Session>, targetKm: number, honorTarget = false) {
   if (!targetKm || targetKm <= 0) return;
   const adjustableDays = WEEKDAYS.filter(d => ADJUSTABLE_TYPES.includes(full[d].type));
   if (!adjustableDays.length) return;
@@ -692,7 +702,8 @@ function scaleWeekToTarget(full: Record<Weekday, Session>, targetKm: number) {
   if (adjustableSum <= 0) return;
   const remaining = targetKm - fixedKm;
   const factor = remaining > 0 ? remaining / adjustableSum : 0.1;
-  for (const d of adjustableDays) full[d] = rebuildAdjustable(full[d], factor);
+  const hardMinKm = honorTarget ? 1 : undefined;
+  for (const d of adjustableDays) full[d] = rebuildAdjustable(full[d], factor, hardMinKm);
 }
 
 // ---------- final week / PB day ----------
