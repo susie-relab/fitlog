@@ -10,8 +10,6 @@ import { sessionColor, sessionTarget, exerciseTypeTag } from '@/components/PlanW
 import PlanDaySheet from '@/components/PlanDaySheet';
 import Link from 'next/link';
 import Avatar from '@/components/Avatar';
-import ShareCard, { ShareStat } from '@/components/ShareCard';
-import { WEEK_SHARE_ICON, THIRTY_DAY_SHARE_ICON } from '@/lib/shareIcons';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 /** The subtype label for any activity — sub_type for most types, run_type for runs. */
@@ -120,7 +118,6 @@ export default function DashPage() {
   const [dragFrom, setDragFrom] = useState<{ planId: string; week: number; day: Weekday } | null>(null);
   const [dropChoice, setDropChoice] = useState<{ planId: string; week: number; from: Weekday; to: Weekday } | null>(null);
   const [hoverType, setHoverType] = useState<ExerciseType | null>(null);
-  const [sharingKind, setSharingKind] = useState<'week' | '30day' | null>(null);
 
   const detailPlan = detail ? plans.find(p => p.id === detail.planId) : undefined;
   const persistPlanData = async (planId: string, newData: PlanData) => {
@@ -195,13 +192,6 @@ export default function DashPage() {
   const dist14 = last14.reduce((s, a) => s + (a.distance_km || 0), 0);
   const mins14 = last14.reduce((s, a) => s + a.duration_minutes, 0);
   const intensity14 = last14.reduce((s, a) => s + (a.intensity_minutes || 0), 0);
-
-  // 30-day summary (for sharing)
-  const now30 = daysAgo(30).split('T')[0];
-  const last30 = activities.filter(a => a.date >= now30);
-  const dist30 = last30.reduce((s, a) => s + (a.distance_km || 0), 0);
-  const mins30 = last30.reduce((s, a) => s + a.duration_minutes, 0);
-  const intensity30 = last30.reduce((s, a) => s + (a.intensity_minutes || 0), 0);
 
   // This week
   const todayStr = todayLocalISO();
@@ -292,12 +282,6 @@ export default function DashPage() {
             <Avatar url={user?.user_metadata?.avatar_url} size={34} />
           </Link>
         </div>
-      </div>
-
-      {/* Share buttons */}
-      <div className="flex gap-2 mb-5">
-        <button onClick={() => setSharingKind('week')} className="btn-secondary text-xs px-3 py-1.5 flex-1">↗ Share this week</button>
-        <button onClick={() => setSharingKind('30day')} className="btn-secondary text-xs px-3 py-1.5 flex-1">↗ Share last 30 days</button>
       </div>
 
       {/* Desktop: plan + streaks/14-day side by side instead of one long column */}
@@ -737,39 +721,6 @@ export default function DashPage() {
           </div>
         );
       })()}
-
-      {sharingKind === 'week' && (
-        <ShareCard
-          badge="Week in Review"
-          title=""
-          icon={WEEK_SHARE_ICON}
-          availableStats={[
-            { label: 'Distance', value: `${weekDist.toFixed(1)} km` },
-            { label: 'Activities', value: String(weekActivities) },
-            { label: 'Time', value: formatDuration(weekMins) },
-            { label: 'Runs', value: String(weekRuns) },
-          ] as ShareStat[]}
-          dateLabel={`Week of ${weekStart.split('-').reverse().join('/')}`}
-          accentColor="#3B82F6"
-          onClose={() => setSharingKind(null)}
-        />
-      )}
-      {sharingKind === '30day' && (
-        <ShareCard
-          badge="30 Day Overview"
-          title=""
-          icon={THIRTY_DAY_SHARE_ICON}
-          availableStats={[
-            { label: 'Activities', value: String(last30.length) },
-            { label: 'Distance', value: `${dist30.toFixed(1)} km` },
-            { label: 'Total Time', value: formatDuration(mins30) },
-            { label: 'Intensity Mins', value: String(intensity30) },
-          ] as ShareStat[]}
-          dateLabel={`${now30.split('-').reverse().join('/')} – ${todayStr.split('-').reverse().join('/')}`}
-          accentColor="#8B5CF6"
-          onClose={() => setSharingKind(null)}
-        />
-      )}
 
       {/* Streak drill-down: when did the current streak start, and where were the gaps */}
       {streakModal && (

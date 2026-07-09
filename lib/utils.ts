@@ -82,7 +82,7 @@ function addDaysLocalISO(dateISO: string, n: number): string {
 export type WeekStart = 'monday' | 'sunday';
 
 /** Week-start key (Monday or Sunday, per `startDay`) for a local YYYY-MM-DD date. */
-function localWeekKey(dateISO: string, startDay: WeekStart = 'monday'): string {
+export function localWeekKey(dateISO: string, startDay: WeekStart = 'monday'): string {
   const [y, m, d] = dateISO.split('-').map(Number);
   const dt = new Date(y, m - 1, d);
   const day = dt.getDay();

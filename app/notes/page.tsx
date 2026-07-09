@@ -177,7 +177,7 @@ export default function NotesPage() {
         <h1 className="text-xl font-bold text-white">Notes</h1>
         <button onClick={openAdd} className="btn-primary text-sm px-4 py-2 flex-shrink-0">+ Add Note</button>
       </div>
-      <p className="text-sm text-[#64748B] mb-4">Training diary &amp; standalone notes</p>
+      <p className="text-sm text-[#64748B] mb-4">Training diary: including notes from activities</p>
 
       {showForm && (
         <div className="card mb-5 border-blue-600/40">

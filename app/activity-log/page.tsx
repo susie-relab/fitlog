@@ -11,7 +11,7 @@ import { formatDuration, formatDate, formatShortDate, formatPaceMinKm, formatPac
 import EditActivityModal from '@/components/EditActivityModal';
 import ImageGallery from '@/components/ImageGallery';
 import ShareCard, { ShareStat } from '@/components/ShareCard';
-import { EXERCISE_TYPE_ICONS } from '@/lib/shareIcons';
+import { EXERCISE_TYPE_ICONS, THIRTY_DAY_SHARE_ICON } from '@/lib/shareIcons';
 import { activitiesToCsv, downloadCsv } from '@/lib/exportCsv';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
@@ -24,6 +24,7 @@ export default function ActivityLogPage() {
   const [search, setSearch] = useState('');
   const [editing, setEditing] = useState<Activity | null>(null);
   const [sharing, setSharing] = useState<Activity | null>(null);
+  const [sharing30, setSharing30] = useState(false);
   const [filterType, setFilterType] = useState<ExerciseType | ''>('');
   const [expanded, setExpanded] = useState<string | null>(null);
   const [chartWindow, setChartWindow] = useState<ChartWindow>('30d');
@@ -90,18 +91,21 @@ export default function ActivityLogPage() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <div className="flex items-center justify-between mb-4 gap-2">
+      <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
         <h1 className="text-xl font-bold text-white">Activity Log</h1>
-        <button
-          onClick={() => {
-            const csv = activitiesToCsv(activities);
-            downloadCsv(csv, `sportlog-all-${new Date().toISOString().split('T')[0]}.csv`);
-          }}
-          disabled={activities.length === 0}
-          className="btn-secondary text-xs flex items-center gap-1 flex-shrink-0 px-3 py-1.5"
-        >
-          ↓ Export all
-        </button>
+        <div className="flex gap-2">
+          <button onClick={() => setSharing30(true)} className="btn-secondary text-xs px-3 py-1.5 flex-shrink-0">↗ Share 30 Days</button>
+          <button
+            onClick={() => {
+              const csv = activitiesToCsv(activities);
+              downloadCsv(csv, `sportlog-all-${new Date().toISOString().split('T')[0]}.csv`);
+            }}
+            disabled={activities.length === 0}
+            className="btn-secondary text-xs flex items-center gap-1 flex-shrink-0 px-3 py-1.5"
+          >
+            ↓ Export all
+          </button>
+        </div>
       </div>
 
       {/* 30-day stats */}
@@ -324,6 +328,22 @@ export default function ActivityLogPage() {
           dateLabel={formatDate(sharing.date)}
           accentColor={EXERCISE_TYPE_COLORS[sharing.exercise_type]}
           onClose={() => setSharing(null)}
+        />
+      )}
+      {sharing30 && (
+        <ShareCard
+          badge="30 Day Overview"
+          title=""
+          icon={THIRTY_DAY_SHARE_ICON}
+          availableStats={[
+            { label: 'Activities', value: String(totalActivities30) },
+            { label: 'Distance', value: `${totalKm30.toFixed(1)} km` },
+            { label: 'Total Time', value: formatDuration(totalMins30) },
+            { label: 'Intensity Mins', value: String(totalIntensity30) },
+          ] as ShareStat[]}
+          dateLabel={`Last 30 days`}
+          accentColor="#8B5CF6"
+          onClose={() => setSharing30(false)}
         />
       )}
     </div>
