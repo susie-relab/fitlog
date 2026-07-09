@@ -16,6 +16,8 @@ import ImageUploader from '@/components/ImageUploader';
 import { useDirtyForm } from '@/components/DirtyFormContext';
 import { sessionParts, combineSessions } from '@/lib/runPlanGenerator';
 import ConfettiBurst from '@/components/ConfettiBurst';
+import PbCelebrationModal from '@/components/PbCelebrationModal';
+import { detectAutoPBs } from '@/lib/pbDetect';
 import { todayLocalISO, openDatePicker } from '@/lib/utils';
 
 const RUN_TYPES: RunType[] = ['easy', 'long', 'tempo', 'fartlek', 'speed_intervals', 'hill_reps', 'trail', 'long_intervals', 'push_buggy'];
@@ -54,6 +56,7 @@ export default function AddPage() {
   const [success, setSuccess] = useState(false);
   const [confettiColor, setConfettiColor] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [pbCelebration, setPbCelebration] = useState<string[] | null>(null);
   const { setDirty, showWarning, setShowWarning, pendingHref } = useDirtyForm();
   const router = useRouter();
   const [planLink, setPlanLink] = useState<{ planId: string; week: number; day: string; part?: number } | null>(null);
@@ -111,6 +114,9 @@ export default function AddPage() {
     setSaving(true);
     setError('');
 
+    const distanceKm = distance ? parseFloat(distance) : null;
+    const paceMinKm = paceToDecimal(paceMin, paceSec) ?? calcAutoPace(distance, durationMinutes) ?? null;
+
     const { data: inserted, error: dbErr } = await supabase.from('activities').insert({
       user_id: user!.id,
       name: name.trim(),
@@ -119,10 +125,10 @@ export default function AddPage() {
       sub_type: exerciseType === 'hiit' ? gymTypes.join(',') || null : subType || null,
       duration_minutes: durationMinutes,
       effort,
-      distance_km: distance ? parseFloat(distance) : null,
+      distance_km: distanceKm,
       notes: notes || null,
       intensity_minutes: intensityMins ? parseInt(intensityMins) : null,
-      pace_min_km: paceToDecimal(paceMin, paceSec) ?? calcAutoPace(distance, durationMinutes),
+      pace_min_km: paceMinKm,
       max_pace_min_km: paceToDecimal(maxPaceMin, maxPaceSec),
       max_hr: maxHr ? parseInt(maxHr) : null,
       avg_hr: avgHr ? parseInt(avgHr) : null,
@@ -132,6 +138,21 @@ export default function AddPage() {
       image_urls: images.length ? images : null,
       date,
     }).select('id').single();
+
+    // Check for an auto-detected PB (fastest distance, longest session, best pace for the
+    // type) against every prior activity, and/or the user's manual "Personal Best" flag.
+    let pbReasons: string[] = [];
+    if (!dbErr && inserted?.id) {
+      const { data: prior } = await supabase.from('activities')
+        .select('exercise_type,distance_km,pace_min_km,duration_minutes')
+        .eq('user_id', user!.id)
+        .neq('id', inserted.id);
+      pbReasons = detectAutoPBs(
+        { exercise_type: exerciseType as ExerciseType, distance_km: distanceKm ?? undefined, pace_min_km: paceMinKm ?? undefined, duration_minutes: durationMinutes },
+        prior || [],
+      );
+      if (isPb && pbDesc.trim()) pbReasons = [pbDesc.trim(), ...pbReasons];
+    }
 
     // If this came from a training plan session, mark that day complete.
     if (!dbErr && planLink) {
@@ -158,6 +179,7 @@ export default function AddPage() {
       setSuccess(true);
       setConfettiColor(accentColor);
       setTimeout(() => setConfettiColor(null), 2200);
+      if (isPb || pbReasons.length > 0) setPbCelebration(pbReasons);
       // Reset form
       setName(''); setExerciseType(''); setRunType(''); setSubType(''); setGymTypes([]); setHours(''); setMins(''); setSecs('');
       setEffort(null); setDistance(''); setNotes(''); setIntensityMins('');
@@ -571,6 +593,9 @@ export default function AddPage() {
             </div>
           </div>
         </div>
+      )}
+      {pbCelebration && (
+        <PbCelebrationModal reasons={pbCelebration} onClose={() => setPbCelebration(null)} />
       )}
     </div>
   );

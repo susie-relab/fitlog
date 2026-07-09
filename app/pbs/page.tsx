@@ -6,14 +6,7 @@ import { Activity, ExerciseType, RunType, EXERCISE_TYPE_LABELS, EXERCISE_TYPE_CO
 import { formatPaceMinKm, formatDuration, formatDate, openDatePicker } from '@/lib/utils';
 import ShareCard, { ShareStat } from '@/components/ShareCard';
 import { PB_SHARE_ICON } from '@/lib/shareIcons';
-
-const DISTANCE_PB_KM = [0.1, 0.2, 0.4, 0.8, 1, 1.6, 2, 3, 5, 10, 15, 20, 21.1, 25, 30, 40, 42.2, 50];
-const DISTANCE_LABELS: Record<number, string> = {
-  0.1: '100m', 0.2: '200m', 0.4: '400m', 0.8: '800m', 1: '1km',
-  1.6: '1.6km', 2: '2km', 3: '3km', 5: '5km', 10: '10km',
-  15: '15km', 20: '20km', 21.1: 'Half Marathon', 25: '25km',
-  30: '30km', 40: '40km', 42.2: 'Marathon', 50: '50km',
-};
+import { DISTANCE_PB_KM, DISTANCE_LABELS } from '@/lib/pbDetect';
 
 const EXERCISE_TYPES: ExerciseType[] = ['run', 'walk', 'sport', 'hiit', 'stretch', 'bike', 'swim', 'solo_fitness'];
 const RUN_TYPES: RunType[] = ['easy', 'long', 'tempo', 'fartlek', 'speed_intervals', 'hill_reps', 'trail', 'long_intervals', 'push_buggy'];

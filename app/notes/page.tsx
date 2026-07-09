@@ -114,15 +114,17 @@ export default function NotesPage() {
     await supabase.from('activities').update({ note_hidden }).eq('id', a.id);
   };
 
-  // Edit an activity's note text (the note on a logged activity).
+  // Edit an activity's note text + photos (the note on a logged activity).
   const [editActId, setEditActId] = useState<string | null>(null);
   const [editActText, setEditActText] = useState('');
-  const openEditActivity = (a: Activity) => { setEditActId(a.id); setEditActText(a.notes || ''); };
+  const [editActImages, setEditActImages] = useState<string[]>([]);
+  const openEditActivity = (a: Activity) => { setEditActId(a.id); setEditActText(a.notes || ''); setEditActImages(a.image_urls ?? []); };
   const saveActivityNote = async (a: Activity) => {
     const text = editActText.trim();
-    setActivities(prev => prev.map(x => x.id === a.id ? { ...x, notes: text } : x));
+    const image_urls = editActImages.length ? editActImages : null;
+    setActivities(prev => prev.map(x => x.id === a.id ? { ...x, notes: text, image_urls } : x));
     setEditActId(null);
-    await supabase.from('activities').update({ notes: text || null }).eq('id', a.id);
+    await supabase.from('activities').update({ notes: text || null, image_urls }).eq('id', a.id);
   };
 
   // Reorder a standalone note against the adjacent note sharing the same date.
@@ -315,6 +317,7 @@ export default function NotesPage() {
                 {editActId === item.id ? (
                   <div className="flex flex-col gap-2 mb-2">
                     <textarea className="input" rows={3} value={editActText} onChange={e => setEditActText(e.target.value)} style={{ resize: 'vertical' }} />
+                    {user && <ImageUploader userId={user.id} value={editActImages} onChange={setEditActImages} label="Photos" />}
                     <div className="flex gap-2">
                       <button onClick={() => saveActivityNote(item)} className="btn-primary text-xs px-3 py-1.5">Save</button>
                       <button onClick={() => setEditActId(null)} className="btn-secondary text-xs px-3 py-1.5">Cancel</button>
