@@ -5,6 +5,7 @@ import { useAuth } from '@/components/AuthProvider';
 import { Activity, ExerciseType, RunType, EXERCISE_TYPE_LABELS, EXERCISE_TYPE_COLORS, RUN_TYPE_LABELS } from '@/types';
 import { formatPaceMinKm, formatDuration, formatDate, openDatePicker } from '@/lib/utils';
 import ShareCard, { ShareStat } from '@/components/ShareCard';
+import { PB_SHARE_ICON } from '@/lib/shareIcons';
 
 const DISTANCE_PB_KM = [0.1, 0.2, 0.4, 0.8, 1, 1.6, 2, 3, 5, 10, 15, 20, 21.1, 25, 30, 40, 42.2, 50];
 const DISTANCE_LABELS: Record<number, string> = {
@@ -399,14 +400,14 @@ export default function PBsPage() {
 
       {sharing && (
         <ShareCard
-          kind="pb"
           badge="Personal Best"
-          title={sharing.name}
-          heroValue={sharing.distance_km ? `${sharing.distance_km}km` : formatDuration(sharing.duration_minutes)}
-          heroLabel={sharing.pb_description || EXERCISE_TYPE_LABELS[sharing.exercise_type]}
-          stats={[
-            sharing.pace_min_km ? { label: 'Pace', value: formatPaceMinKm(sharing.pace_min_km) } : null,
+          title={sharing.pb_description || sharing.name}
+          icon={PB_SHARE_ICON}
+          availableStats={[
+            sharing.distance_km ? { label: 'Distance', value: `${sharing.distance_km} km` } : null,
             { label: 'Duration', value: formatDuration(sharing.duration_minutes) },
+            sharing.pace_min_km ? { label: 'Pace', value: formatPaceMinKm(sharing.pace_min_km) } : null,
+            sharing.avg_hr ? { label: 'Avg HR', value: `${sharing.avg_hr} bpm` } : null,
           ].filter(Boolean) as ShareStat[]}
           dateLabel={formatDate(sharing.date)}
           accentColor={EXERCISE_TYPE_COLORS[sharing.exercise_type]}

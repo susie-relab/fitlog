@@ -11,6 +11,7 @@ import PlanDaySheet from '@/components/PlanDaySheet';
 import Link from 'next/link';
 import Avatar from '@/components/Avatar';
 import ShareCard, { ShareStat } from '@/components/ShareCard';
+import { WEEK_SHARE_ICON, THIRTY_DAY_SHARE_ICON } from '@/lib/shareIcons';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 /** The subtype label for any activity — sub_type for most types, run_type for runs. */
@@ -736,15 +737,15 @@ export default function DashPage() {
 
       {sharingKind === 'week' && (
         <ShareCard
-          kind="week"
           badge="Week in Review"
-          title="This Week"
-          heroValue={`${weekDist.toFixed(1)}km`}
-          heroLabel="Distance"
-          stats={[
+          title=""
+          icon={WEEK_SHARE_ICON}
+          availableStats={[
+            { label: 'Distance', value: `${weekDist.toFixed(1)} km` },
             { label: 'Activities', value: String(weekActivities) },
             { label: 'Time', value: formatDuration(weekMins) },
-          ]}
+            { label: 'Runs', value: String(weekRuns) },
+          ] as ShareStat[]}
           dateLabel={`Week of ${weekStart.split('-').reverse().join('/')}`}
           accentColor="#3B82F6"
           onClose={() => setSharingKind(null)}
@@ -752,10 +753,10 @@ export default function DashPage() {
       )}
       {sharingKind === '30day' && (
         <ShareCard
-          kind="30day"
           badge="30 Day Overview"
-          title="Last 30 Days"
-          stats={[
+          title=""
+          icon={THIRTY_DAY_SHARE_ICON}
+          availableStats={[
             { label: 'Activities', value: String(last30.length) },
             { label: 'Distance', value: `${dist30.toFixed(1)} km` },
             { label: 'Total Time', value: formatDuration(mins30) },

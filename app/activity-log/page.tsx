@@ -11,6 +11,7 @@ import { formatDuration, formatDate, formatShortDate, formatPaceMinKm, formatPac
 import EditActivityModal from '@/components/EditActivityModal';
 import ImageGallery from '@/components/ImageGallery';
 import ShareCard, { ShareStat } from '@/components/ShareCard';
+import { EXERCISE_TYPE_ICONS } from '@/lib/shareIcons';
 import { activitiesToCsv, downloadCsv } from '@/lib/exportCsv';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
@@ -307,14 +308,18 @@ export default function ActivityLogPage() {
 
       {sharing && (
         <ShareCard
-          kind="activity"
           badge={EXERCISE_TYPE_LABELS[sharing.exercise_type]}
           title={sharing.name}
-          stats={[
+          icon={EXERCISE_TYPE_ICONS[sharing.exercise_type]}
+          availableStats={[
             sharing.distance_km ? { label: 'Distance', value: `${sharing.distance_km} km` } : null,
             { label: 'Duration', value: formatDuration(sharing.duration_minutes) },
             sharing.pace_min_km ? { label: 'Pace', value: formatPaceMinKm(sharing.pace_min_km) } : null,
+            sharing.pace_min_km ? { label: 'Speed', value: formatSpeedKmh(sharing.pace_min_km) } : null,
             sharing.avg_hr ? { label: 'Avg HR', value: `${sharing.avg_hr} bpm` } : null,
+            sharing.max_hr ? { label: 'Max HR', value: `${sharing.max_hr} bpm` } : null,
+            sharing.elevation_gain_m ? { label: 'Elevation', value: `${sharing.elevation_gain_m} m` } : null,
+            sharing.intensity_minutes ? { label: 'Intensity Mins', value: String(sharing.intensity_minutes) } : null,
           ].filter(Boolean) as ShareStat[]}
           dateLabel={formatDate(sharing.date)}
           accentColor={EXERCISE_TYPE_COLORS[sharing.exercise_type]}
