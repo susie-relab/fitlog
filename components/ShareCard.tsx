@@ -2,14 +2,24 @@
 import { useRef, useState, useEffect } from 'react';
 import { toPng } from 'html-to-image';
 import type { LucideIcon } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from './AuthProvider';
 
 export interface ShareStat {
   label: string;
   value: string;
 }
 
+/** A place selected stats can be saved as the default for next time —
+ *  ordered most-specific first, e.g. [{key:'sport:football',label:'Football'}, {key:'sport',label:'Sport'}]. */
+export interface ShareDefaultScope {
+  key: string;
+  label: string;
+}
+
 interface Props {
   badge: string;       // small icon-badge caption, e.g. "RUNNING", "PERSONAL BEST"
+  subtitle?: string;    // optional smaller line under the badge, e.g. a subtype ("Football")
   title: string;       // big headline under the icon
   icon: LucideIcon;    // shown when there's no route to draw
   /** Decoded route outline (e.g. from a Strava polyline), 0–100 coordinate space.
@@ -19,15 +29,16 @@ interface Props {
   availableStats: ShareStat[]; // every stat with data — user picks which to show
   dateLabel: string;
   accentColor: string;
+  /** Where "Save as default" can write the current stat selection, most-specific first. */
+  defaultScopes?: ShareDefaultScope[];
   onClose: () => void;
 }
 
 const CARD_W = 1080;
 const CARD_H = 1920;
-const MAX_STATS = 5;
-const DEFAULT_STATS = 3;
 
-export default function ShareCard({ badge, title, icon: Icon, routePoints, availableStats, dateLabel, accentColor, onClose }: Props) {
+export default function ShareCard({ badge, subtitle, title, icon: Icon, routePoints, availableStats, dateLabel, accentColor, defaultScopes, onClose }: Props) {
+  const { user } = useAuth();
   const cardRef = useRef<HTMLDivElement>(null);
   const previewWrapRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -35,7 +46,25 @@ export default function ShareCard({ badge, title, icon: Icon, routePoints, avail
   const [scale, setScale] = useState(0.28);
   const [busy, setBusy] = useState<'idle' | 'rendering' | 'sharing'>('idle');
   const [err, setErr] = useState('');
-  const [selected, setSelected] = useState<string[]>(availableStats.slice(0, DEFAULT_STATS).map(s => s.label));
+  const [saveMsg, setSaveMsg] = useState('');
+  const [customLabel, setCustomLabel] = useState('');
+  const [customValue, setCustomValue] = useState('');
+  const [customStats, setCustomStats] = useState<ShareStat[]>([]);
+
+  const initialSelected = (): string[] => {
+    const saved = user?.user_metadata?.share_defaults as Record<string, string[]> | undefined;
+    if (saved && defaultScopes) {
+      for (const scope of defaultScopes) {
+        const labels = saved[scope.key];
+        if (labels && labels.length) {
+          const matched = labels.filter(l => availableStats.some(s => s.label === l));
+          if (matched.length) return matched;
+        }
+      }
+    }
+    return availableStats.slice(0, 3).map(s => s.label);
+  };
+  const [selected, setSelected] = useState<string[]>(initialSelected);
 
   useEffect(() => {
     const fit = () => {
@@ -47,13 +76,34 @@ export default function ShareCard({ badge, title, icon: Icon, routePoints, avail
     return () => window.removeEventListener('resize', fit);
   }, []);
 
-  const shownStats = selected.map(label => availableStats.find(s => s.label === label)).filter(Boolean) as ShareStat[];
+  const builtinShown = selected.map(label => availableStats.find(s => s.label === label)).filter(Boolean) as ShareStat[];
+  const shownStats = [...builtinShown, ...customStats];
+
+  // Font sizing shrinks gracefully as more stats are added — there's no hard cap.
+  const n = shownStats.length;
+  const statValueSize = n <= 4 ? 68 : n <= 6 ? 54 : n <= 9 ? 44 : 34;
+  const statLabelSize = n <= 4 ? 26 : n <= 6 ? 22 : n <= 9 ? 19 : 16;
+  const statGap = n <= 4 ? 36 : n <= 6 ? 26 : n <= 9 ? 16 : 10;
 
   const replaceAt = (i: number, newLabel: string) => setSelected(prev => prev.map((l, idx) => idx === i ? newLabel : l));
   const removeAt = (i: number) => setSelected(prev => prev.filter((_, idx) => idx !== i));
   const addStat = () => {
     const unused = availableStats.find(s => !selected.includes(s.label));
     if (unused) setSelected(prev => [...prev, unused.label]);
+  };
+  const addCustomStat = () => {
+    if (!customLabel.trim() || !customValue.trim()) return;
+    setCustomStats(prev => [...prev, { label: customLabel.trim(), value: customValue.trim() }]);
+    setCustomLabel(''); setCustomValue('');
+  };
+  const removeCustomAt = (i: number) => setCustomStats(prev => prev.filter((_, idx) => idx !== i));
+
+  const saveDefault = async (key: string) => {
+    if (!user) return;
+    const prev = user.user_metadata?.share_defaults || {};
+    const { error } = await supabase.auth.updateUser({ data: { ...user.user_metadata, share_defaults: { ...prev, [key]: selected } } });
+    setSaveMsg(error ? 'Could not save.' : 'Saved!');
+    setTimeout(() => setSaveMsg(''), 2500);
   };
 
   const pickPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -153,22 +203,25 @@ export default function ShareCard({ badge, title, icon: Icon, routePoints, avail
                   )}
                 </div>
 
-                {/* Badge / title */}
+                {/* Badge / subtitle / title */}
                 <div style={{ color: '#fff', fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 52, letterSpacing: 2, textTransform: 'uppercase', marginTop: 32, textAlign: 'center' }}>
                   {badge}
                 </div>
+                {subtitle && (
+                  <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: 24, fontWeight: 700, marginTop: 4, textTransform: 'uppercase', letterSpacing: 1.5, textAlign: 'center' }}>{subtitle}</div>
+                )}
                 {title && title !== badge && (
                   <div style={{ color: 'rgba(255,255,255,0.85)', fontSize: 30, fontWeight: 600, marginTop: 10, textAlign: 'center' }}>{title}</div>
                 )}
 
                 <div style={{ width: '55%', height: 2, background: 'rgba(255,255,255,0.5)', margin: '44px 0' }} />
 
-                {/* Stats — vertical list, big number + small caption */}
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 36, flex: 1, justifyContent: 'center' }}>
+                {/* Stats — vertical list, big number + small caption. Shrinks gracefully as more are added. */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: statGap, flex: 1, justifyContent: 'center' }}>
                   {shownStats.map((s, i) => (
                     <div key={i} style={{ textAlign: 'center' }}>
-                      <div style={{ color: '#fff', fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 68, lineHeight: 1 }}>{s.value}</div>
-                      <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: 26, fontWeight: 600, marginTop: 6, textTransform: 'uppercase', letterSpacing: 1.5 }}>{s.label}</div>
+                      <div style={{ color: '#fff', fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: statValueSize, lineHeight: 1 }}>{s.value}</div>
+                      <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: statLabelSize, fontWeight: 600, marginTop: 6, textTransform: 'uppercase', letterSpacing: 1.5 }}>{s.label}</div>
                     </div>
                   ))}
                 </div>
@@ -210,9 +263,37 @@ export default function ShareCard({ badge, title, icon: Icon, routePoints, avail
                 <button onClick={() => removeAt(i)} className="w-8 h-8 flex-shrink-0 rounded-lg border border-[#334155] text-[#64748B] hover:text-red-400 hover:border-red-800/50 text-sm">✕</button>
               </div>
             ))}
+            {customStats.map((s, i) => (
+              <div key={`c${i}`} className="flex items-center gap-2">
+                <div className="input flex-1 text-sm flex items-center justify-between">
+                  <span className="truncate">{s.label} — {s.value}</span>
+                  <span className="text-[10px] text-[#64748B] flex-shrink-0 ml-2">custom</span>
+                </div>
+                <button onClick={() => removeCustomAt(i)} className="w-8 h-8 flex-shrink-0 rounded-lg border border-[#334155] text-[#64748B] hover:text-red-400 hover:border-red-800/50 text-sm">✕</button>
+              </div>
+            ))}
           </div>
-          {selected.length < Math.min(availableStats.length, MAX_STATS) && (
+          {selected.length < availableStats.length && (
             <button onClick={addStat} className="text-xs text-blue-400 hover:text-blue-300 mt-2">+ Add stat</button>
+          )}
+
+          {/* Custom stat — unlimited, type your own label/value */}
+          <div className="flex items-center gap-2 mt-3">
+            <input className="input flex-1 text-sm" placeholder="Label (e.g. Team)" value={customLabel} onChange={e => setCustomLabel(e.target.value)} />
+            <input className="input flex-1 text-sm" placeholder="Value (e.g. Rovers)" value={customValue} onChange={e => setCustomValue(e.target.value)} />
+            <button onClick={addCustomStat} disabled={!customLabel.trim() || !customValue.trim()} className="btn-secondary text-xs px-3 py-2 flex-shrink-0 disabled:opacity-40">+ Add</button>
+          </div>
+
+          {/* Save current selection as the default for next time */}
+          {defaultScopes && defaultScopes.length > 0 && (
+            <div className="flex items-center gap-2 mt-3 flex-wrap">
+              {defaultScopes.map(scope => (
+                <button key={scope.key} onClick={() => saveDefault(scope.key)} className="text-xs text-[#64748B] hover:text-white border border-[#334155] hover:border-[#475569] rounded-lg px-2.5 py-1.5">
+                  💾 Save as default for {scope.label}
+                </button>
+              ))}
+              {saveMsg && <span className="text-xs text-green-400">{saveMsg}</span>}
+            </div>
           )}
         </div>
 

@@ -54,6 +54,10 @@ export default function ActivityLogPage() {
   // Type breakdown for past 30 days
   const byType: Partial<Record<ExerciseType, number>> = {};
   for (const a of past30) byType[a.exercise_type] = (byType[a.exercise_type] || 0) + 1;
+  const runs30 = past30.filter(a => a.exercise_type === 'run' && a.pace_min_km);
+  const avgRunPace30 = runs30.length ? runs30.reduce((s, a) => s + (a.pace_min_km || 0), 0) / runs30.length : null;
+  const mostActiveType30 = (Object.entries(byType) as [ExerciseType, number][]).sort((a, b) => b[1] - a[1])[0];
+  const longestDist30 = Math.max(0, ...past30.map(a => a.distance_km || 0));
 
   const filtered = activities.filter(a => {
     const matchSearch = !search || a.name.toLowerCase().includes(search.toLowerCase());
@@ -310,26 +314,41 @@ export default function ActivityLogPage() {
         />
       )}
 
-      {sharing && (
-        <ShareCard
-          badge={EXERCISE_TYPE_LABELS[sharing.exercise_type]}
-          title={sharing.name}
-          icon={EXERCISE_TYPE_ICONS[sharing.exercise_type]}
-          availableStats={[
-            sharing.distance_km ? { label: 'Distance', value: `${sharing.distance_km} km` } : null,
-            { label: 'Duration', value: formatDuration(sharing.duration_minutes) },
-            sharing.pace_min_km ? { label: 'Pace', value: formatPaceMinKm(sharing.pace_min_km) } : null,
-            sharing.pace_min_km ? { label: 'Speed', value: formatSpeedKmh(sharing.pace_min_km) } : null,
-            sharing.avg_hr ? { label: 'Avg HR', value: `${sharing.avg_hr} bpm` } : null,
-            sharing.max_hr ? { label: 'Max HR', value: `${sharing.max_hr} bpm` } : null,
-            sharing.elevation_gain_m ? { label: 'Elevation', value: `${sharing.elevation_gain_m} m` } : null,
-            sharing.intensity_minutes ? { label: 'Intensity Mins', value: String(sharing.intensity_minutes) } : null,
-          ].filter(Boolean) as ShareStat[]}
-          dateLabel={formatDate(sharing.date)}
-          accentColor={EXERCISE_TYPE_COLORS[sharing.exercise_type]}
-          onClose={() => setSharing(null)}
-        />
-      )}
+      {sharing && (() => {
+        const subtypeLabel = sharing.exercise_type === 'run'
+          ? (sharing.run_type ? RUN_TYPE_LABELS[sharing.run_type] : null)
+          : (sharing.sub_type ? subTypeLabel(sharing.sub_type) : null);
+        const subtypeKey = sharing.exercise_type === 'run' ? sharing.run_type : sharing.sub_type;
+        const typeLabel = EXERCISE_TYPE_LABELS[sharing.exercise_type];
+        return (
+          <ShareCard
+            badge={typeLabel}
+            subtitle={subtypeLabel ?? undefined}
+            title={sharing.name}
+            icon={EXERCISE_TYPE_ICONS[sharing.exercise_type]}
+            availableStats={[
+              sharing.distance_km ? { label: 'Distance', value: `${sharing.distance_km} km` } : null,
+              { label: 'Duration', value: formatDuration(sharing.duration_minutes) },
+              sharing.pace_min_km ? { label: 'Pace', value: formatPaceMinKm(sharing.pace_min_km) } : null,
+              sharing.pace_min_km ? { label: 'Speed', value: formatSpeedKmh(sharing.pace_min_km) } : null,
+              sharing.max_pace_min_km ? { label: 'Max Pace', value: formatPaceMinKm(sharing.max_pace_min_km) } : null,
+              sharing.avg_hr ? { label: 'Avg HR', value: `${sharing.avg_hr} bpm` } : null,
+              sharing.max_hr ? { label: 'Max HR', value: `${sharing.max_hr} bpm` } : null,
+              sharing.elevation_gain_m ? { label: 'Elevation', value: `${sharing.elevation_gain_m} m` } : null,
+              sharing.intensity_minutes ? { label: 'Intensity Mins', value: String(sharing.intensity_minutes) } : null,
+              { label: 'Effort', value: `${sharing.effort}/10` },
+              sharing.is_pb ? { label: 'Personal Best', value: sharing.pb_description || 'Yes' } : null,
+            ].filter(Boolean) as ShareStat[]}
+            dateLabel={formatDate(sharing.date)}
+            accentColor={EXERCISE_TYPE_COLORS[sharing.exercise_type]}
+            defaultScopes={[
+              ...(subtypeKey ? [{ key: `${sharing.exercise_type}:${subtypeKey}`, label: subtypeLabel || subtypeKey }] : []),
+              { key: sharing.exercise_type, label: typeLabel },
+            ]}
+            onClose={() => setSharing(null)}
+          />
+        );
+      })()}
       {sharing30 && (
         <ShareCard
           badge="30 Day Overview"
@@ -340,9 +359,13 @@ export default function ActivityLogPage() {
             { label: 'Distance', value: `${totalKm30.toFixed(1)} km` },
             { label: 'Total Time', value: formatDuration(totalMins30) },
             { label: 'Intensity Mins', value: String(totalIntensity30) },
-          ] as ShareStat[]}
+            avgRunPace30 ? { label: 'Avg Run Pace', value: formatPaceMinKm(avgRunPace30) } : null,
+            mostActiveType30 ? { label: 'Most Active', value: EXERCISE_TYPE_LABELS[mostActiveType30[0]] } : null,
+            longestDist30 > 0 ? { label: 'Longest Session', value: `${longestDist30.toFixed(1)} km` } : null,
+          ].filter(Boolean) as ShareStat[]}
           dateLabel={`Last 30 days`}
           accentColor="#8B5CF6"
+          defaultScopes={[{ key: '30day_overview', label: '30-Day Overview' }]}
           onClose={() => setSharing30(false)}
         />
       )}
