@@ -269,7 +269,7 @@ export default function PlanView({ plan, onChange, onEdit, onDelete, onBack, onS
       {isRun && <RunTypeGlossary />}
 
       {/* Restart */}
-      <div>
+      <div className="plan-no-print">
         {!confirmRestart ? (
           <button onClick={() => setConfirmRestart(true)} className="w-full py-2 text-sm text-[#64748B] hover:text-blue-400 transition-colors">↻ Restart from today</button>
         ) : (
@@ -281,7 +281,7 @@ export default function PlanView({ plan, onChange, onEdit, onDelete, onBack, onS
       </div>
 
       {/* Delete */}
-      <div>
+      <div className="plan-no-print">
         {!confirmDel ? (
           <button onClick={() => setConfirmDel(true)} className="w-full py-2 text-sm text-[#64748B] hover:text-red-400 transition-colors">Delete plan</button>
         ) : (

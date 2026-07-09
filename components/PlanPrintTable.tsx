@@ -27,13 +27,16 @@ export default function PlanPrintTable({ plan }: { plan: PlanData }) {
               const parts = sessionParts(s);
               return (
                 <td key={d} style={{ padding: '3px 4px', border: '1px solid #ccc', verticalAlign: 'top' }}>
-                  {parts.map((p, i) => (
-                    <div key={i} style={{ marginBottom: i < parts.length - 1 ? 3 : 0 }}>
-                      <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: sessionColor(p), marginRight: 3 }} />
-                      <span>{p.title}</span>
-                      {sessionTarget(p) && <span style={{ color: '#555' }}> — {sessionTarget(p)}</span>}
-                    </div>
-                  ))}
+                  {parts.map((p, i) => {
+                    const muted = p.type === 'rest' || p.type === 'crosstrain';
+                    return (
+                      <div key={i} style={{ marginBottom: i < parts.length - 1 ? 3 : 0 }}>
+                        <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: sessionColor(p), marginRight: 3 }} />
+                        <span style={{ color: muted ? '#555' : '#1D4ED8', fontWeight: muted ? 400 : 600 }}>{p.title}</span>
+                        {sessionTarget(p) && <span style={{ color: '#555' }}> — {sessionTarget(p)}</span>}
+                      </div>
+                    );
+                  })}
                 </td>
               );
             })}
