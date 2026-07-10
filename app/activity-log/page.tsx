@@ -119,7 +119,7 @@ export default function ActivityLogPage() {
           <button
             onClick={() => setExporting(true)}
             disabled={activities.length === 0}
-            className="btn-secondary text-xs flex items-center gap-1 flex-shrink-0 px-3 py-1.5"
+            className="btn-secondary btn-compact flex items-center gap-1 flex-shrink-0"
           >
             ↓ Export
           </button>

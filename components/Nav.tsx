@@ -5,7 +5,7 @@ import { Plus, LayoutDashboard, List, Footprints, TrendingUp, Award, BookOpen, T
 import { useAuth } from './AuthProvider';
 import { useDirtyForm } from './DirtyFormContext';
 
-const tabs = [
+const mainTabs = [
   { href: '/add', label: 'Add', icon: Plus },
   { href: '/activity-log', label: 'Log', icon: List },
   { href: '/run-log', label: 'Runs', icon: Footprints },
@@ -14,9 +14,15 @@ const tabs = [
   { href: '/training-plan', label: 'Plan', icon: Target },
   { href: '/pbs', label: "PB's", icon: Award },
   { href: '/notes', label: 'Notes', icon: BookOpen },
+];
+
+const importExportTabs = [
   { href: '/import', label: 'Import', icon: Upload },
   { href: '/export', label: 'Export', icon: Download },
 ];
+
+// Every non-mobile-bottom-bar tab, used by the mobile nav's filter below.
+const tabs = [...mainTabs, ...importExportTabs];
 
 // Shown in the desktop sidebar only — the mobile bottom nav is already full.
 const desktopOnlyTabs = [
@@ -46,7 +52,7 @@ export default function Nav() {
           <p className="text-xs text-[#64748B] mt-0.5 font-medium" style={{ fontFamily: 'var(--font-body)' }}>Exercise Tracker</p>
         </div>
         <div className="flex flex-col gap-1 flex-1">
-          {tabs.map(({ href, label, icon: Icon }) => {
+          {mainTabs.map(({ href, label, icon: Icon }) => {
             const active = path === href || path.startsWith(href + '/');
             return (
               <Link
@@ -66,6 +72,25 @@ export default function Nav() {
           })}
           <div className="my-2 border-t border-[#334155]" />
           {desktopOnlyTabs.map(({ href, label, icon: Icon }) => {
+            const active = path === href || path.startsWith(href + '/');
+            return (
+              <Link
+                key={href}
+                href={href}
+                onClick={e => handleNavClick(e, href)}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                  active
+                    ? 'bg-blue-600 text-white'
+                    : 'text-[#94A3B8] hover:bg-[#334155] hover:text-white'
+                }`}
+              >
+                <Icon size={18} />
+                {label}
+              </Link>
+            );
+          })}
+          <div className="my-2 border-t border-[#334155]" />
+          {importExportTabs.map(({ href, label, icon: Icon }) => {
             const active = path === href || path.startsWith(href + '/');
             return (
               <Link
