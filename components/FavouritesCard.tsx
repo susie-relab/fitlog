@@ -19,17 +19,17 @@ export default function FavouritesCard({ favourites, activities }: Props) {
       {favItems.length > 0 && (
         <div className="mb-3">
           <p className="text-xs font-semibold text-[#64748B] uppercase tracking-wide mb-2">Favourite Activities</p>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-col gap-1">
             {favItems.map(i => (
-              <span key={i.key} className="px-2.5 py-1.5 rounded-lg border border-[#334155] text-sm text-white">{i.emoji} {i.label}</span>
+              <div key={i.key} className="text-sm text-white">{i.emoji} {i.label}</div>
             ))}
           </div>
         </div>
       )}
       {(topTypes.length > 0 || topSubtypes.length > 0) && (
-        <div className={favItems.length > 0 ? 'pt-3 border-t border-[#334155]' : ''}>
-          <p className="text-xs font-semibold text-[#64748B] uppercase tracking-wide mb-2">Top 5 <span className="font-normal">(past 3 months)</span></p>
-          <div className="grid grid-cols-2 gap-x-4">
+        <div className={`grid grid-cols-2 gap-x-4 ${favItems.length > 0 ? 'pt-3 border-t border-[#334155]' : ''}`}>
+          <div>
+            <p className="text-xs font-semibold text-[#64748B] uppercase tracking-wide mb-2">Top 5 exercise types:</p>
             <div className="flex flex-col gap-1">
               {topTypes.map(({ item, count }) => (
                 <div key={item.key} className="flex items-center justify-between text-xs">
@@ -38,6 +38,9 @@ export default function FavouritesCard({ favourites, activities }: Props) {
                 </div>
               ))}
             </div>
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-[#64748B] uppercase tracking-wide mb-2">Top 5 session types:</p>
             <div className="flex flex-col gap-1">
               {topSubtypes.map(({ item, count }) => (
                 <div key={item.key} className="flex items-center justify-between text-xs">

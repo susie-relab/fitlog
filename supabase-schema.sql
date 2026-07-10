@@ -170,6 +170,9 @@ create index if not exists training_plans_user on training_plans(user_id, create
 -- alter table activities drop constraint if exists activities_effort_check;
 -- alter table activities add constraint activities_effort_check check (effort between 1 and 11);
 
+-- Migration: sport focus (Game/Match, Training, Skills, Conditioning, Recovery) for team sports
+-- alter table activities add column if not exists sport_focus text;
+
 -- Migration: if goals table already exists, run these:
 -- alter table goals add column if not exists activity_type text not null default 'all';
 -- alter table goals drop constraint if exists goals_user_id_period_key;

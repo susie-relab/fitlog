@@ -162,9 +162,9 @@ export default function ProfilePage() {
           favItems.length === 0 ? (
             <p className="text-sm text-[#475569]">None yet — tap Edit to choose.</p>
           ) : (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-col gap-1.5">
               {favItems.map(i => (
-                <span key={i.key} className="px-2.5 py-1.5 rounded-lg border border-[#334155] text-sm text-white">{i.emoji} {i.label}</span>
+                <div key={i.key} className="text-sm text-white">{i.emoji} {i.label}</div>
               ))}
             </div>
           )
@@ -207,7 +207,7 @@ export default function ProfilePage() {
           <h2 className="text-sm font-semibold text-white mb-3">Top 5 <span className="text-[#64748B] font-normal">(past 3 months)</span></h2>
           {topTypes.length > 0 && (
             <div className="mb-3">
-              <p className="text-xs text-[#64748B] uppercase tracking-wide mb-1.5">Exercise Types</p>
+              <p className="text-xs text-[#64748B] uppercase tracking-wide mb-1.5">Top 5 exercise types:</p>
               <div className="flex flex-col gap-1">
                 {topTypes.map(({ item, count }) => (
                   <div key={item.key} className="flex items-center justify-between text-sm">
@@ -220,7 +220,7 @@ export default function ProfilePage() {
           )}
           {topSubtypes.length > 0 && (
             <div>
-              <p className="text-xs text-[#64748B] uppercase tracking-wide mb-1.5">Subtypes</p>
+              <p className="text-xs text-[#64748B] uppercase tracking-wide mb-1.5">Top 5 session types:</p>
               <div className="flex flex-col gap-1">
                 {topSubtypes.map(({ item, count }) => (
                   <div key={item.key} className="flex items-center justify-between text-sm">

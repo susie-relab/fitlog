@@ -6,8 +6,8 @@ import {
   EXERCISE_TYPE_LABELS, RUN_TYPE_LABELS,
   EXERCISE_TYPE_COLORS, RUN_TYPE_COLORS,
   EXERCISE_TYPE_ORDER, RUN_TYPE_TERRAIN, RUN_TYPE_WORKOUT,
-  SportSubType, GymSubType, WaterSnowSubType, SwimSubType, SwimFocus, SwimStyle, FitnessSubType, BikeSubType, StretchSubType, WalkSubType,
-  SPORT_SUB_LABELS, GYM_SUB_LABELS, WATER_SNOW_SUB_LABELS, SWIM_SUB_LABELS, SWIM_FOCUS_LABELS, SWIM_STYLE_LABELS, FITNESS_SUB_LABELS, BIKE_SUB_LABELS, STRETCH_SUB_LABELS, WALK_SUB_LABELS,
+  SportSubType, SportFocus, GymSubType, WaterSnowSubType, SwimSubType, SwimFocus, SwimStyle, FitnessSubType, BikeSubType, StretchSubType, WalkSubType,
+  SPORT_SUB_LABELS, SPORT_FOCUS_LABELS, GYM_SUB_LABELS, WATER_SNOW_SUB_LABELS, SWIM_SUB_LABELS, SWIM_FOCUS_LABELS, SWIM_STYLE_LABELS, FITNESS_SUB_LABELS, BIKE_SUB_LABELS, STRETCH_SUB_LABELS, WALK_SUB_LABELS,
 } from '@/types';
 import DistancePicker from './DistancePicker';
 import ImageUploader from './ImageUploader';
@@ -32,6 +32,7 @@ export default function EditActivityModal({ activity, onClose, onSaved, onDelete
   const [runTypeModifier, setRunTypeModifier] = useState<RunType | ''>(activity.run_type_modifier || '');
   const [subType, setSubType] = useState(activity.exercise_type === 'hiit' ? '' : activity.sub_type || '');
   const [gymTypes, setGymTypes] = useState<string[]>(activity.exercise_type === 'hiit' && activity.sub_type ? activity.sub_type.split(',') : []);
+  const [sportFocus, setSportFocus] = useState<SportFocus | ''>(activity.sport_focus || '');
   const [swimFocus, setSwimFocus] = useState<SwimFocus | ''>(activity.swim_focus || '');
   const [swimStyles, setSwimStyles] = useState<string[]>(activity.swim_styles ? activity.swim_styles.split(',') : []);
   const [hours, setHours] = useState(String(Math.floor(activity.duration_minutes / 60) || ''));
@@ -90,6 +91,7 @@ export default function EditActivityModal({ activity, onClose, onSaved, onDelete
         run_type: exerciseType === 'run' ? runType || null : null,
         run_type_modifier: exerciseType === 'run' ? runTypeModifier || null : null,
         sub_type: exerciseType === 'hiit' ? gymTypes.join(',') || null : subType || null,
+        sport_focus: exerciseType === 'sport' ? sportFocus || null : null,
         swim_focus: exerciseType === 'swim' ? swimFocus || null : null,
         swim_styles: exerciseType === 'swim' ? swimStyles.join(',') || null : null,
         duration_minutes: durationMinutes,
@@ -167,7 +169,7 @@ export default function EditActivityModal({ activity, onClose, onSaved, onDelete
               {EXERCISE_TYPE_ORDER.map(type => (
                 <button
                   key={type}
-                  onClick={() => { setExerciseType(type); setRunType(''); setRunTypeModifier(''); setSubType(''); setGymTypes([]); setSwimFocus(''); setSwimStyles([]); }}
+                  onClick={() => { setExerciseType(type); setRunType(''); setRunTypeModifier(''); setSubType(''); setGymTypes([]); setSportFocus(''); setSwimFocus(''); setSwimStyles([]); }}
                   className={`flex items-center px-3 py-2.5 rounded-lg text-sm font-medium border transition-all text-left ${
                     exerciseType === type ? 'border-2 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'
                   }`}
@@ -236,6 +238,15 @@ export default function EditActivityModal({ activity, onClose, onSaved, onDelete
                   <button key={t} onClick={() => setSubType(subType === t ? '' : t)}
                     className={`px-2 py-2 rounded-lg text-xs font-medium border transition-all text-center ${subType === t ? 'border-orange-500 bg-orange-500/20 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>
                     {SPORT_SUB_LABELS[t]}
+                  </button>
+                ))}
+              </div>
+              <label className="label mt-3">Sport Focus <span className="text-[#64748B]">(optional)</span></label>
+              <div className="grid grid-cols-3 gap-1.5">
+                {(Object.keys(SPORT_FOCUS_LABELS) as SportFocus[]).map(t => (
+                  <button key={t} onClick={() => setSportFocus(sportFocus === t ? '' : t)}
+                    className={`px-2 py-2 rounded-lg text-xs font-medium border transition-all text-center ${sportFocus === t ? 'border-orange-500 bg-orange-500/20 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>
+                    {SPORT_FOCUS_LABELS[t]}
                   </button>
                 ))}
               </div>
