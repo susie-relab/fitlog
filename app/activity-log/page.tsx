@@ -263,7 +263,7 @@ export default function ActivityLogPage() {
                   </div>
                 </div>
                 <div className="text-right flex-shrink-0">
-                  <div className="text-sm text-white font-medium">{formatDuration(a.duration_minutes)}</div>
+                  <div className="text-sm text-white font-medium">{formatDuration(a.duration_minutes, a.duration_seconds)}</div>
                   {a.distance_km && <div className="text-xs text-[#64748B]">{a.distance_km} km</div>}
                 </div>
                 <span className="text-[#475569] text-xs ml-1">{isOpen ? '▲' : '▼'}</span>
@@ -286,7 +286,7 @@ export default function ActivityLogPage() {
                     </button>
                   </div>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-                    <Detail label="Duration" value={formatDuration(a.duration_minutes)} />
+                    <Detail label="Duration" value={formatDuration(a.duration_minutes, a.duration_seconds)} />
                     <Detail label="Effort" value={`${a.effort}/10`} />
                     {a.distance_km && <Detail label="Distance" value={`${a.distance_km} km`} />}
                     {a.pace_min_km && (
@@ -360,7 +360,7 @@ export default function ActivityLogPage() {
             icon={EXERCISE_TYPE_ICONS[sharing.exercise_type]}
             availableStats={[
               sharing.distance_km ? { label: 'Distance', value: `${sharing.distance_km} km` } : null,
-              { label: 'Duration', value: formatDuration(sharing.duration_minutes) },
+              { label: 'Duration', value: formatDuration(sharing.duration_minutes, sharing.duration_seconds) },
               sharing.pace_min_km ? { label: 'Pace', value: formatPaceMinKm(sharing.pace_min_km) } : null,
               sharing.pace_min_km ? { label: 'Speed', value: formatSpeedKmh(sharing.pace_min_km) } : null,
               sharing.max_pace_min_km ? { label: 'Max Pace', value: formatPaceMinKm(sharing.max_pace_min_km) } : null,

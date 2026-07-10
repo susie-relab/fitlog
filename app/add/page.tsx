@@ -94,33 +94,33 @@ export default function AddPage() {
   }, [isDirty]);
 
   const durationSeconds = (parseInt(hours || '0') * 3600) + (parseInt(mins || '0') * 60) + parseInt(secs || '0');
-  // Only whole minutes are stored — floor (not round) so entering seconds never bumps
-  // the saved duration up to the next minute (e.g. 45:30 stays 45m, not rounds to 46m).
-  // Sub-minute entries (e.g. 45s alone) still save as 1m rather than being floored to 0.
-  const durationMinutes = durationSeconds > 0 ? Math.max(1, Math.floor(durationSeconds / 60)) : 0;
+  // Whole minutes + a leftover-seconds remainder are both stored — floor (not round) the
+  // minutes so entering seconds never bumps the saved minutes up (45:30 stays 45m 30s, not 46m).
+  const durationMinutes = Math.floor(durationSeconds / 60);
+  const durationExtraSeconds = durationSeconds % 60;
 
   const paceToDecimal = (m: string, s: string) => {
     if (!m && !s) return undefined;
     return parseFloat(m || '0') + parseFloat(s || '0') / 60;
   };
 
-  const calcAutoPace = (distStr: string, durMins: number) => {
+  const calcAutoPace = (distStr: string, totalDurationSeconds: number) => {
     const dist = parseFloat(distStr);
-    if (!dist || dist <= 0 || durMins <= 0) return undefined;
-    return Math.round((durMins / dist) * 1000) / 1000;
+    if (!dist || dist <= 0 || totalDurationSeconds <= 0) return undefined;
+    return Math.round((totalDurationSeconds / 60 / dist) * 1000) / 1000;
   };
 
   const handleSave = async () => {
     if (!name.trim()) return setError('Please enter an activity name.');
     if (!exerciseType) return setError('Please select an exercise type.');
-    if (durationMinutes <= 0) return setError('Please enter a valid duration.');
+    if (durationSeconds <= 0) return setError('Please enter a valid duration.');
     if (!effort) return setError('Please select effort level.');
 
     setSaving(true);
     setError('');
 
     const distanceKm = distance ? parseFloat(distance) : null;
-    const paceMinKm = paceToDecimal(paceMin, paceSec) ?? calcAutoPace(distance, durationMinutes) ?? null;
+    const paceMinKm = paceToDecimal(paceMin, paceSec) ?? calcAutoPace(distance, durationSeconds) ?? null;
 
     const { data: inserted, error: dbErr } = await supabase.from('activities').insert({
       user_id: user!.id,
@@ -130,6 +130,7 @@ export default function AddPage() {
       run_type_modifier: exerciseType === 'run' ? runTypeModifier || null : null,
       sub_type: exerciseType === 'hiit' ? gymTypes.join(',') || null : subType || null,
       duration_minutes: durationMinutes,
+      duration_seconds: durationExtraSeconds,
       effort,
       distance_km: distanceKm,
       notes: notes || null,
@@ -472,7 +473,6 @@ export default function AddPage() {
           {durationSeconds > 0 && (
             <p className="text-xs text-[#64748B] mt-1">
               {Math.floor(durationSeconds / 3600) > 0 ? `${Math.floor(durationSeconds / 3600)}h ` : ''}{Math.floor((durationSeconds % 3600) / 60) > 0 ? `${Math.floor((durationSeconds % 3600) / 60)}m ` : ''}{durationSeconds % 60 > 0 ? `${durationSeconds % 60}s` : ''}
-              {durationSeconds % 60 > 0 ? ` (saved as ${durationMinutes}m)` : ''}
             </p>
           )}
         </div>

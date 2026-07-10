@@ -305,7 +305,7 @@ export default function RunLogPage() {
                   </div>
                 </div>
                 <div className="text-right flex-shrink-0">
-                  <div className="text-sm font-medium text-white">{r.distance_km ? `${r.distance_km} km` : formatDuration(r.duration_minutes)}</div>
+                  <div className="text-sm font-medium text-white">{r.distance_km ? `${r.distance_km} km` : formatDuration(r.duration_minutes, r.duration_seconds)}</div>
                   {r.pace_min_km && <div className="text-xs text-[#64748B]">{formatPaceMinKm(r.pace_min_km)}</div>}
                 </div>
                 <span className="text-[#475569] text-xs ml-1">{isOpen ? '▲' : '▼'}</span>
@@ -320,7 +320,7 @@ export default function RunLogPage() {
                     ✏️ Edit activity
                   </button>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-                  <RDetail label="Duration" value={formatDuration(r.duration_minutes)} />
+                  <RDetail label="Duration" value={formatDuration(r.duration_minutes, r.duration_seconds)} />
                   <RDetail label="Effort" value={`${r.effort}/10`} />
                   {r.distance_km && <RDetail label="Distance" value={`${r.distance_km} km`} />}
                   {r.pace_min_km && (

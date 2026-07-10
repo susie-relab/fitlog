@@ -33,6 +33,7 @@ export default function EditActivityModal({ activity, onClose, onSaved, onDelete
   const [gymTypes, setGymTypes] = useState<string[]>(activity.exercise_type === 'hiit' && activity.sub_type ? activity.sub_type.split(',') : []);
   const [hours, setHours] = useState(String(Math.floor(activity.duration_minutes / 60) || ''));
   const [mins, setMins] = useState(String(activity.duration_minutes % 60 || ''));
+  const [secs, setSecs] = useState(String(activity.duration_seconds || ''));
   const [effort, setEffort] = useState<number | null>(activity.effort);
   const [distance, setDistance] = useState(activity.distance_km ? String(activity.distance_km) : '');
   const [notes, setNotes] = useState(activity.notes || '');
@@ -53,15 +54,17 @@ export default function EditActivityModal({ activity, onClose, onSaved, onDelete
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [error, setError] = useState('');
 
-  const durationMinutes = (parseInt(hours || '0') * 60) + parseInt(mins || '0');
+  const durationTotalSeconds = (parseInt(hours || '0') * 3600) + (parseInt(mins || '0') * 60) + parseInt(secs || '0');
+  const durationMinutes = Math.floor(durationTotalSeconds / 60);
+  const durationExtraSeconds = durationTotalSeconds % 60;
   const paceToDecimal = (m: string, s: string) => {
     if (!m && !s) return undefined;
     return parseFloat(m || '0') + parseFloat(s || '0') / 60;
   };
-  const calcAutoPace = (distStr: string, durMins: number) => {
+  const calcAutoPace = (distStr: string, totalDurationSeconds: number) => {
     const dist = parseFloat(distStr);
-    if (!dist || dist <= 0 || durMins <= 0) return undefined;
-    return Math.round((durMins / dist) * 1000) / 1000;
+    if (!dist || dist <= 0 || totalDurationSeconds <= 0) return undefined;
+    return Math.round((totalDurationSeconds / 60 / dist) * 1000) / 1000;
   };
 
   const accentColor = exerciseType === 'run' && runType
@@ -70,7 +73,7 @@ export default function EditActivityModal({ activity, onClose, onSaved, onDelete
 
   const handleSave = async () => {
     if (!name.trim()) return setError('Please enter an activity name.');
-    if (durationMinutes <= 0) return setError('Please enter a valid duration.');
+    if (durationTotalSeconds <= 0) return setError('Please enter a valid duration.');
     if (!effort) return setError('Please select effort level.');
 
     setSaving(true);
@@ -85,11 +88,12 @@ export default function EditActivityModal({ activity, onClose, onSaved, onDelete
         run_type_modifier: exerciseType === 'run' ? runTypeModifier || null : null,
         sub_type: exerciseType === 'hiit' ? gymTypes.join(',') || null : subType || null,
         duration_minutes: durationMinutes,
+        duration_seconds: durationExtraSeconds,
         effort,
         distance_km: distance ? parseFloat(distance) : null,
         notes: notes || null,
         intensity_minutes: intensityMins ? parseInt(intensityMins) : null,
-        pace_min_km: paceToDecimal(paceMin, paceSec) ?? calcAutoPace(distance, durationMinutes) ?? null,
+        pace_min_km: paceToDecimal(paceMin, paceSec) ?? calcAutoPace(distance, durationTotalSeconds) ?? null,
         max_pace_min_km: paceToDecimal(maxPaceMin, maxPaceSec) ?? null,
         max_hr: maxHr ? parseInt(maxHr) : null,
         avg_hr: avgHr ? parseInt(avgHr) : null,
@@ -325,6 +329,7 @@ export default function EditActivityModal({ activity, onClose, onSaved, onDelete
             <div className="flex gap-3">
               <input type="number" className="input" placeholder="Hours" min="0" value={hours} onChange={e => setHours(e.target.value)} />
               <input type="number" className="input" placeholder="Minutes" min="0" max="59" value={mins} onChange={e => setMins(e.target.value)} />
+              <input type="number" className="input" placeholder="Seconds" min="0" max="59" value={secs} onChange={e => setSecs(e.target.value)} />
             </div>
           </div>
 

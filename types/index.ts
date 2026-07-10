@@ -155,6 +155,7 @@ export interface Activity {
   run_type_modifier?: RunType;
   sub_type?: string;
   duration_minutes: number;
+  duration_seconds?: number; // leftover seconds (0-59) on top of duration_minutes
   effort: number;
   distance_km?: number;
   notes?: string;

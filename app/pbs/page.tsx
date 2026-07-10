@@ -180,7 +180,7 @@ export default function PBsPage() {
                     <span className="text-xs text-[#64748B]">{formatDate(a.date)}</span>
                     {a.distance_km && <span className="text-xs text-[#94A3B8]">{a.distance_km} km</span>}
                     {a.pace_min_km && <span className="text-xs text-[#94A3B8]">{formatPaceMinKm(a.pace_min_km)}</span>}
-                    <span className="text-xs text-[#94A3B8]">{formatDuration(a.duration_minutes)}</span>
+                    <span className="text-xs text-[#94A3B8]">{formatDuration(a.duration_minutes, a.duration_seconds)}</span>
                   </div>
                 </div>
                 <button onClick={() => setSharing(a)} className="text-xs text-[#64748B] hover:text-white border border-[#334155] hover:border-[#475569] rounded-lg px-2.5 py-1.5 flex-shrink-0">↗ Share</button>
@@ -229,7 +229,7 @@ export default function PBsPage() {
                   {pb!.longestTime && (
                     <div className="flex justify-between text-sm">
                       <span className="text-[#64748B]">Longest Time</span>
-                      <span className="text-blue-400 font-medium">{formatDuration(pb!.longestTime.duration_minutes)}</span>
+                      <span className="text-blue-400 font-medium">{formatDuration(pb!.longestTime.duration_minutes, pb!.longestTime.duration_seconds)}</span>
                     </div>
                   )}
                   {pb!.bestPace && (
@@ -272,7 +272,7 @@ export default function PBsPage() {
                   {pb!.longestTime && (
                     <div className="flex justify-between text-sm">
                       <span className="text-[#64748B]">Longest Time</span>
-                      <span className="text-blue-400 font-medium">{formatDuration(pb!.longestTime.duration_minutes)}</span>
+                      <span className="text-blue-400 font-medium">{formatDuration(pb!.longestTime.duration_minutes, pb!.longestTime.duration_seconds)}</span>
                     </div>
                   )}
                   {pb!.bestPace && (
@@ -398,7 +398,7 @@ export default function PBsPage() {
           icon={PB_SHARE_ICON}
           availableStats={[
             sharing.distance_km ? { label: 'Distance', value: `${sharing.distance_km} km` } : null,
-            { label: 'Duration', value: formatDuration(sharing.duration_minutes) },
+            { label: 'Duration', value: formatDuration(sharing.duration_minutes, sharing.duration_seconds) },
             sharing.pace_min_km ? { label: 'Pace', value: formatPaceMinKm(sharing.pace_min_km) } : null,
             sharing.avg_hr ? { label: 'Avg HR', value: `${sharing.avg_hr} bpm` } : null,
           ].filter(Boolean) as ShareStat[]}

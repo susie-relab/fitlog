@@ -3,12 +3,13 @@ export function openDatePicker(e: { currentTarget: HTMLInputElement }): void {
   try { (e.currentTarget as HTMLInputElement & { showPicker?: () => void }).showPicker?.(); } catch { /* not supported */ }
 }
 
-export function formatDuration(minutes: number): string {
+export function formatDuration(minutes: number, seconds?: number): string {
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
-  if (h === 0) return `${m}m`;
-  if (m === 0) return `${h}h`;
-  return `${h}h ${m}m`;
+  const s = seconds ? `${seconds}s` : '';
+  if (h === 0) return s ? `${m}m ${s}` : `${m}m`;
+  if (m === 0 && !s) return `${h}h`;
+  return `${h}h ${m}m${s ? ` ${s}` : ''}`;
 }
 
 export function formatPaceMinKm(paceMinKm: number): string {
