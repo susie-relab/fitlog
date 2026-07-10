@@ -9,7 +9,7 @@ import ShareCard, { ShareStat } from '@/components/ShareCard';
 import ShareRangeMenu from '@/components/ShareRangeMenu';
 import { WEEK_SHARE_ICON } from '@/lib/shareIcons';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { activitiesToCsv, downloadCsv } from '@/lib/exportCsv';
+import ExportModal from '@/components/ExportModal';
 
 type ChartMetric = 'distance' | 'duration' | 'pace' | 'count';
 
@@ -30,6 +30,7 @@ export default function RunLogPage() {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [chartMetric, setChartMetric] = useState<ChartMetric>('distance');
   const [showChart, setShowChart] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -92,10 +93,7 @@ export default function RunLogPage() {
         <div className="flex gap-2">
           <ShareRangeMenu activities={runs} icon={WEEK_SHARE_ICON} accentColor="#3B82F6" nounSingular="Run" nounPlural="Runs" showPace defaultScopeKey="run_share" />
           <button
-            onClick={() => {
-              const csv = activitiesToCsv(runs);
-              downloadCsv(csv, `sportlog-runs-${new Date().toISOString().split('T')[0]}.csv`);
-            }}
+            onClick={() => setExporting(true)}
             disabled={runs.length === 0}
             className="btn-secondary text-sm flex items-center gap-1.5"
           >
@@ -374,6 +372,16 @@ export default function RunLogPage() {
             setRuns(prev => prev.filter(r => r.id !== id));
             setEditing(null);
           }}
+        />
+      )}
+
+      {exporting && (
+        <ExportModal
+          activities={runs}
+          filenamePrefix="sportlog-runs"
+          typeOptions={RUN_TYPES.map(t => ({ key: t, label: RUN_TYPE_LABELS[t] }))}
+          matchType={(a, key) => a.run_type === key}
+          onClose={() => setExporting(false)}
         />
       )}
     </div>

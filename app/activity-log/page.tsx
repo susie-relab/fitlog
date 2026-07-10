@@ -13,7 +13,7 @@ import ImageGallery from '@/components/ImageGallery';
 import ShareCard, { ShareStat } from '@/components/ShareCard';
 import ShareRangeMenu from '@/components/ShareRangeMenu';
 import { EXERCISE_TYPE_ICONS, THIRTY_DAY_SHARE_ICON } from '@/lib/shareIcons';
-import { activitiesToCsv, downloadCsv } from '@/lib/exportCsv';
+import ExportModal from '@/components/ExportModal';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
 type ChartWindow = '30d' | '90d' | '6m' | '1y' | 'all';
@@ -27,6 +27,7 @@ export default function ActivityLogPage() {
   const [sharing, setSharing] = useState<Activity | null>(null);
   const [filterType, setFilterType] = useState<ExerciseType | ''>('');
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
   const [chartWindow, setChartWindow] = useState<ChartWindow>('30d');
   const [showChart, setShowChart] = useState(false);
 
@@ -116,10 +117,7 @@ export default function ActivityLogPage() {
         <div className="flex gap-2">
           <ShareRangeMenu activities={activities} icon={THIRTY_DAY_SHARE_ICON} accentColor="#8B5CF6" nounSingular="Activity" nounPlural="Activities" defaultScopeKey="activity_share" />
           <button
-            onClick={() => {
-              const csv = activitiesToCsv(activities);
-              downloadCsv(csv, `sportlog-all-${new Date().toISOString().split('T')[0]}.csv`);
-            }}
+            onClick={() => setExporting(true)}
             disabled={activities.length === 0}
             className="btn-secondary text-xs flex items-center gap-1 flex-shrink-0 px-3 py-1.5"
           >
@@ -383,6 +381,16 @@ export default function ActivityLogPage() {
           />
         );
       })()}
+
+      {exporting && (
+        <ExportModal
+          activities={activities}
+          filenamePrefix="sportlog-activities"
+          typeOptions={EXERCISE_TYPE_ORDER.map(t => ({ key: t, label: EXERCISE_TYPE_LABELS[t] }))}
+          matchType={(a, key) => a.exercise_type === key}
+          onClose={() => setExporting(false)}
+        />
+      )}
     </div>
   );
 }
