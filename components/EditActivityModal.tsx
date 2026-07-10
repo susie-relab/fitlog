@@ -244,7 +244,7 @@ export default function EditActivityModal({ activity, onClose, onSaved, onDelete
           {/* Gym subtype — multi select */}
           {exerciseType === 'hiit' && (
             <div>
-              <label className="label">Workout Focus <span className="text-[#64748B]">(optional, pick multiple)</span></label>
+              <label className="label">Workout Focus <span className="text-[#64748B]">(optional + multi-select)</span></label>
               <div className="grid grid-cols-3 gap-1.5">
                 {(Object.keys(GYM_SUB_LABELS) as GymSubType[]).map(t => {
                   const active = gymTypes.includes(t);
@@ -291,7 +291,7 @@ export default function EditActivityModal({ activity, onClose, onSaved, onDelete
                   </button>
                 ))}
               </div>
-              <label className="label mt-3">Swim Style <span className="text-[#64748B]">(optional, pick multiple)</span></label>
+              <label className="label mt-3">Swim Style <span className="text-[#64748B]">(optional + multi-select)</span></label>
               <div className="grid grid-cols-3 gap-1.5">
                 {(Object.keys(SWIM_STYLE_LABELS) as SwimStyle[]).map(t => {
                   const active = swimStyles.includes(t);
