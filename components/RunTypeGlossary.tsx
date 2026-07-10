@@ -20,7 +20,7 @@ const GLOSSARY: { key: keyof typeof SESSION_COLORS; name: string; desc: string }
 export default function RunTypeGlossary() {
   const [open, setOpen] = useState(false);
   return (
-    <div className="card">
+    <div className="card print:break-before-page">
       <button onClick={() => setOpen(o => !o)} className="w-full flex items-center justify-between text-sm font-semibold text-[#94A3B8] uppercase tracking-wide hover:text-white transition-colors print:text-black">
         <span>{open ? '▼' : '▶'} Run Type Guide</span>
       </button>

@@ -165,10 +165,10 @@ export default function EditActivityModal({ activity, onClose, onSaved, onDelete
             </div>
           </div>
 
-          {/* Run Type — workout type and terrain/equipment are independent; pick at most one of each */}
+          {/* Run Type and Run Style are independent; pick at most one of each */}
           {exerciseType === 'run' && (
             <div>
-              <label className="label">Run Type <span className="text-[#64748B]">(optional — pick up to one of each row)</span></label>
+              <label className="label">Run Type <span className="text-[#64748B]">(optional)</span></label>
               <div className="grid grid-cols-2 gap-2">
                 {RUN_TYPE_WORKOUT.map(type => (
                   <button
@@ -187,7 +187,8 @@ export default function EditActivityModal({ activity, onClose, onSaved, onDelete
                   </button>
                 ))}
               </div>
-              <div className="grid grid-cols-2 gap-2 mt-2">
+              <label className="label mt-3">Run Style <span className="text-[#64748B]">(optional)</span></label>
+              <div className="grid grid-cols-2 gap-2">
                 {RUN_TYPE_TERRAIN.map(type => (
                   <button
                     key={type}

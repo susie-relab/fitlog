@@ -215,29 +215,29 @@ function TablePage({ weeks, pageNum, totalWeekPages, planTitle, accentColor }: {
         <div style={{ display: 'grid', gridTemplateColumns: `140px repeat(7, 1fr)`, gap: 4 }}>
           <div />
           {WEEKDAYS.map(d => (
-            <div key={d} style={{ color: '#94A3B8', fontSize: 15, fontWeight: 700, textAlign: 'center', textTransform: 'uppercase' }}>{WEEKDAY_SHORT[d]}</div>
+            <div key={d} style={{ color: '#94A3B8', fontSize: 17, fontWeight: 700, textAlign: 'center', textTransform: 'uppercase' }}>{WEEKDAY_SHORT[d]}</div>
           ))}
         </div>
         {weeks.map(w => (
           <div key={w.weekNumber} style={{ display: 'grid', gridTemplateColumns: `140px repeat(7, 1fr)`, gap: 4 }}>
             <div style={{ background: '#1E293B', border: '1px solid #334155', borderRadius: 8, padding: '6px 8px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-              <div style={{ color: '#fff', fontSize: 15, fontWeight: 700 }}>{w.weekNumber === 0 ? 'Lead-in' : `Week ${w.weekNumber}`}</div>
-              {w.totalKm > 0 && <div style={{ color: accentColor, fontSize: 13, fontWeight: 600 }}>{w.totalKm} km</div>}
+              <div style={{ color: '#fff', fontSize: 17, fontWeight: 700 }}>{w.weekNumber === 0 ? 'Lead-in' : `Week ${w.weekNumber}`}</div>
+              {w.totalKm > 0 && <div style={{ color: accentColor, fontSize: 15, fontWeight: 600 }}>{w.totalKm} km</div>}
             </div>
             {WEEKDAYS.map((d) => {
               const s = w.days[d];
               if (s.beforeStart) return <div key={d} style={{ border: '1px dashed #293548', borderRadius: 8 }} />;
               const parts = sessionParts(s);
               return (
-                <div key={d} style={{ background: '#0F172A', border: '1px solid #293548', borderRadius: 8, padding: '5px 7px', overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: 2, justifyContent: 'center' }}>
+                <div key={d} style={{ background: '#0F172A', border: '1px solid #293548', borderRadius: 8, padding: '6px 8px', overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: 4, justifyContent: 'center' }}>
                   {parts.slice(0, 2).map((p, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
-                      <span style={{ width: 6, height: 6, borderRadius: 999, background: sessionColor(p), flexShrink: 0 }} />
-                      <span style={{ color: '#fff', fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.title}</span>
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
+                      <span style={{ width: 8, height: 8, borderRadius: 999, background: sessionColor(p), flexShrink: 0 }} />
+                      <span style={{ color: '#fff', fontSize: 16, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.title}</span>
                     </div>
                   ))}
                   {parts[0] && sessionTarget(parts[0]) && (
-                    <div style={{ color: '#64748B', fontSize: 11.5 }}>{sessionTarget(parts[0])}</div>
+                    <div style={{ color: '#94A3B8', fontSize: 14.5 }}>{sessionTarget(parts[0])}</div>
                   )}
                 </div>
               );
