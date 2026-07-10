@@ -141,7 +141,14 @@ export default function PlanView({ plan, onChange, onEdit, onDelete, onBack, onS
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handlePrint = () => window.print();
+  const handlePrint = () => {
+    // The browser's own print header/footer shows document.title — swap in the branded
+    // name for the printout, then restore it once the print dialog closes.
+    const prevTitle = document.title;
+    document.title = `SportLogRun — ${planTitle}`;
+    window.addEventListener('afterprint', () => { document.title = prevTitle; }, { once: true });
+    window.print();
+  };
 
 
   const isRace = isRun && plan.distance !== 'keep_fit' && plan.distance !== 'speed';
@@ -165,7 +172,8 @@ export default function PlanView({ plan, onChange, onEdit, onDelete, onBack, onS
 
       {/* Print-only compact summary + table — hidden on screen, shown only in the PDF/print output */}
       <div className="plan-print-only">
-        <h1 style={{ fontSize: 18, fontWeight: 800, marginBottom: 2 }}>{planTitle}</h1>
+        <div style={{ fontFamily: 'var(--font-display), sans-serif', fontWeight: 800, fontStyle: 'italic', fontSize: 13, letterSpacing: 0.5, marginBottom: 8 }}>SportLogRun</div>
+        <h1 style={{ fontFamily: 'var(--font-display), sans-serif', fontSize: 18, fontWeight: 800, marginBottom: 2 }}>{planTitle}</h1>
         <p style={{ fontSize: 11, color: '#444', marginBottom: 6 }}>
           {plan.weeks} weeks · {runsPerWeekText} · {levelText}
         </p>

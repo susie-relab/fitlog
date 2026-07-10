@@ -32,7 +32,6 @@ export default function CustomPlanBuilder({ existing, onSaved, onCancel }: Props
   const [name, setName] = useState(cfg0?.name ?? existing?.name ?? '');
   const [activities, setActivities] = useState<CustomActivity[]>(cfg0?.activities ?? []);
   const [weeks, setWeeks] = useState(cfg0?.weeks ?? existing?.weeks ?? 8);
-  const [daysPerWeek, setDaysPerWeek] = useState(cfg0?.daysPerWeek ?? existing?.days_per_week ?? 5);
   const [trainDays, setTrainDays] = useState<Weekday[]>(cfg0?.trainDays ?? ['mon', 'tue', 'wed', 'thu', 'fri', 'sat']);
   const [level, setLevel] = useState<PlanLevel>(cfg0?.level ?? existing?.level ?? 'moderate');
   const todayISO = todayLocalISO();
@@ -80,15 +79,19 @@ export default function CustomPlanBuilder({ existing, onSaved, onCancel }: Props
   };
   const removeActivity = (i: number) => setActivities(prev => prev.filter((_, idx) => idx !== i));
 
-  // Monthly items count as a weekly-equivalent fraction for the "does it fit
-  // your sessions/week" hint (they land on ~1 of every 4 weeks per unit).
-  const totalPerWeek = activities.reduce((s, a) => s + (a.quantityPeriod === 'month' ? a.quantity / 4 : a.quantity), 0);
+  // Total sessions/week is derived from each activity's own chosen frequency, not a separate
+  // slider — monthly items only land ~1 week in 4, so they widen the total into a range
+  // (e.g. "2-4/week") rather than a single fixed number.
+  const minPerWeek = activities.filter(a => a.quantityPeriod !== 'month').reduce((s, a) => s + a.quantity, 0);
+  const maxPerWeek = minPerWeek + activities.filter(a => a.quantityPeriod === 'month').reduce((s, a) => s + a.quantity, 0);
+  const effectiveDaysPerWeek = Math.min(7, Math.max(1, maxPerWeek || 1));
+  const effectiveDaysPerWeekMin = Math.min(effectiveDaysPerWeek, Math.max(1, minPerWeek || 1));
 
-  const buildConfig = (): CustomConfig => ({ name: name.trim() || undefined, activities, weeks: effectiveWeeks, daysPerWeek, trainDays, level, startDate });
+  const buildConfig = (): CustomConfig => ({ name: name.trim() || undefined, activities, weeks: effectiveWeeks, daysPerWeek: effectiveDaysPerWeek, trainDays, level, startDate });
 
   const handleGenerate = () => {
     if (activities.length === 0) { setError('Add at least one activity.'); return; }
-    if (trainDays.length < daysPerWeek) { setError(`Pick at least ${daysPerWeek} training days.`); return; }
+    if (trainDays.length < effectiveDaysPerWeek) { setError(`Pick at least ${effectiveDaysPerWeek} training days.`); return; }
     setError('');
     setPreview(generateCustomPlan(buildConfig()));
   };
@@ -99,7 +102,7 @@ export default function CustomPlanBuilder({ existing, onSaved, onCancel }: Props
     const payload = {
       user_id: user.id, plan_kind: 'custom' as const,
       distance: 'custom', custom_distance_km: 0, level, weeks: effectiveWeeks,
-      days_per_week: daysPerWeek, days_per_week_min: daysPerWeek,
+      days_per_week: effectiveDaysPerWeek, days_per_week_min: effectiveDaysPerWeekMin,
       train_days: trainDays, goal_time_seconds: null, start_distance_km: null,
       start_date: startDate, name: name.trim() || 'Sport Plan', active: true, plan_data: preview,
       updated_at: new Date().toISOString(),
@@ -129,7 +132,7 @@ export default function CustomPlanBuilder({ existing, onSaved, onCancel }: Props
 
       {/* Added activities */}
       <div>
-        <label className="label">Weekly activities {totalPerWeek > 0 && <span className="text-[#64748B]">(~{Math.round(totalPerWeek * 10) / 10}/week)</span>}</label>
+        <label className="label">Weekly activities</label>
         {activities.length === 0 ? (
           <p className="text-sm text-[#475569]">None yet — add activities below.</p>
         ) : (
@@ -222,14 +225,13 @@ export default function CustomPlanBuilder({ existing, onSaved, onCancel }: Props
         )}
       </div>
 
-      {/* Sessions per week */}
+      {/* Sessions per week — derived from the frequency picked on each activity below */}
       <div>
-        <label className="label">Sessions / week: <span className="text-white font-bold">{daysPerWeek}</span></label>
-        <input type="range" min="1" max="7" value={daysPerWeek} onChange={e => setDaysPerWeek(parseInt(e.target.value))} className="w-full accent-blue-500" />
+        <label className="label">Total sessions / week</label>
+        <p className="text-white font-bold text-sm">
+          {activities.length === 0 ? '— add activities below' : effectiveDaysPerWeekMin === effectiveDaysPerWeek ? `${effectiveDaysPerWeek}/week` : `${effectiveDaysPerWeekMin}-${effectiveDaysPerWeek}/week`}
+        </p>
       </div>
-      {totalPerWeek > daysPerWeek && (
-        <p className="text-xs text-[#64748B]">You've added ~{Math.round(totalPerWeek * 10) / 10}/week worth of activities but {daysPerWeek} sessions/week — the extras will cycle across weeks.</p>
-      )}
 
       {/* Level */}
       <div>
@@ -243,7 +245,7 @@ export default function CustomPlanBuilder({ existing, onSaved, onCancel }: Props
 
       {/* Training days */}
       <div>
-        <label className="label">Available days <span className="text-[#64748B]">(pick at least {daysPerWeek})</span></label>
+        <label className="label">Available days <span className="text-[#64748B]">(pick at least {effectiveDaysPerWeek})</span></label>
         <div className="grid grid-cols-7 gap-1">
           {WEEKDAYS.map(d => (
             <button key={d} onClick={() => toggleDay(d)} className={`py-2 rounded-lg text-[11px] font-semibold border transition-all ${trainDays.includes(d) ? 'bg-blue-600 border-blue-600 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>{WEEKDAY_SHORT[d].slice(0, 1)}</button>

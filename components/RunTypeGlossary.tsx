@@ -21,22 +21,20 @@ export default function RunTypeGlossary() {
   const [open, setOpen] = useState(false);
   return (
     <div className="card">
-      <button onClick={() => setOpen(o => !o)} className="w-full flex items-center justify-between text-sm font-semibold text-[#94A3B8] uppercase tracking-wide hover:text-white transition-colors">
+      <button onClick={() => setOpen(o => !o)} className="w-full flex items-center justify-between text-sm font-semibold text-[#94A3B8] uppercase tracking-wide hover:text-white transition-colors print:text-black">
         <span>{open ? '▼' : '▶'} Run Type Guide</span>
       </button>
-      {open && (
-        <div className="mt-4 flex flex-col gap-3">
-          {GLOSSARY.map(g => (
-            <div key={g.key} className="flex gap-3">
-              <span className="w-2 h-2 rounded-full flex-shrink-0 mt-1.5" style={{ background: SESSION_COLORS[g.key] }} />
-              <div>
-                <span className="text-sm font-semibold text-white">{g.name}</span>
-                <p className="text-xs text-[#94A3B8] leading-relaxed mt-0.5">{g.desc}</p>
-              </div>
+      <div className={`mt-4 flex-col gap-3 print:flex ${open ? 'flex' : 'hidden'}`}>
+        {GLOSSARY.map(g => (
+          <div key={g.key} className="flex gap-3">
+            <span className="w-2 h-2 rounded-full flex-shrink-0 mt-1.5" style={{ background: SESSION_COLORS[g.key] }} />
+            <div>
+              <span className="text-sm font-semibold text-white print:text-black">{g.name}</span>
+              <p className="text-xs text-[#94A3B8] leading-relaxed mt-0.5 print:text-[#333]">{g.desc}</p>
             </div>
-          ))}
-        </div>
-      )}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

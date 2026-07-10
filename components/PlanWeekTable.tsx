@@ -41,6 +41,28 @@ export function sessionColor(s: Session): string {
   return SESSION_COLORS[s.type];
 }
 
+// Monochrome-blue palette for sport-plan session categories on the printed page — easier to
+// scan on paper than the on-screen rainbow, since it's still legible in black & white printing.
+const SPORT_SESSION_PRINT_COLORS: Record<string, string> = {
+  game: '#1E3A8A',
+  training: '#1D4ED8',
+  conditioning: '#2563EB',
+  skills: '#3B82F6',
+  solo: '#60A5FA',
+  recovery: '#93C5FD',
+  easy: '#60A5FA',
+  mixed: '#2563EB',
+  crosstrain: '#64748B',
+};
+
+/** Print variant of sessionColor() — sport-plan sessions use a blue-shade-per-category palette. */
+export function printSessionColor(s: Session): string {
+  if (s.type === 'sport' && s.sportSessionType && SPORT_SESSION_PRINT_COLORS[s.sportSessionType]) {
+    return SPORT_SESSION_PRINT_COLORS[s.sportSessionType];
+  }
+  return sessionColor(s);
+}
+
 const PHASE_COLORS: Record<string, string> = {
   Base: '#3B82F6', Build: '#8B5CF6', Peak: '#F97316', Taper: '#22C55E',
 };
