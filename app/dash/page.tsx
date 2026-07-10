@@ -13,6 +13,7 @@ import Avatar from '@/components/Avatar';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import RecapCard from '@/components/RecapCard';
 import LastWeekSummaryCard from '@/components/LastWeekSummaryCard';
+import FavouritesCard from '@/components/FavouritesCard';
 
 /** The subtype label for any activity — sub_type for most types, run_type for runs. */
 function activitySubLabel(a: Activity): string | null {
@@ -397,6 +398,7 @@ export default function DashPage() {
       </div>
 
       <LastWeekSummaryCard activities={activities} plans={plans} weekStartDay={weekStartPref} todayISO={todayISO} />
+      <FavouritesCard favourites={user?.user_metadata?.favourite_activities ?? []} activities={activities} />
 
       </div>
       </div>

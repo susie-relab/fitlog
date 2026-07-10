@@ -24,6 +24,25 @@ export const EXERCISE_TYPE_LABELS: Record<ExerciseType, string> = {
   water_snow: 'Water / Snow',
 };
 
+// Default emoji per exercise type — used unless a subtype below overrides it.
+export const EXERCISE_TYPE_EMOJI: Record<ExerciseType, string> = {
+  run: '🏃', sport: '⚽', hiit: '🏋️', solo_fitness: '💪', bike: '🚲', swim: '🏊', walk: '🚶', stretch: '🧘', water_snow: '🌊',
+};
+
+// A handful of subtypes/run-styles get their own more specific emoji instead of
+// inheriting their parent exercise type's default.
+const SUBTYPE_EMOJI_OVERRIDES: Record<string, string> = {
+  pool: '🏊‍♂️',
+  snowboard: '🏂',
+  skiing: '⛷️',
+  beach: '🏃🏽‍♀️',
+};
+
+export function activityEmoji(type: ExerciseType, subtype?: string | null): string {
+  if (subtype && SUBTYPE_EMOJI_OVERRIDES[subtype]) return SUBTYPE_EMOJI_OVERRIDES[subtype];
+  return EXERCISE_TYPE_EMOJI[type];
+}
+
 export const EXERCISE_TYPE_COLORS: Record<ExerciseType, string> = {
   run: '#3B82F6',
   sport: '#84CC16',
@@ -154,6 +173,71 @@ const ALL_SUB_LABELS: Record<string, string> = {
 export function subTypeLabel(subType?: string | null): string {
   if (!subType) return '';
   return subType.split(',').map(k => ALL_SUB_LABELS[k.trim()] ?? k.trim()).join(', ');
+}
+
+/** A single pickable "activity" for favourites/top-5 — either a bare exercise type
+ *  (key === type, e.g. "bike") or a specific subtype/run-style (key === "type:subtype",
+ *  e.g. "bike:commute", "run:beach"). */
+export interface FavouriteItem {
+  key: string;
+  type: ExerciseType;
+  subtype?: string;
+  label: string;
+  emoji: string;
+}
+
+/** Every bare type plus every one of its subtypes (and, for Run, its Run Style options) —
+ *  the full picklist for the Profile favourites editor and for matching top-5 counts back
+ *  to a display label/emoji. */
+export function allFavouriteItems(): FavouriteItem[] {
+  const items: FavouriteItem[] = EXERCISE_TYPE_ORDER.map(type => ({
+    key: type, type, label: EXERCISE_TYPE_LABELS[type], emoji: activityEmoji(type),
+  }));
+  const subMaps: [ExerciseType, Record<string, string>][] = [
+    ['sport', SPORT_SUB_LABELS], ['hiit', GYM_SUB_LABELS], ['water_snow', WATER_SNOW_SUB_LABELS],
+    ['swim', SWIM_SUB_LABELS], ['solo_fitness', FITNESS_SUB_LABELS], ['bike', BIKE_SUB_LABELS],
+    ['stretch', STRETCH_SUB_LABELS], ['walk', WALK_SUB_LABELS],
+  ];
+  for (const [type, map] of subMaps) {
+    for (const [key, label] of Object.entries(map)) {
+      items.push({ key: `${type}:${key}`, type, subtype: key, label, emoji: activityEmoji(type, key) });
+    }
+  }
+  // Run has no free-text sub_type — its Run Style (terrain/equipment) fills the same role here.
+  for (const key of RUN_TYPE_TERRAIN) {
+    items.push({ key: `run:${key}`, type: 'run', subtype: key, label: RUN_TYPE_LABELS[key], emoji: activityEmoji('run', key) });
+  }
+  return items;
+}
+
+/** Counts of logged activities over the last N months, by bare type and by specific
+ *  subtype (only activities that actually have one) — used for "Top 5" on Profile/Dash. */
+export function topActivityCounts(activities: Activity[], months = 3) {
+  const cutoff = new Date();
+  cutoff.setMonth(cutoff.getMonth() - months);
+  const cutoffISO = cutoff.toISOString().split('T')[0];
+  const recent = activities.filter(a => a.date >= cutoffISO);
+  const registry = new Map(allFavouriteItems().map(i => [i.key, i]));
+
+  const typeCounts = new Map<string, number>();
+  const subtypeCounts = new Map<string, number>();
+  for (const a of recent) {
+    typeCounts.set(a.exercise_type, (typeCounts.get(a.exercise_type) || 0) + 1);
+    const subKeys = a.exercise_type === 'run'
+      ? (a.run_type_modifier ? [a.run_type_modifier] : [])
+      : (a.sub_type ? a.sub_type.split(',').map(s => s.trim()).filter(Boolean) : []);
+    for (const sk of subKeys) {
+      const key = `${a.exercise_type}:${sk}`;
+      subtypeCounts.set(key, (subtypeCounts.get(key) || 0) + 1);
+    }
+  }
+  const topN = (counts: Map<string, number>, n: number) =>
+    Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, n)
+      .map(([key, count]) => ({ item: registry.get(key) ?? { key, type: key as ExerciseType, label: key, emoji: '🏅' }, count }));
+
+  return { topTypes: topN(typeCounts, 5), topSubtypes: topN(subtypeCounts, 5) };
 }
 
 export interface Activity {

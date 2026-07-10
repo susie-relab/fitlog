@@ -6,6 +6,7 @@ import { useAuth } from '@/components/AuthProvider';
 import Avatar from '@/components/Avatar';
 import Toast from '@/components/Toast';
 import { uploadImages, deleteImage } from '@/lib/images';
+import { Activity, EXERCISE_TYPE_ORDER, EXERCISE_TYPE_LABELS, allFavouriteItems, topActivityCounts, FavouriteItem } from '@/types';
 
 export default function ProfilePage() {
   const { user } = useAuth();
@@ -18,6 +19,9 @@ export default function ProfilePage() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [newEmail, setNewEmail] = useState('');
+  const [favourites, setFavourites] = useState<string[]>([]);
+  const [showFavPicker, setShowFavPicker] = useState(false);
+  const [activities, setActivities] = useState<Activity[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const flash = (text: string, ok: boolean) => {
@@ -29,7 +33,33 @@ export default function ProfilePage() {
     if (user?.user_metadata?.username) setUsername(user.user_metadata.username);
     if (user?.user_metadata?.age) setAge(String(user.user_metadata.age));
     setAvatarUrl(user?.user_metadata?.avatar_url ?? null);
+    setFavourites(user?.user_metadata?.favourite_activities ?? []);
   }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    supabase.from('activities').select('*').eq('user_id', user.id).then(({ data }) => setActivities((data as Activity[]) || []));
+  }, [user]);
+
+  const { topTypes, topSubtypes } = topActivityCounts(activities, 3);
+  const allItems = allFavouriteItems();
+  const favItems = favourites.map(k => allItems.find(i => i.key === k)).filter(Boolean) as FavouriteItem[];
+
+  const toggleFavourite = (key: string) => {
+    setFavourites(prev => {
+      if (prev.includes(key)) return prev.filter(k => k !== key);
+      if (prev.length >= 5) return prev;
+      return [...prev, key];
+    });
+  };
+
+  const saveFavourites = async () => {
+    setSaving(true);
+    const { error } = await supabase.auth.updateUser({ data: { ...user?.user_metadata, favourite_activities: favourites } });
+    setSaving(false);
+    flash(error ? error.message : 'Favourites saved!', !error);
+    if (!error) setShowFavPicker(false);
+  };
 
   const handleUpdateUsername = async () => {
     if (!username.trim()) return;
@@ -121,6 +151,88 @@ export default function ProfilePage() {
         <input type="number" min="0" max="120" className="input mb-3" placeholder="Enter your age" value={age} onChange={e => setAge(e.target.value)} />
         <button onClick={handleUpdateUsername} disabled={saving} className="btn-primary w-full">Save Profile</button>
       </div>
+
+      {/* Favourite activities */}
+      <div className="card mb-6">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-white">Favourite Activities <span className="text-[#64748B] font-normal">(pick up to 5)</span></h2>
+          <button onClick={() => setShowFavPicker(v => !v)} className="text-xs text-blue-400 hover:text-blue-300">{showFavPicker ? 'Done' : 'Edit'}</button>
+        </div>
+        {!showFavPicker ? (
+          favItems.length === 0 ? (
+            <p className="text-sm text-[#475569]">None yet — tap Edit to choose.</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {favItems.map(i => (
+                <span key={i.key} className="px-2.5 py-1.5 rounded-lg border border-[#334155] text-sm text-white">{i.emoji} {i.label}</span>
+              ))}
+            </div>
+          )
+        ) : (
+          <>
+            <p className="text-xs text-[#64748B] mb-3">{favourites.length}/5 selected</p>
+            <div className="flex flex-col gap-3 max-h-80 overflow-y-auto pr-1">
+              {EXERCISE_TYPE_ORDER.map(type => {
+                const items = allItems.filter(i => i.type === type);
+                return (
+                  <div key={type}>
+                    <p className="text-xs font-semibold text-[#64748B] uppercase tracking-wide mb-1.5">{EXERCISE_TYPE_LABELS[type]}</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {items.map(i => {
+                        const active = favourites.includes(i.key);
+                        return (
+                          <button
+                            key={i.key}
+                            onClick={() => toggleFavourite(i.key)}
+                            disabled={!active && favourites.length >= 5}
+                            className={`px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-all disabled:opacity-30 ${active ? 'border-blue-500 bg-blue-500/20 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}
+                          >
+                            {i.emoji} {i.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <button onClick={saveFavourites} disabled={saving} className="btn-primary w-full mt-4">Save Favourites</button>
+          </>
+        )}
+      </div>
+
+      {/* Top 5 — most logged in the past 3 months */}
+      {(topTypes.length > 0 || topSubtypes.length > 0) && (
+        <div className="card mb-6">
+          <h2 className="text-sm font-semibold text-white mb-3">Top 5 <span className="text-[#64748B] font-normal">(past 3 months)</span></h2>
+          {topTypes.length > 0 && (
+            <div className="mb-3">
+              <p className="text-xs text-[#64748B] uppercase tracking-wide mb-1.5">Exercise Types</p>
+              <div className="flex flex-col gap-1">
+                {topTypes.map(({ item, count }) => (
+                  <div key={item.key} className="flex items-center justify-between text-sm">
+                    <span className="text-white">{item.emoji} {item.label}</span>
+                    <span className="text-[#64748B]">{count}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {topSubtypes.length > 0 && (
+            <div>
+              <p className="text-xs text-[#64748B] uppercase tracking-wide mb-1.5">Subtypes</p>
+              <div className="flex flex-col gap-1">
+                {topSubtypes.map(({ item, count }) => (
+                  <div key={item.key} className="flex items-center justify-between text-sm">
+                    <span className="text-white">{item.emoji} {item.label}</span>
+                    <span className="text-[#64748B]">{count}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Change email */}
       <div className="card mb-6">
