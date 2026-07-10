@@ -160,6 +160,11 @@ create index if not exists training_plans_user on training_plans(user_id, create
 -- and pace can be stored/displayed to sub-minute precision instead of always rounding down.
 -- alter table activities add column if not exists duration_seconds smallint not null default 0;
 
+-- Migration: swim focus (Endurance/Sprint/Technique/Power/Recovery) and swim styles
+-- (Mixed/Freestyle/Backstroke/Breaststroke/Butterfly/IM — comma-joined, multi-select)
+-- alter table activities add column if not exists swim_focus text;
+-- alter table activities add column if not exists swim_styles text;
+
 -- Migration: if goals table already exists, run these:
 -- alter table goals add column if not exists activity_type text not null default 'all';
 -- alter table goals drop constraint if exists goals_user_id_period_key;

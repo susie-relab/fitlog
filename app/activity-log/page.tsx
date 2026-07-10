@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
 import {
   Activity, ExerciseType,
-  EXERCISE_TYPE_LABELS, EXERCISE_TYPE_COLORS, combinedRunTypeLabel,
+  EXERCISE_TYPE_LABELS, EXERCISE_TYPE_COLORS, combinedRunTypeLabel, SWIM_FOCUS_LABELS, SWIM_STYLE_LABELS,
   EXERCISE_TYPE_ORDER, subTypeLabel,
 } from '@/types';
 import { formatDuration, formatDate, formatShortDate, formatPaceMinKm, formatPaceMinMile, formatSpeedKmh, daysAgo } from '@/lib/utils';
@@ -284,6 +284,7 @@ export default function ActivityLogPage() {
                   </div>
                   <div className="flex gap-2 mt-0.5 flex-wrap">
                     {a.sub_type && <span className="text-xs font-medium text-white">{subTypeLabel(a.sub_type)}</span>}
+                    {a.swim_focus && <span className="text-xs font-medium text-white">{SWIM_FOCUS_LABELS[a.swim_focus]}</span>}
                     {combinedRunTypeLabel(a.run_type, a.run_type_modifier) && <span className="text-xs font-medium text-white">{combinedRunTypeLabel(a.run_type, a.run_type_modifier)}</span>}
                     <span className="text-xs" style={{ color }}>{EXERCISE_TYPE_LABELS[a.exercise_type]}</span>
                     <span className="text-xs text-[#64748B]">{formatDate(a.date)}</span>
@@ -323,6 +324,7 @@ export default function ActivityLogPage() {
                   <div className="grid grid-cols-2 gap-x-4 gap-y-2">
                     <Detail label="Duration" value={formatDuration(a.duration_minutes, a.duration_seconds)} />
                     <Detail label="Effort" value={`${a.effort}/10`} />
+                    {a.swim_styles && <Detail label="Swim Style" value={a.swim_styles.split(',').map(s => SWIM_STYLE_LABELS[s as keyof typeof SWIM_STYLE_LABELS] ?? s).join(', ')} />}
                     {a.distance_km && <Detail label="Distance" value={`${a.distance_km} km`} />}
                     {a.pace_min_km && (
                       <>

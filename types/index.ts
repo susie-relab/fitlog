@@ -99,6 +99,8 @@ export type SportSubType = 'football' | 'tennis' | 'netball' | 'volleyball' | 'g
 export type GymSubType = 'hiit_workout' | 'strength' | 'conditioning' | 'crossfit' | 'hyrox' | 'arms' | 'legs' | 'back_shoulders' | 'core' | 'row_indoor' | 'stair_climber' | 'ski_erg';
 export type WaterSnowSubType = 'kayak' | 'sailing' | 'surf' | 'rowing' | 'waka_ama' | 'sup' | 'snowboard' | 'skiing';
 export type SwimSubType = 'ocean' | 'pool';
+export type SwimFocus = 'endurance' | 'sprint' | 'technique' | 'power' | 'recovery';
+export type SwimStyle = 'mixed' | 'freestyle' | 'backstroke' | 'breaststroke' | 'butterfly' | 'im';
 export type FitnessSubType = 'boxing' | 'jump_rope' | 'dance' | 'skateboard' | 'rock_climbing' | 'trampoline' | 'martial_arts' | 'cleaning';
 export type BikeSubType = 'mtb' | 'road' | 'mixed_terrain' | 'commute' | 'electric' | 'indoor_spin' | 'bmx' | 'track' | 'bikepacking';
 export type StretchSubType = 'pilates' | 'flexibility' | 'physio';
@@ -121,6 +123,12 @@ export const WATER_SNOW_SUB_LABELS: Record<WaterSnowSubType, string> = {
   waka_ama: 'Waka Ama', sup: 'SUP', snowboard: 'Snowboard', skiing: 'Skiing',
 };
 export const SWIM_SUB_LABELS: Record<SwimSubType, string> = { ocean: 'Ocean', pool: 'Pool' };
+export const SWIM_FOCUS_LABELS: Record<SwimFocus, string> = {
+  endurance: 'Endurance', sprint: 'Sprint', technique: 'Technique', power: 'Power', recovery: 'Recovery',
+};
+export const SWIM_STYLE_LABELS: Record<SwimStyle, string> = {
+  mixed: 'Mixed', freestyle: 'Freestyle', backstroke: 'Backstroke', breaststroke: 'Breaststroke', butterfly: 'Butterfly', im: 'IM',
+};
 export const FITNESS_SUB_LABELS: Record<FitnessSubType, string> = {
   boxing: 'Boxing', jump_rope: 'Jump Rope', dance: 'Dance', skateboard: 'Skateboard',
   rock_climbing: 'Rock Climbing', trampoline: 'Trampoline', martial_arts: 'Martial Arts', cleaning: 'Cleaning',
@@ -154,6 +162,8 @@ export interface Activity {
   run_type?: RunType;
   run_type_modifier?: RunType;
   sub_type?: string;
+  swim_focus?: SwimFocus;
+  swim_styles?: string; // comma-joined SwimStyle keys — multi-select, like sub_type for hiit
   duration_minutes: number;
   duration_seconds?: number; // leftover seconds (0-59) on top of duration_minutes
   effort: number;
