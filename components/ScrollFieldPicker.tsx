@@ -8,6 +8,7 @@ interface Props {
   value: string; // stored string, e.g. '' | '150' | '12.34'
   onChange: (v: string) => void;
   max: number;
+  min?: number; // lower bound of the whole-number wheel, default 0
   decimals?: 0 | 2; // 0 = integer (HR, Elevation), 2 = whole + hundredths (Distance)
   suggestion?: number; // seeds the wheel(s) when the field is currently empty
   placeholder?: string;
@@ -24,7 +25,7 @@ function range(min: number, max: number): number[] {
  *  directly into the centered value all work; tapping outside the popup commits
  *  whatever is currently set and closes it. No card chrome — just the floating
  *  wheel columns over the page. */
-export default function ScrollFieldPicker({ label, unit, value, onChange, max, decimals = 0, suggestion, placeholder }: Props) {
+export default function ScrollFieldPicker({ label, unit, value, onChange, max, min = 0, decimals = 0, suggestion, placeholder }: Props) {
   const [open, setOpen] = useState(false);
   const [whole, setWhole] = useState(0);
   const [frac, setFrac] = useState(0);
@@ -40,8 +41,8 @@ export default function ScrollFieldPicker({ label, unit, value, onChange, max, d
   }, [whole, frac, focused]);
 
   const openPicker = () => {
-    const parsed = value ? parseFloat(value) : (suggestion ?? 0);
-    setWhole(Math.floor(parsed));
+    const parsed = value ? parseFloat(value) : (suggestion ?? min);
+    setWhole(Math.max(min, Math.floor(parsed)));
     setFrac(Math.round((parsed - Math.floor(parsed)) * 100));
     setOpen(true);
   };
@@ -49,7 +50,7 @@ export default function ScrollFieldPicker({ label, unit, value, onChange, max, d
   const handleWholeText = (v: string) => {
     setWholeText(v);
     const n = parseInt(v, 10);
-    if (!isNaN(n) && n >= 0 && n <= max) setWhole(n);
+    if (!isNaN(n) && n >= min && n <= max) setWhole(n);
   };
 
   const handleFracText = (v: string) => {
@@ -64,7 +65,7 @@ export default function ScrollFieldPicker({ label, unit, value, onChange, max, d
     setOpen(false);
   };
 
-  const wholeValues = range(0, max);
+  const wholeValues = range(min, max);
   const fracValues = range(0, 99);
   const wholeWidth = Math.max(48, String(max).length * 22 + 20);
   const fracWidth = 56;

@@ -603,14 +603,14 @@ export default function AddPage() {
               <div>
                 <label className="label">Avg Heart Rate</label>
                 <ScrollFieldPicker
-                  label="Avg Heart Rate" unit="bpm" max={230} value={avgHr} onChange={setAvgHr}
+                  label="Avg Heart Rate" unit="bpm" min={28} max={230} value={avgHr} onChange={setAvgHr}
                   suggestion={suggestedAvgHr(user?.user_metadata?.age ?? null, effort)} placeholder="bpm"
                 />
               </div>
               <div>
                 <label className="label">Max Heart Rate</label>
                 <ScrollFieldPicker
-                  label="Max Heart Rate" unit="bpm" max={230} value={maxHr} onChange={setMaxHr}
+                  label="Max Heart Rate" unit="bpm" min={28} max={230} value={maxHr} onChange={setMaxHr}
                   suggestion={suggestedMaxHr(user?.user_metadata?.age ?? null, effort)} placeholder="bpm"
                 />
               </div>
