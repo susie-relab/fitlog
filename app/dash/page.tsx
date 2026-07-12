@@ -349,19 +349,19 @@ export default function DashPage() {
             })}
 
             {/* Next run (upcoming) */}
-            {nextRun && todayPlanItems.length > 0 && <div className="border-t border-[#293548] my-1" />}
+            {nextRun && todayPlanItems.length > 0 && <div className="divider-strong my-1" />}
             {nextRun && (
-              <div className="flex items-center gap-3 py-2 px-3 rounded-lg border border-[#293548] bg-[#0F172A]">
-                <span className="w-1.5 h-9 rounded-full flex-shrink-0" style={{ background: sessionColor(nextRun.next.session) }} />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-semibold text-[#64748B] uppercase">Next Run · {fmtDay(nextRun.next.dateISO)}</span>
+              <div>
+                <span className="text-[10px] font-semibold text-[#64748B] uppercase">Next Run · {fmtDay(nextRun.next.dateISO)}</span>
+                <div className="flex items-center gap-3 py-2 px-3 mt-1 rounded-lg border border-[#293548] bg-[#0F172A]">
+                  <span className="w-1.5 h-9 rounded-full flex-shrink-0" style={{ background: sessionColor(nextRun.next.session) }} />
+                  <div className="flex-1 min-w-0">
+                    <span className="text-sm font-semibold text-white truncate block">{nextRun.next.session.title}</span>
+                    <span className="text-xs text-[#64748B]">{planLabel(nextRun.plan)}{sessionTarget(nextRun.next.session) ? ` · ${sessionTarget(nextRun.next.session)}` : ''}</span>
                   </div>
-                  <span className="text-sm font-semibold text-white truncate block">{nextRun.next.session.title}</span>
-                  <span className="text-xs text-[#64748B]">{planLabel(nextRun.plan)}{sessionTarget(nextRun.next.session) ? ` · ${sessionTarget(nextRun.next.session)}` : ''}</span>
+                  <Link href={planSessionHref(nextRun.next.session, nextRun.plan.id, nextRun.next.week, nextRun.next.day, undefined, true)}
+                    className="btn-secondary text-xs px-3 py-1.5 flex-shrink-0">Log</Link>
                 </div>
-                <Link href={planSessionHref(nextRun.next.session, nextRun.plan.id, nextRun.next.week, nextRun.next.day, undefined, true)}
-                  className="btn-secondary text-xs px-3 py-1.5 flex-shrink-0">Log</Link>
               </div>
             )}
           </div>

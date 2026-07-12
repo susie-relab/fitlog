@@ -226,3 +226,8 @@ select.input {
 /* Hide scrollbars on the scroll-picker wheel columns while keeping them scrollable. */
 .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* A more visible section divider than the usual subtle card border — white on
+   dark theme, black on light theme, so it actually reads as a separator. */
+.divider-strong { border-top: 1px solid rgba(255, 255, 255, 0.5); }
+[data-theme="light"] .divider-strong { border-top-color: rgba(0, 0, 0, 0.5); }
