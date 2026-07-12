@@ -269,6 +269,31 @@ export function subTypeLabel(subType?: string | null): string {
   return subType.split(',').map(k => ALL_SUB_LABELS[k.trim()] ?? k.trim()).join(', ');
 }
 
+// Effort (1-11) -> % of theoretical max HR, used to seed the Max HR scroll-picker suggestion.
+const MAX_HR_EFFORT_PCT: Record<number, number> = {
+  1: 0.55, 2: 0.62, 3: 0.67, 4: 0.78, 5: 0.84, 6: 0.89, 7: 0.92, 8: 0.96, 9: 0.99, 10: 1.00, 11: 1.02,
+};
+// Effort (1-11) -> % of theoretical max HR, used to seed the Avg HR scroll-picker suggestion.
+const AVG_HR_EFFORT_PCT: Record<number, number> = {
+  1: 0.45, 2: 0.52, 3: 0.58, 4: 0.67, 5: 0.71, 6: 0.75, 7: 0.78, 8: 0.81, 9: 0.84, 10: 0.87, 11: 0.90,
+};
+
+/** Max HR scroll-picker starting suggestion: 208 - 0.7*age, scaled by the selected effort's %.
+ *  Falls back to 175 if the profile has no age set. */
+export function suggestedMaxHr(age: number | null | undefined, effort: number | null | undefined): number {
+  if (!age) return 175;
+  const pct = effort && MAX_HR_EFFORT_PCT[effort] ? MAX_HR_EFFORT_PCT[effort] : 1;
+  return Math.round((208 - 0.7 * age) * pct);
+}
+
+/** Avg HR scroll-picker starting suggestion: same base max-HR formula, scaled by a lower
+ *  effort-based %. Falls back to 128 if the profile has no age set. */
+export function suggestedAvgHr(age: number | null | undefined, effort: number | null | undefined): number {
+  if (!age) return 128;
+  const pct = effort && AVG_HR_EFFORT_PCT[effort] ? AVG_HR_EFFORT_PCT[effort] : 0.71;
+  return Math.round((208 - 0.7 * age) * pct);
+}
+
 /** A single pickable "activity" for favourites/top-5 — either a bare exercise type
  *  (key === type, e.g. "bike") or a specific subtype/run-style (key === "type:subtype",
  *  e.g. "bike:commute", "run:beach"). */

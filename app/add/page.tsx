@@ -10,8 +10,10 @@ import {
   EXERCISE_TYPE_ORDER, RUN_TYPE_TERRAIN, RUN_TYPE_WORKOUT,
   SportSubType, SportFocus, GymSubType, WaterSubType, SnowSubType, SnowStyle, SwimSubType, SwimFocus, SwimStyle, FitnessSubType, BikeSubType, StretchSubType, WalkSubType,
   SPORT_SUB_LABELS, SPORT_FOCUS_LABELS, GYM_SUB_LABELS, WATER_SUB_LABELS, SNOW_SUB_LABELS, SNOW_STYLE_LABELS, SWIM_SUB_LABELS, SWIM_FOCUS_LABELS, SWIM_STYLE_LABELS, FITNESS_SUB_LABELS, BIKE_SUB_LABELS, STRETCH_SUB_LABELS, WALK_SUB_LABELS,
+  suggestedMaxHr, suggestedAvgHr,
 } from '@/types';
 import DistancePicker from '@/components/DistancePicker';
+import ScrollFieldPicker from '@/components/ScrollFieldPicker';
 import ImageUploader from '@/components/ImageUploader';
 import { useDirtyForm } from '@/components/DirtyFormContext';
 import { sessionParts, combineSessions, WEEKDAYS, isRunSession } from '@/lib/runPlanGenerator';
@@ -600,11 +602,17 @@ export default function AddPage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="label">Avg Heart Rate</label>
-                <input type="number" className="input" placeholder="bpm" value={avgHr} onChange={e => setAvgHr(e.target.value)} />
+                <ScrollFieldPicker
+                  label="Avg Heart Rate" unit="bpm" max={230} value={avgHr} onChange={setAvgHr}
+                  suggestion={suggestedAvgHr(user?.user_metadata?.age ?? null, effort)} placeholder="bpm"
+                />
               </div>
               <div>
                 <label className="label">Max Heart Rate</label>
-                <input type="number" className="input" placeholder="bpm" value={maxHr} onChange={e => setMaxHr(e.target.value)} />
+                <ScrollFieldPicker
+                  label="Max Heart Rate" unit="bpm" max={230} value={maxHr} onChange={setMaxHr}
+                  suggestion={suggestedMaxHr(user?.user_metadata?.age ?? null, effort)} placeholder="bpm"
+                />
               </div>
             </div>
 
@@ -617,7 +625,7 @@ export default function AddPage() {
             {/* Elevation Gain */}
             <div>
               <label className="label">Elevation Gain <span className="text-[#64748B]">m</span></label>
-              <input type="number" className="input" placeholder="e.g. 120" min="0" value={elevationGain} onChange={e => setElevationGain(e.target.value)} />
+              <ScrollFieldPicker label="Elevation Gain" unit="m" max={9000} value={elevationGain} onChange={setElevationGain} suggestion={0} placeholder="e.g. 120" />
             </div>
           </>
         )}

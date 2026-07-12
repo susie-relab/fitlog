@@ -8,11 +8,14 @@ import {
   EXERCISE_TYPE_ORDER, RUN_TYPE_TERRAIN, RUN_TYPE_WORKOUT,
   SportSubType, SportFocus, GymSubType, WaterSubType, SnowSubType, SnowStyle, SwimSubType, SwimFocus, SwimStyle, FitnessSubType, BikeSubType, StretchSubType, WalkSubType,
   SPORT_SUB_LABELS, SPORT_FOCUS_LABELS, GYM_SUB_LABELS, WATER_SUB_LABELS, SNOW_SUB_LABELS, SNOW_STYLE_LABELS, SWIM_SUB_LABELS, SWIM_FOCUS_LABELS, SWIM_STYLE_LABELS, FITNESS_SUB_LABELS, BIKE_SUB_LABELS, STRETCH_SUB_LABELS, WALK_SUB_LABELS,
+  suggestedMaxHr, suggestedAvgHr,
 } from '@/types';
 import DistancePicker from './DistancePicker';
+import ScrollFieldPicker from './ScrollFieldPicker';
 import ImageUploader from './ImageUploader';
 import { openDatePicker } from '@/lib/utils';
 import { revertCompletedActivity } from '@/lib/runPlanGenerator';
+import { useAuth } from './AuthProvider';
 
 function ColorDot({ color }: { color: string }) {
   return <span className="inline-block w-2.5 h-2.5 rounded-full mr-2 flex-shrink-0" style={{ background: color }} />;
@@ -26,6 +29,7 @@ interface Props {
 }
 
 export default function EditActivityModal({ activity, onClose, onSaved, onDeleted }: Props) {
+  const { user } = useAuth();
   const [name, setName] = useState(activity.name);
   const [exerciseType, setExerciseType] = useState<ExerciseType>(activity.exercise_type);
   const [runType, setRunType] = useState<RunType | ''>(activity.run_type || '');
@@ -454,11 +458,17 @@ export default function EditActivityModal({ activity, onClose, onSaved, onDelete
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="label">Avg HR (optional)</label>
-              <input type="number" className="input" placeholder="bpm" value={avgHr} onChange={e => setAvgHr(e.target.value)} />
+              <ScrollFieldPicker
+                label="Avg Heart Rate" unit="bpm" max={230} value={avgHr} onChange={setAvgHr}
+                suggestion={suggestedAvgHr(user?.user_metadata?.age ?? null, effort)} placeholder="bpm"
+              />
             </div>
             <div>
               <label className="label">Max HR (optional)</label>
-              <input type="number" className="input" placeholder="bpm" value={maxHr} onChange={e => setMaxHr(e.target.value)} />
+              <ScrollFieldPicker
+                label="Max Heart Rate" unit="bpm" max={230} value={maxHr} onChange={setMaxHr}
+                suggestion={suggestedMaxHr(user?.user_metadata?.age ?? null, effort)} placeholder="bpm"
+              />
             </div>
           </div>
 
@@ -471,7 +481,7 @@ export default function EditActivityModal({ activity, onClose, onSaved, onDelete
           {/* Elevation Gain */}
           <div>
             <label className="label">Elevation Gain (optional) <span className="text-[#64748B]">m</span></label>
-            <input type="number" className="input" placeholder="e.g. 120" min="0" value={elevationGain} onChange={e => setElevationGain(e.target.value)} />
+            <ScrollFieldPicker label="Elevation Gain" unit="m" max={9000} value={elevationGain} onChange={setElevationGain} suggestion={0} placeholder="e.g. 120" />
           </div>
 
           {/* Notes */}

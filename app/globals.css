@@ -222,3 +222,7 @@ select.input {
   0% { transform: translateY(-10px) rotate(0deg); opacity: 1; }
   100% { transform: translateY(105vh) rotate(540deg); opacity: 0.85; }
 }
+
+/* Hide scrollbars on the scroll-picker wheel columns while keeping them scrollable. */
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
