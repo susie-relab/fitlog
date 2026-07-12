@@ -266,10 +266,6 @@ export default function ActivityLogPage() {
                     >▼</button>
                   </div>
                 )}
-                {a.image_urls && a.image_urls.length > 0 && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={a.image_urls[0]} alt="" className="w-10 h-10 rounded-lg object-cover flex-shrink-0 border border-[#334155]" />
-                )}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-white truncate">{a.name}</span>
@@ -285,6 +281,10 @@ export default function ActivityLogPage() {
                     <span className="text-xs text-[#64748B]">{formatDate(a.date)}</span>
                   </div>
                 </div>
+                {a.image_urls && a.image_urls.length > 0 && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={a.image_urls[0]} alt="" className="w-10 h-10 rounded-lg object-cover flex-shrink-0 border border-[#334155]" />
+                )}
                 <div className="text-right flex-shrink-0">
                   <div className="text-sm text-white font-medium">{formatDuration(a.duration_minutes, a.duration_seconds)}</div>
                   {a.distance_km && <div className="text-xs text-[#64748B]">{a.distance_km} km</div>}
