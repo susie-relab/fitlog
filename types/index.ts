@@ -228,7 +228,7 @@ export const GYM_SUB_LABELS: Record<GymSubType, string> = {
 };
 export const WATER_SUB_LABELS: Record<WaterSubType, string> = {
   kayak: 'Kayak', sailing: 'Sailing', surf: 'Surf', rowing: 'Rowing', waka_ama: 'Waka Ama', sup: 'SUP',
-  body_boarding: 'Body Boarding', bodysurfing: 'Bodysurfing', windsurfing: 'Windsurfing',
+  body_boarding: 'Bodyboarding', bodysurfing: 'Bodysurfing', windsurfing: 'Windsurfing',
   kitesurfing: 'Kitesurfing', wakeboarding: 'Wakeboarding', waterskiing: 'Waterskiing', diving: 'Diving',
   spear_fishing: 'Spear Fishing', fishing: 'Fishing', rafting: 'Rafting', canyoning: 'Canyoning', coasteering: 'Coasteering',
 };
