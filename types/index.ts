@@ -82,8 +82,7 @@ const SUBTYPE_EMOJI_OVERRIDES: Record<string, string> = {
   rowing: '🚣‍♀️',
   waka_ama: '🏝️',
   sup: '🛥️',
-  polo: '🤽',
-  boogie_boarding: '🏖️',
+  body_boarding: '🏖️',
   windsurfing: '🌬️',
   kitesurfing: '🪁',
   wakeboarding: '🚤',
@@ -194,10 +193,10 @@ export type SportSubType = 'football' | 'tennis' | 'netball' | 'volleyball' | 'g
 export type SportFocus = 'game' | 'training' | 'skills' | 'conditioning' | 'recovery' | 'competition' | 'casual' | 'warm_up';
 export type SportStyle = 'indoor' | 'outdoor' | 'grass' | 'turf' | 'clay_dirt' | 'rooftop' | 'water' | 'beach';
 export type GymSubType = 'hiit_workout' | 'strength' | 'conditioning' | 'crossfit' | 'hyrox' | 'arms' | 'legs' | 'back_shoulders' | 'core' | 'row_indoor' | 'stair_climber' | 'ski_erg';
-export type WaterSubType = 'kayak' | 'sailing' | 'surf' | 'rowing' | 'waka_ama' | 'sup' | 'polo' | 'boogie_boarding' | 'bodysurfing' | 'windsurfing' | 'kitesurfing' | 'wakeboarding' | 'waterskiing' | 'diving' | 'spear_fishing' | 'fishing' | 'canyoning' | 'coasteering' | 'rafting';
+export type WaterSubType = 'kayak' | 'sailing' | 'surf' | 'rowing' | 'waka_ama' | 'sup' | 'body_boarding' | 'bodysurfing' | 'windsurfing' | 'kitesurfing' | 'wakeboarding' | 'waterskiing' | 'diving' | 'spear_fishing' | 'fishing' | 'rafting' | 'canyoning' | 'coasteering';
 export type WaterStyle = 'recreational' | 'training' | 'competition' | 'whitewater' | 'hydrofoil' | 'park';
 export type SnowSubType = 'snowboard' | 'skiing' | 'sledding' | 'skating';
-export type SnowStyle = 'downhill' | 'cross_country' | 'half_pipe' | 'freestyle' | 'recreational' | 'training' | 'competition';
+export type SnowStyle = 'downhill' | 'cross_country' | 'half_pipe' | 'freestyle' | 'park' | 'recreational' | 'training' | 'competition';
 export type SwimSubType = 'ocean' | 'pool' | 'water_jogging' | 'aqua_aerobics';
 export type SwimFocus = 'endurance' | 'sprint' | 'technique' | 'power' | 'recovery' | 'distance' | 'interval_set' | 'time_trial';
 export type SwimStyle = 'mixed' | 'freestyle' | 'backstroke' | 'breaststroke' | 'butterfly' | 'im' | 'kick_only' | 'pull_only';
@@ -229,10 +228,9 @@ export const GYM_SUB_LABELS: Record<GymSubType, string> = {
 };
 export const WATER_SUB_LABELS: Record<WaterSubType, string> = {
   kayak: 'Kayak', sailing: 'Sailing', surf: 'Surf', rowing: 'Rowing', waka_ama: 'Waka Ama', sup: 'SUP',
-  polo: 'Polo', boogie_boarding: 'Boogie-Boarding', bodysurfing: 'Bodysurfing', windsurfing: 'Windsurfing',
+  body_boarding: 'Body Boarding', bodysurfing: 'Bodysurfing', windsurfing: 'Windsurfing',
   kitesurfing: 'Kitesurfing', wakeboarding: 'Wakeboarding', waterskiing: 'Waterskiing', diving: 'Diving',
-  spear_fishing: 'Spear Fishing', fishing: 'Fishing', canyoning: 'Canyoning', coasteering: 'Coasteering',
-  rafting: 'Rafting',
+  spear_fishing: 'Spear Fishing', fishing: 'Fishing', rafting: 'Rafting', canyoning: 'Canyoning', coasteering: 'Coasteering',
 };
 export const WATER_STYLE_LABELS: Record<WaterStyle, string> = {
   recreational: 'Recreational', training: 'Training', competition: 'Competition',
@@ -242,7 +240,7 @@ export const SNOW_SUB_LABELS: Record<SnowSubType, string> = {
   snowboard: 'Snowboard', skiing: 'Skiing', sledding: 'Sledding', skating: 'Skating',
 };
 export const SNOW_STYLE_LABELS: Record<SnowStyle, string> = {
-  downhill: 'Downhill', cross_country: 'Cross-country', half_pipe: 'Half-pipe', freestyle: 'Freestyle',
+  downhill: 'Downhill', cross_country: 'Cross-country', half_pipe: 'Half-pipe', freestyle: 'Freestyle', park: 'Park',
   recreational: 'Recreational', training: 'Training', competition: 'Competition',
 };
 export const SWIM_SUB_LABELS: Record<SwimSubType, string> = {
