@@ -32,7 +32,7 @@ export default function AccountSwitcher({ direction = 'down' }: { direction?: 'u
         onClick={() => setOpen(v => !v)}
         className="flex items-center gap-2 w-full text-left px-2 py-1.5 rounded-lg hover:bg-[#0F172A] transition-colors"
       >
-        <Avatar url={user?.user_metadata?.avatar_url} size={28} />
+        <Avatar url={user?.user_metadata?.avatar_url} color={user?.user_metadata?.avatar_color} size={28} />
         <span className="text-xs text-[#94A3B8] truncate flex-1">{user?.email}</span>
         <span className="text-[#475569] text-xs">{open ? '▲' : '▼'}</span>
       </button>
@@ -51,7 +51,7 @@ export default function AccountSwitcher({ direction = 'down' }: { direction?: 'u
                       disabled={switching === a.userId}
                       className="flex items-center gap-2 flex-1 min-w-0 text-left"
                     >
-                      <Avatar url={a.avatarUrl} size={24} />
+                      <Avatar url={a.avatarUrl} color={a.avatarColor} size={24} />
                       <span className="text-xs text-white truncate">{switching === a.userId ? 'Switching…' : a.email}</span>
                     </button>
                     <button

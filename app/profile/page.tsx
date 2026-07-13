@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
-import Avatar from '@/components/Avatar';
+import Avatar, { AVATAR_COLORS, AvatarColorKey } from '@/components/Avatar';
 import Toast from '@/components/Toast';
 import AccountSwitcher from '@/components/AccountSwitcher';
 import { uploadImages, deleteImage } from '@/lib/images';
@@ -14,6 +14,7 @@ export default function ProfilePage() {
   const [username, setUsername] = useState('');
   const [age, setAge] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarColor, setAvatarColor] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
@@ -34,6 +35,7 @@ export default function ProfilePage() {
     if (user?.user_metadata?.username) setUsername(user.user_metadata.username);
     if (user?.user_metadata?.age) setAge(String(user.user_metadata.age));
     setAvatarUrl(user?.user_metadata?.avatar_url ?? null);
+    setAvatarColor(user?.user_metadata?.avatar_color ?? null);
     setFavourites(user?.user_metadata?.favourite_activities ?? []);
   }, [user]);
 
@@ -120,6 +122,14 @@ export default function ProfilePage() {
     flash('Reverted to default panda 🐼', true);
   };
 
+  const pickAvatarColor = async (key: AvatarColorKey) => {
+    if (!user) return;
+    const hex = AVATAR_COLORS[key];
+    setAvatarColor(hex);
+    const { error } = await supabase.auth.updateUser({ data: { ...user.user_metadata, avatar_color: hex } });
+    flash(error ? error.message : 'Panda colour updated!', !error);
+  };
+
   return (
     <div className="max-w-lg lg:max-w-2xl mx-auto">
       <div className="flex items-start justify-between mb-1">
@@ -132,13 +142,26 @@ export default function ProfilePage() {
 
       {/* Avatar */}
       <div className="card mb-4 flex items-center gap-4">
-        <Avatar url={avatarUrl} size={72} />
+        <Avatar url={avatarUrl} color={avatarColor} size={72} />
         <div className="flex flex-col gap-2">
           <button onClick={() => fileRef.current?.click()} disabled={uploading} className="btn-primary text-sm px-4 py-2 disabled:opacity-60">
             {uploading ? 'Uploading…' : avatarUrl ? 'Change photo' : 'Upload photo'}
           </button>
           {avatarUrl && (
             <button onClick={removeAvatar} className="text-xs text-[#64748B] hover:text-white transition-colors">Use default panda</button>
+          )}
+          {!avatarUrl && (
+            <div className="flex gap-1.5 mt-1">
+              {(Object.keys(AVATAR_COLORS) as AvatarColorKey[]).map(key => (
+                <button
+                  key={key}
+                  onClick={() => pickAvatarColor(key)}
+                  aria-label={`${key} panda`}
+                  className={`w-6 h-6 rounded-full border-2 transition-all ${avatarColor === AVATAR_COLORS[key] || (!avatarColor && key === 'blue') ? 'border-white' : 'border-transparent hover:border-[#475569]'}`}
+                  style={{ background: AVATAR_COLORS[key] }}
+                />
+              ))}
+            </div>
           )}
           <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handlePickAvatar} />
         </div>

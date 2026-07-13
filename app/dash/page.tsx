@@ -280,7 +280,7 @@ export default function DashPage() {
             ⚙
           </Link>
           <Link href="/profile" aria-label="Profile" className="w-9 h-9 rounded-full border border-[#334155] hover:border-[#475569] transition-colors overflow-hidden flex items-center justify-center">
-            <Avatar url={user?.user_metadata?.avatar_url} size={34} />
+            <Avatar url={user?.user_metadata?.avatar_url} color={user?.user_metadata?.avatar_color} size={34} />
           </Link>
         </div>
       </div>

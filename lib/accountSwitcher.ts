@@ -6,6 +6,7 @@ export interface SavedAccount {
   userId: string;
   email: string;
   avatarUrl?: string | null;
+  avatarColor?: string | null;
   accessToken: string;
   refreshToken: string;
 }
@@ -36,6 +37,7 @@ export function rememberSession(session: Session) {
     userId: session.user.id,
     email: session.user.email,
     avatarUrl: (session.user.user_metadata?.avatar_url as string | undefined) ?? null,
+    avatarColor: (session.user.user_metadata?.avatar_color as string | undefined) ?? null,
     accessToken: session.access_token,
     refreshToken: session.refresh_token,
   };
