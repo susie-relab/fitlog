@@ -35,6 +35,7 @@ export default function AddPage() {
   const [runTypeModifier, setRunTypeModifier] = useState<RunType | ''>('');
   const [subType, setSubType] = useState<string>('');
   const [gymTypes, setGymTypes] = useState<string[]>([]);
+  const [walkTypes, setWalkTypes] = useState<string[]>([]);
   const [sportFocus, setSportFocus] = useState<SportFocus | ''>('');
   const [sportStyle, setSportStyle] = useState<SportStyle | ''>('');
   const [swimFocus, setSwimFocus] = useState<SwimFocus | ''>('');
@@ -137,7 +138,7 @@ export default function AddPage() {
       exercise_type: exerciseType,
       run_type: exerciseType === 'run' ? runType || null : null,
       run_type_modifier: exerciseType === 'run' ? runTypeModifier || null : null,
-      sub_type: exerciseType === 'hiit' ? gymTypes.join(',') || null : subType || null,
+      sub_type: exerciseType === 'hiit' ? gymTypes.join(',') || null : exerciseType === 'walk' ? walkTypes.join(',') || null : subType || null,
       sport_focus: exerciseType === 'sport' ? sportFocus || null : null,
       sport_style: exerciseType === 'sport' ? sportStyle || null : null,
       swim_focus: exerciseType === 'swim' ? swimFocus || null : null,
@@ -215,7 +216,7 @@ export default function AddPage() {
       if (isPb || pbReasons.length > 0) setPbCelebration(pbReasons);
       else setSavedTitle(randomEncouragement());
       // Reset form
-      setName(''); setExerciseType(''); setRunType(''); setRunTypeModifier(''); setSubType(''); setGymTypes([]); setSportFocus(''); setSportStyle(''); setSwimFocus(''); setSwimStyles([]); setSnowStyles([]); setWaterStyles([]); setHours(''); setMins(''); setSecs('');
+      setName(''); setExerciseType(''); setRunType(''); setRunTypeModifier(''); setSubType(''); setGymTypes([]); setWalkTypes([]); setSportFocus(''); setSportStyle(''); setSwimFocus(''); setSwimStyles([]); setSnowStyles([]); setWaterStyles([]); setHours(''); setMins(''); setSecs('');
       setEffort(null); setDistance(''); setNotes(''); setIntensityMins('');
       setPaceMin(''); setPaceSec(''); setMaxPaceMin(''); setMaxPaceSec('');
       setMaxHr(''); setAvgHr(''); setElevationGain(''); setIsPb(false); setPbDesc('');
@@ -269,7 +270,7 @@ export default function AddPage() {
             {EXERCISE_TYPE_ORDER.map(type => (
               <button
                 key={type}
-                onClick={() => { setExerciseType(type); setRunType(''); setRunTypeModifier(''); setSubType(''); setGymTypes([]); setSportFocus(''); setSportStyle(''); setSwimFocus(''); setSwimStyles([]); setSnowStyles([]); setWaterStyles([]); }}
+                onClick={() => { setExerciseType(type); setRunType(''); setRunTypeModifier(''); setSubType(''); setGymTypes([]); setWalkTypes([]); setSportFocus(''); setSportStyle(''); setSwimFocus(''); setSwimStyles([]); setSnowStyles([]); setWaterStyles([]); }}
                 className={`flex items-center px-3 py-2.5 rounded-lg text-sm font-medium border transition-all text-left ${
                   exerciseType === type
                     ? 'border-2 text-white'
@@ -496,14 +497,17 @@ export default function AddPage() {
         )}
         {exerciseType === 'walk' && (
           <div>
-            <label className="label">Walk Type <span className="text-[#64748B]">(optional)</span></label>
+            <label className="label">Walk Type <span className="text-[#64748B]">(optional + multi-select)</span></label>
             <div className="grid grid-cols-3 gap-1.5">
-              {(Object.keys(WALK_SUB_LABELS) as WalkSubType[]).map(t => (
-                <button key={t} onClick={() => setSubType(subType === t ? '' : t)}
-                  className={`px-2 py-2 rounded-lg text-xs font-medium border transition-all text-center ${subType === t ? 'border-orange-500 bg-orange-500/20 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>
-                  {WALK_SUB_LABELS[t]}
-                </button>
-              ))}
+              {(Object.keys(WALK_SUB_LABELS) as WalkSubType[]).map(t => {
+                const active = walkTypes.includes(t);
+                return (
+                  <button key={t} onClick={() => setWalkTypes(active ? walkTypes.filter(x => x !== t) : [...walkTypes, t])}
+                    className={`px-2 py-2 rounded-lg text-xs font-medium border transition-all text-center ${active ? 'border-orange-500 bg-orange-500/20 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>
+                    {WALK_SUB_LABELS[t]}
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}

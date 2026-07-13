@@ -129,7 +129,7 @@ export const EXERCISE_TYPE_COLORS: Record<ExerciseType, string> = {
   snow: '#CBD5E1',
 };
 
-export type RunType = 'long' | 'easy' | 'tempo' | 'fartlek' | 'speed_intervals' | 'hill_reps' | 'trail' | 'long_intervals' | 'push_buggy' | 'treadmill' | 'beach' | 'track' | 'road' | 'urban' | 'cross_country';
+export type RunType = 'long' | 'easy' | 'tempo' | 'fartlek' | 'speed_intervals' | 'hill_reps' | 'trail' | 'long_intervals' | 'push_buggy' | 'treadmill' | 'beach' | 'track' | 'road' | 'urban' | 'cross_country' | 'mountain';
 
 export const RUN_TYPE_LABELS: Record<RunType, string> = {
   long: 'Long',
@@ -147,6 +147,7 @@ export const RUN_TYPE_LABELS: Record<RunType, string> = {
   road: 'Road',
   urban: 'Urban',
   cross_country: 'Cross Country',
+  mountain: 'Mountain',
 };
 
 export const RUN_TYPE_COLORS: Record<RunType, string> = {
@@ -165,12 +166,13 @@ export const RUN_TYPE_COLORS: Record<RunType, string> = {
   road: '#94A3B8',
   urban: '#22C55E',
   cross_country: '#84CC16',
+  mountain: '#78716C',
 };
 
 // Run types split into two independently-selectable groups: pick at most one from each.
 // e.g. Treadmill + Easy -> "Treadmill - Easy Run". Either group alone is also valid on its own
 // (e.g. just Push Buggy, or just Fartlek).
-export const RUN_TYPE_TERRAIN: RunType[] = ['treadmill', 'trail', 'push_buggy', 'beach', 'urban', 'road', 'track', 'cross_country'];
+export const RUN_TYPE_TERRAIN: RunType[] = ['treadmill', 'trail', 'push_buggy', 'beach', 'urban', 'road', 'track', 'cross_country', 'mountain'];
 export const RUN_TYPE_WORKOUT: RunType[] = ['easy', 'long', 'tempo', 'fartlek', 'speed_intervals', 'hill_reps', 'long_intervals'];
 
 /** Combined display label for a run's two optional type fields, workout first then
@@ -191,7 +193,7 @@ export function combinedRunTypeLabel(runType?: RunType | null, runTypeModifier?:
 
 export type SportSubType = 'football' | 'tennis' | 'netball' | 'volleyball' | 'golf' | 'turbo_touch' | 'padel' | 'touch_rugby' | 'basketball' | 'cricket' | 'badminton' | 'rugby' | 'hockey' | 'frisbee' | 'table_tennis';
 export type SportFocus = 'game' | 'training' | 'skills' | 'conditioning' | 'recovery' | 'competition' | 'casual' | 'warm_up';
-export type SportStyle = 'indoor' | 'outdoor' | 'grass' | 'turf' | 'clay_dirt' | 'rooftop' | 'water' | 'beach';
+export type SportStyle = 'indoor' | 'outdoor' | 'grass' | 'turf' | 'clay_dirt' | 'rooftop' | 'water' | 'beach' | 'mountain';
 export type GymSubType = 'hiit_workout' | 'strength' | 'conditioning' | 'crossfit' | 'hyrox' | 'arms' | 'legs' | 'back_shoulders' | 'core' | 'row_indoor' | 'stair_climber' | 'ski_erg';
 export type WaterSubType = 'kayak' | 'sailing' | 'surf' | 'rowing' | 'waka_ama' | 'sup' | 'body_boarding' | 'bodysurfing' | 'windsurfing' | 'kitesurfing' | 'wakeboarding' | 'waterskiing' | 'diving' | 'spear_fishing' | 'fishing' | 'rafting' | 'canyoning' | 'coasteering';
 export type WaterStyle = 'recreational' | 'training' | 'competition' | 'whitewater' | 'hydrofoil' | 'park';
@@ -203,7 +205,7 @@ export type SwimStyle = 'mixed' | 'freestyle' | 'backstroke' | 'breaststroke' | 
 export type FitnessSubType = 'boxing' | 'jump_rope' | 'dance' | 'skateboard' | 'rock_climbing' | 'trampoline' | 'martial_arts' | 'cleaning' | 'gymnastics' | 'calisthenics' | 'sandboarding' | 'unicycling' | 'archery' | 'slack_lining' | 'rollerskate' | 'abseiling' | 'athletics';
 export type BikeSubType = 'mtb' | 'road' | 'mixed_terrain' | 'commute' | 'electric' | 'indoor_spin' | 'bmx' | 'track' | 'bikepacking';
 export type StretchSubType = 'pilates' | 'flexibility' | 'physio';
-export type WalkSubType = 'multi_day' | 'outdoor' | 'treadmill' | 'speed' | 'stroll' | 'beach' | 'push_buggy';
+export type WalkSubType = 'multi_day' | 'stroll' | 'speed' | 'urban' | 'bush' | 'mountain' | 'farm' | 'road' | 'track_oval' | 'treadmill' | 'beach' | 'push_buggy';
 
 export const SPORT_SUB_LABELS: Record<SportSubType, string> = {
   football: 'Football', tennis: 'Tennis', netball: 'Netball', volleyball: 'Volleyball',
@@ -218,7 +220,7 @@ export const SPORT_FOCUS_LABELS: Record<SportFocus, string> = {
 };
 export const SPORT_STYLE_LABELS: Record<SportStyle, string> = {
   indoor: 'Indoor', outdoor: 'Outdoor', grass: 'Grass', turf: 'Turf', clay_dirt: 'Clay / Dirt',
-  rooftop: 'Rooftop', water: 'Water', beach: 'Beach',
+  rooftop: 'Rooftop', water: 'Water', beach: 'Beach', mountain: 'Mountain',
 };
 export const GYM_SUB_LABELS: Record<GymSubType, string> = {
   hiit_workout: 'HIIT', strength: 'Strength', conditioning: 'Conditioning',
@@ -269,8 +271,9 @@ export const STRETCH_SUB_LABELS: Record<StretchSubType, string> = {
   pilates: 'Pilates', flexibility: 'Flexibility', physio: 'Physio',
 };
 export const WALK_SUB_LABELS: Record<WalkSubType, string> = {
-  multi_day: 'Multi-day', outdoor: 'Outdoor', treadmill: 'Treadmill', speed: 'Speed', stroll: 'Stroll',
-  beach: 'Beach', push_buggy: 'Push Buggy',
+  multi_day: 'Multi-day', stroll: 'Stroll', speed: 'Speed', urban: 'Urban', bush: 'Bush',
+  mountain: 'Mountain', farm: 'Farm', road: 'Road', track_oval: 'Track / Oval',
+  treadmill: 'Treadmill', beach: 'Beach', push_buggy: 'Push Buggy',
 };
 
 // All subtype labels in one map + a helper to display a (possibly comma-joined) sub_type value.
