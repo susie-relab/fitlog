@@ -284,7 +284,7 @@ export default function PlanView({ plan, onChange, onEdit, onDelete, onBack, onS
               >Next week ›</button>
             </>
           )}
-          <button onClick={() => { setViewAll(false); setViewedWeek(isActive ? currentWeekNo : week1No); }} className={`text-xs px-3 py-1.5 rounded-lg border transition-all ${!viewAll ? 'bg-blue-600 border-blue-600 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>{isActive ? 'This week' : 'Week 1'}</button>
+          <button onClick={() => { setViewAll(false); setViewedWeek(isActive ? currentWeekNo : week1No); }} className={`text-xs px-3 py-1.5 rounded-lg border transition-all ${!viewAll && viewedWeek === (isActive ? currentWeekNo : week1No) ? 'bg-blue-600 border-blue-600 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>{isActive ? 'This week' : 'Week 1'}</button>
           <button onClick={() => setViewAll(true)} className={`text-xs px-3 py-1.5 rounded-lg border transition-all ${viewAll ? 'bg-blue-600 border-blue-600 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>Full plan</button>
         </div>
       </div>

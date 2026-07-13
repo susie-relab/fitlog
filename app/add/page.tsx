@@ -164,18 +164,22 @@ export default function AddPage() {
 
     // Check for an auto-detected PB (fastest distance, longest session, best pace for the
     // type) against every prior activity, and/or the user's manual "Personal Best" flag.
-    let pbReasons: string[] = [];
+    let autoReasons: string[] = [];
     if (!dbErr && inserted?.id) {
       const { data: prior } = await supabase.from('activities')
-        .select('exercise_type,distance_km,pace_min_km,duration_minutes')
+        .select('exercise_type,distance_km,pace_min_km,duration_minutes,run_type')
         .eq('user_id', user!.id)
         .neq('id', inserted.id);
-      pbReasons = detectAutoPBs(
-        { exercise_type: exerciseType as ExerciseType, distance_km: distanceKm ?? undefined, pace_min_km: paceMinKm ?? undefined, duration_minutes: durationMinutes },
+      autoReasons = detectAutoPBs(
+        { exercise_type: exerciseType as ExerciseType, distance_km: distanceKm ?? undefined, pace_min_km: paceMinKm ?? undefined, duration_minutes: durationMinutes, run_type: exerciseType === 'run' ? (runType as RunType || undefined) : undefined },
         prior || [],
       );
-      if (isPb && pbDesc.trim()) pbReasons = [pbDesc.trim(), ...pbReasons];
+      // Only auto-star if the user hadn't already manually starred it — a manual star always wins.
+      if (!isPb && autoReasons.length > 0) {
+        await supabase.from('activities').update({ is_pb: true, pb_auto: true, pb_description: autoReasons.join(' · ') }).eq('id', inserted.id);
+      }
     }
+    const pbReasons = isPb && pbDesc.trim() ? [pbDesc.trim(), ...autoReasons] : autoReasons;
 
     // If this came from a training plan session, mark that day complete.
     if (!dbErr && planLink) {

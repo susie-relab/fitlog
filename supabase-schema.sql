@@ -193,3 +193,27 @@ create index if not exists training_plans_user on training_plans(user_id, create
 -- alter table goals add column if not exists activity_type text not null default 'all';
 -- alter table goals drop constraint if exists goals_user_id_period_key;
 -- alter table goals add constraint goals_user_id_period_activity_type_key unique (user_id, period, activity_type);
+
+-- Migration: distinguish auto-detected PBs from manually-starred ones.
+-- alter table activities add column if not exists pb_auto boolean not null default false;
+
+-- Migration: per-distance-bucket PB overrides — hide a wrongly-attributed auto PB, or
+-- replace it with your own time (optionally linked to the activity the real effort happened
+-- during, e.g. a 1km split inside a longer run — the activity's own pace/distance totals
+-- don't have to match, since this is a manually-entered result).
+-- create table if not exists distance_pb_overrides (
+--   id uuid default gen_random_uuid() primary key,
+--   user_id uuid references auth.users(id) on delete cascade not null,
+--   distance_km numeric(6,2) not null,
+--   status text not null check (status in ('hidden', 'custom')),
+--   custom_time_seconds integer,
+--   custom_note text,
+--   activity_id uuid references activities(id) on delete set null,
+--   created_at timestamptz default now(),
+--   unique (user_id, distance_km)
+-- );
+-- alter table distance_pb_overrides enable row level security;
+-- create policy "Users can manage their own distance PB overrides"
+--   on distance_pb_overrides for all
+--   using (auth.uid() = user_id)
+--   with check (auth.uid() = user_id);

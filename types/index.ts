@@ -175,6 +175,11 @@ export const RUN_TYPE_COLORS: Record<RunType, string> = {
 export const RUN_TYPE_TERRAIN: RunType[] = ['treadmill', 'trail', 'push_buggy', 'beach', 'urban', 'road', 'track', 'cross_country', 'mountain'];
 export const RUN_TYPE_WORKOUT: RunType[] = ['easy', 'long', 'tempo', 'fartlek', 'speed_intervals', 'hill_reps', 'long_intervals'];
 
+/** Run types with scripted rest breaks between reps. Total elapsed time ÷ total distance for
+ *  one of these isn't a real continuous-effort pace (the rest is baked into the total time), so
+ *  these are excluded from pace-based PBs — but not from distance/duration PBs, which are still accurate. */
+export const REST_BREAK_RUN_TYPES: RunType[] = ['speed_intervals', 'hill_reps', 'long_intervals'];
+
 /** Combined display label for a run's two optional type fields, workout first then
  *  style, e.g. "Tempo - Treadmill", or just "Push Buggy" / "Fartlek" when only one is
  *  set. No trailing "Run" — the exercise-type badge already shows that. */
@@ -421,6 +426,7 @@ export interface Activity {
   max_hr?: number;
   avg_hr?: number;
   is_pb: boolean;
+  pb_auto?: boolean; // true if is_pb was set automatically by detectAutoPBs, not the manual star toggle
   pb_description?: string;
   note_hidden?: boolean;
   image_urls?: string[] | null;

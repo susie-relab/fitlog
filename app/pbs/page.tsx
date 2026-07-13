@@ -2,14 +2,25 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
-import { Activity, ExerciseType, RunType, EXERCISE_TYPE_LABELS, EXERCISE_TYPE_COLORS, RUN_TYPE_LABELS } from '@/types';
+import { Activity, ExerciseType, RunType, EXERCISE_TYPE_LABELS, EXERCISE_TYPE_COLORS, RUN_TYPE_LABELS, REST_BREAK_RUN_TYPES } from '@/types';
 import { formatPaceMinKm, formatDuration, formatDate, openDatePicker } from '@/lib/utils';
 import ShareCard, { ShareStat } from '@/components/ShareCard';
+import EditActivityModal from '@/components/EditActivityModal';
 import { PB_SHARE_ICON } from '@/lib/shareIcons';
 import { DISTANCE_PB_KM, DISTANCE_LABELS } from '@/lib/pbDetect';
 
 const EXERCISE_TYPES: ExerciseType[] = ['run', 'walk', 'sport', 'hiit', 'stretch', 'bike', 'swim', 'solo_fitness'];
 const RUN_TYPES: RunType[] = ['easy', 'long', 'tempo', 'fartlek', 'speed_intervals', 'hill_reps', 'trail', 'long_intervals', 'push_buggy', 'treadmill'];
+
+const hasRestBreaks = (a: Activity) => !!a.run_type && REST_BREAK_RUN_TYPES.includes(a.run_type);
+
+/** Seconds -> "M:SS" or "H:MM:SS". */
+function fmtClock(totalSeconds: number): string {
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+  return h > 0 ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}` : `${m}:${String(s).padStart(2, '0')}`;
+}
 
 interface ManualPB {
   id: string;
@@ -19,45 +30,110 @@ interface ManualPB {
   date: string;
 }
 
+interface DistanceOverride {
+  id: string;
+  user_id: string;
+  distance_km: number;
+  status: 'hidden' | 'custom';
+  custom_time_seconds: number | null;
+  custom_note: string | null;
+  activity_id: string | null;
+}
+
 export default function PBsPage() {
   const { user } = useAuth();
   const [activities, setActivities] = useState<Activity[]>([]);
   const [manualPBs, setManualPBs] = useState<ManualPB[]>([]);
+  const [overrides, setOverrides] = useState<DistanceOverride[]>([]);
   const [loading, setLoading] = useState(true);
   const [addingManual, setAddingManual] = useState(false);
   const [manualTitle, setManualTitle] = useState('');
   const [manualDesc, setManualDesc] = useState('');
   const [manualDate, setManualDate] = useState(new Date().toISOString().split('T')[0]);
   const [activeTab, setActiveTab] = useState<'starred' | 'distance' | 'type' | 'monthly' | 'manual'>('starred');
+  const [starredFilter, setStarredFilter] = useState<'all' | 'manual'>('all');
   const [sharing, setSharing] = useState<Activity | null>(null);
+  const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
+
+  // Inline "override this distance PB" editor state.
+  const [editingOverrideKm, setEditingOverrideKm] = useState<number | null>(null);
+  const [ovHours, setOvHours] = useState('');
+  const [ovMins, setOvMins] = useState('');
+  const [ovSecs, setOvSecs] = useState('');
+  const [ovNote, setOvNote] = useState('');
+  const [ovActivityId, setOvActivityId] = useState('');
 
   useEffect(() => {
     if (!user) return;
     Promise.all([
       supabase.from('activities').select('*').eq('user_id', user.id).order('date', { ascending: false }),
       supabase.from('manual_pbs').select('*').eq('user_id', user.id).order('date', { ascending: false }),
-    ]).then(([{ data: acts }, { data: mpbs }]) => {
+      supabase.from('distance_pb_overrides').select('*').eq('user_id', user.id),
+    ]).then(([{ data: acts }, { data: mpbs }, { data: ovs }]) => {
       setActivities((acts as Activity[]) || []);
       setManualPBs((mpbs as ManualPB[]) || []);
+      setOverrides((ovs as DistanceOverride[]) || []);
       setLoading(false);
     });
   }, [user]);
 
-  const starredPBs = activities.filter(a => a.is_pb);
+  const starredPBs = activities.filter(a => a.is_pb && (starredFilter === 'all' || !a.pb_auto));
 
-  // Best pace for each distance
+  const openOverrideEditor = (km: number) => {
+    const existing = overrides.find(o => o.distance_km === km && o.status === 'custom');
+    if (existing?.custom_time_seconds != null) {
+      const h = Math.floor(existing.custom_time_seconds / 3600);
+      const m = Math.floor((existing.custom_time_seconds % 3600) / 60);
+      const s = existing.custom_time_seconds % 60;
+      setOvHours(h ? String(h) : ''); setOvMins(String(m)); setOvSecs(String(s));
+    } else { setOvHours(''); setOvMins(''); setOvSecs(''); }
+    setOvNote(existing?.custom_note || '');
+    setOvActivityId(existing?.activity_id || '');
+    setEditingOverrideKm(km);
+  };
+
+  const saveOverride = async (km: number) => {
+    const totalSeconds = (parseInt(ovHours) || 0) * 3600 + (parseInt(ovMins) || 0) * 60 + (parseInt(ovSecs) || 0);
+    if (totalSeconds <= 0) return;
+    const { data } = await supabase.from('distance_pb_overrides').upsert({
+      user_id: user!.id, distance_km: km, status: 'custom',
+      custom_time_seconds: totalSeconds, custom_note: ovNote.trim() || null,
+      activity_id: ovActivityId || null,
+    }, { onConflict: 'user_id,distance_km' }).select().single();
+    if (data) {
+      setOverrides(prev => [...prev.filter(o => o.distance_km !== km), data as DistanceOverride]);
+      setEditingOverrideKm(null);
+    }
+  };
+
+  const hideDistancePB = async (km: number) => {
+    const { data } = await supabase.from('distance_pb_overrides').upsert({
+      user_id: user!.id, distance_km: km, status: 'hidden', custom_time_seconds: null, custom_note: null, activity_id: null,
+    }, { onConflict: 'user_id,distance_km' }).select().single();
+    if (data) setOverrides(prev => [...prev.filter(o => o.distance_km !== km), data as DistanceOverride]);
+  };
+
+  const restoreDistancePB = async (km: number) => {
+    if (!user) return;
+    await supabase.from('distance_pb_overrides').delete().eq('user_id', user.id).eq('distance_km', km);
+    setOverrides(prev => prev.filter(o => o.distance_km !== km));
+  };
+
+  // Best pace for each distance — excludes interval-style runs (rest breaks make the total
+  // elapsed pace misleading), and folds in any manual hide/override for that bucket.
   const bestPaceByDist = DISTANCE_PB_KM.map(km => {
     const matching = activities.filter(a =>
       a.distance_km !== undefined && a.distance_km !== null &&
       Math.abs(a.distance_km - km) / km < 0.02 &&
-      a.pace_min_km
+      a.pace_min_km && !hasRestBreaks(a)
     );
-    if (matching.length === 0) return null;
-    const best = matching.reduce((b, a) => (a.pace_min_km! < b.pace_min_km! ? a : b));
-    return { km, label: DISTANCE_LABELS[km], activity: best };
+    const best = matching.length > 0 ? matching.reduce((b, a) => (a.pace_min_km! < b.pace_min_km! ? a : b)) : null;
+    const override = overrides.find(o => o.distance_km === km);
+    if (!best && !override) return null;
+    return { km, label: DISTANCE_LABELS[km], activity: best, override };
   }).filter(Boolean);
 
-  // By exercise type PBs
+  // By exercise type PBs — "Best Pace" excludes interval-style runs; other metrics are unaffected.
   const exerciseTypePBs = EXERCISE_TYPES.map(type => {
     const typeActs = activities.filter(a => a.exercise_type === type);
     if (typeActs.length === 0) return null;
@@ -65,13 +141,14 @@ export default function PBsPage() {
       type,
       longestDist: typeActs.filter(a => a.distance_km).sort((a, b) => (b.distance_km || 0) - (a.distance_km || 0))[0],
       longestTime: typeActs.sort((a, b) => b.duration_minutes - a.duration_minutes)[0],
-      bestPace: typeActs.filter(a => a.pace_min_km).sort((a, b) => a.pace_min_km! - b.pace_min_km!)[0],
+      bestPace: typeActs.filter(a => a.pace_min_km && !hasRestBreaks(a)).sort((a, b) => a.pace_min_km! - b.pace_min_km!)[0],
       maxPace: typeActs.filter(a => a.max_pace_min_km).sort((a, b) => a.max_pace_min_km! - b.max_pace_min_km!)[0],
       maxHr: typeActs.filter(a => a.max_hr).sort((a, b) => b.max_hr! - a.max_hr!)[0],
     };
   }).filter(Boolean);
 
-  // By run type PBs
+  // By run type PBs — "Best Pace" is omitted entirely for interval-style run types, since
+  // every activity in that bucket has the same rest-break-diluted-pace problem.
   const runTypePBs = RUN_TYPES.map(type => {
     const typeActs = activities.filter(a => a.run_type === type);
     if (typeActs.length === 0) return null;
@@ -79,7 +156,7 @@ export default function PBsPage() {
       type,
       longestDist: typeActs.filter(a => a.distance_km).sort((a, b) => (b.distance_km || 0) - (a.distance_km || 0))[0],
       longestTime: typeActs.sort((a, b) => b.duration_minutes - a.duration_minutes)[0],
-      bestPace: typeActs.filter(a => a.pace_min_km).sort((a, b) => a.pace_min_km! - b.pace_min_km!)[0],
+      bestPace: REST_BREAK_RUN_TYPES.includes(type) ? undefined : typeActs.filter(a => a.pace_min_km).sort((a, b) => a.pace_min_km! - b.pace_min_km!)[0],
     };
   }).filter(Boolean);
 
@@ -130,7 +207,7 @@ export default function PBsPage() {
   };
 
   const tabs = [
-    { key: 'starred', label: '⭐ Starred' },
+    { key: 'starred', label: '⭐ All PBs' },
     { key: 'distance', label: 'Distance PBs' },
     { key: 'type', label: 'By Type' },
     { key: 'monthly', label: 'Best Months' },
@@ -160,20 +237,27 @@ export default function PBsPage() {
         ))}
       </div>
 
-      {/* Starred PBs */}
+      {/* All PBs — manually starred + auto-detected */}
       {activeTab === 'starred' && (
         <div className="flex flex-col gap-3">
+          <div className="flex gap-1.5">
+            <button onClick={() => setStarredFilter('all')} className={`text-xs px-3 py-1.5 rounded-lg border transition-all ${starredFilter === 'all' ? 'bg-yellow-500/20 border-yellow-500 text-yellow-300' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>All</button>
+            <button onClick={() => setStarredFilter('manual')} className={`text-xs px-3 py-1.5 rounded-lg border transition-all ${starredFilter === 'manual' ? 'bg-yellow-500/20 border-yellow-500 text-yellow-300' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>Manual only</button>
+          </div>
           {starredPBs.length === 0 ? (
             <div className="card text-[#64748B] text-sm">
-              No starred PBs yet. When adding an activity, click the ⭐ to mark it as a personal best.
+              {starredFilter === 'manual'
+                ? 'No manually-starred PBs yet. When adding an activity, click the ⭐ to mark it as a personal best.'
+                : 'No PBs yet — star an activity, or one will star itself automatically the moment it beats a previous best.'}
             </div>
           ) : starredPBs.map(a => (
-            <div key={a.id} className="card border-yellow-500/30">
+            <button key={a.id} onClick={() => setEditingActivity(a)} className="card border-yellow-500/30 text-left w-full hover:border-yellow-500/60 transition-colors">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-lg">⭐</span>
                     <span className="font-semibold text-white">{a.name}</span>
+                    {a.pb_auto && <span className="text-[9px] uppercase font-bold text-blue-300 bg-blue-500/10 border border-blue-500/30 px-1.5 py-0.5 rounded flex-shrink-0">Auto</span>}
                   </div>
                   {a.pb_description && <p className="text-sm text-yellow-300 mt-1">{a.pb_description}</p>}
                   <div className="flex gap-3 mt-2 flex-wrap">
@@ -183,9 +267,9 @@ export default function PBsPage() {
                     <span className="text-xs text-[#94A3B8]">{formatDuration(a.duration_minutes, a.duration_seconds)}</span>
                   </div>
                 </div>
-                <button onClick={() => setSharing(a)} className="text-xs text-[#64748B] hover:text-white border border-[#334155] hover:border-[#475569] rounded-lg px-2.5 py-1.5 flex-shrink-0">↗ Share</button>
+                <span onClick={e => { e.stopPropagation(); setSharing(a); }} className="text-xs text-[#64748B] hover:text-white border border-[#334155] hover:border-[#475569] rounded-lg px-2.5 py-1.5 flex-shrink-0">↗ Share</span>
               </div>
-            </div>
+            </button>
           ))}
         </div>
       )}
@@ -194,20 +278,82 @@ export default function PBsPage() {
       {activeTab === 'distance' && (
         <div className="flex flex-col gap-3">
           <h2 className="text-sm text-[#94A3B8] font-semibold uppercase tracking-wide">Best Pace by Distance</h2>
+          <p className="text-xs text-[#64748B] -mt-1">Excludes sprint/hill/long-interval sessions — rest between reps makes their overall pace misleading.</p>
           {bestPaceByDist.length === 0 ? (
             <div className="card text-[#64748B] text-sm">No pace data recorded yet.</div>
-          ) : bestPaceByDist.map(pb => (
-            <div key={pb!.km} className="card flex items-center justify-between">
-              <div>
-                <span className="font-semibold text-white">{pb!.label}</span>
-                <p className="text-xs text-[#64748B] mt-0.5">{pb!.activity.name} · {formatDate(pb!.activity.date)}</p>
+          ) : bestPaceByDist.map(pb => {
+            const linkedActivity = pb!.override?.activity_id ? activities.find(a => a.id === pb!.override!.activity_id) : null;
+            return (
+              <div key={pb!.km} className="card">
+                {pb!.override?.status === 'hidden' ? (
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="font-semibold text-[#64748B]">{pb!.label}</span>
+                      <p className="text-xs text-[#64748B] mt-0.5">Hidden</p>
+                    </div>
+                    <button onClick={() => restoreDistancePB(pb!.km)} className="text-xs text-blue-400 hover:text-blue-300">Restore</button>
+                  </div>
+                ) : pb!.override?.status === 'custom' ? (
+                  <div className="flex items-center justify-between">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-white">{pb!.label}</span>
+                        <span className="text-[9px] uppercase font-bold text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 px-1.5 py-0.5 rounded flex-shrink-0">Custom</span>
+                      </div>
+                      {pb!.override.custom_note && <p className="text-xs text-[#94A3B8] mt-0.5">{pb!.override.custom_note}</p>}
+                      {linkedActivity && (
+                        <button onClick={() => setEditingActivity(linkedActivity)} className="text-xs text-[#64748B] hover:text-white mt-0.5 underline">{linkedActivity.name} · {formatDate(linkedActivity.date)}</button>
+                      )}
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <div className="text-emerald-400 font-bold">{fmtClock(pb!.override.custom_time_seconds!)}</div>
+                      <div className="flex gap-2 mt-1 justify-end">
+                        <button onClick={() => openOverrideEditor(pb!.km)} className="text-[11px] text-[#64748B] hover:text-white">Edit</button>
+                        <button onClick={() => restoreDistancePB(pb!.km)} className="text-[11px] text-[#64748B] hover:text-red-400">Remove</button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between">
+                    <button onClick={() => pb!.activity && setEditingActivity(pb!.activity)} className="text-left min-w-0">
+                      <span className="font-semibold text-white">{pb!.label}</span>
+                      <p className="text-xs text-[#64748B] mt-0.5 hover:text-white">{pb!.activity!.name} · {formatDate(pb!.activity!.date)}</p>
+                    </button>
+                    <div className="text-right flex-shrink-0">
+                      <div className="text-blue-400 font-bold">{formatPaceMinKm(pb!.activity!.pace_min_km!)}</div>
+                      {pb!.activity!.distance_km && <div className="text-xs text-[#64748B]">{pb!.activity!.distance_km} km</div>}
+                      <div className="flex gap-2 mt-1 justify-end">
+                        <button onClick={() => openOverrideEditor(pb!.km)} className="text-[11px] text-[#64748B] hover:text-white">Override</button>
+                        <button onClick={() => hideDistancePB(pb!.km)} className="text-[11px] text-[#64748B] hover:text-red-400">Hide</button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {editingOverrideKm === pb!.km && (
+                  <div className="mt-3 pt-3 border-t border-[#293548] flex flex-col gap-2">
+                    <label className="label">Real result for {pb!.label}</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      <input type="number" placeholder="h" className="input" value={ovHours} onChange={e => setOvHours(e.target.value)} />
+                      <input type="number" placeholder="m" className="input" value={ovMins} onChange={e => setOvMins(e.target.value)} />
+                      <input type="number" placeholder="s" className="input" value={ovSecs} onChange={e => setOvSecs(e.target.value)} />
+                    </div>
+                    <select className="input" value={ovActivityId} onChange={e => setOvActivityId(e.target.value)}>
+                      <option value="">No linked activity</option>
+                      {activities.slice().sort((a, b) => b.date.localeCompare(a.date)).map(a => (
+                        <option key={a.id} value={a.id}>{formatDate(a.date)} — {a.name}{a.distance_km ? ` (${a.distance_km}km)` : ''}</option>
+                      ))}
+                    </select>
+                    <input className="input" placeholder="Note (optional) — e.g. 1km split during a 3km run" value={ovNote} onChange={e => setOvNote(e.target.value)} />
+                    <div className="flex gap-2">
+                      <button onClick={() => saveOverride(pb!.km)} className="btn-primary flex-1 text-sm">Save</button>
+                      <button onClick={() => setEditingOverrideKm(null)} className="btn-secondary flex-1 text-sm">Cancel</button>
+                    </div>
+                  </div>
+                )}
               </div>
-              <div className="text-right">
-                <div className="text-blue-400 font-bold">{formatPaceMinKm(pb!.activity.pace_min_km!)}</div>
-                {pb!.activity.distance_km && <div className="text-xs text-[#64748B]">{pb!.activity.distance_km} km</div>}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -221,34 +367,34 @@ export default function PBsPage() {
                 <h3 className="font-semibold text-white mb-3">{EXERCISE_TYPE_LABELS[pb!.type]}</h3>
                 <div className="grid grid-cols-1 gap-2">
                   {pb!.longestDist && (
-                    <div className="flex justify-between text-sm">
+                    <button onClick={() => setEditingActivity(pb!.longestDist)} className="flex justify-between text-sm w-full hover:bg-white/5 rounded px-1 -mx-1">
                       <span className="text-[#64748B]">Longest Distance</span>
                       <span className="text-blue-400 font-medium">{pb!.longestDist.distance_km} km</span>
-                    </div>
+                    </button>
                   )}
                   {pb!.longestTime && (
-                    <div className="flex justify-between text-sm">
+                    <button onClick={() => setEditingActivity(pb!.longestTime)} className="flex justify-between text-sm w-full hover:bg-white/5 rounded px-1 -mx-1">
                       <span className="text-[#64748B]">Longest Time</span>
                       <span className="text-blue-400 font-medium">{formatDuration(pb!.longestTime.duration_minutes, pb!.longestTime.duration_seconds)}</span>
-                    </div>
+                    </button>
                   )}
                   {pb!.bestPace && (
-                    <div className="flex justify-between text-sm">
+                    <button onClick={() => setEditingActivity(pb!.bestPace)} className="flex justify-between text-sm w-full hover:bg-white/5 rounded px-1 -mx-1">
                       <span className="text-[#64748B]">Best Pace</span>
                       <span className="text-blue-400 font-medium">{formatPaceMinKm(pb!.bestPace.pace_min_km!)}</span>
-                    </div>
+                    </button>
                   )}
                   {pb!.maxPace && (
-                    <div className="flex justify-between text-sm">
+                    <button onClick={() => setEditingActivity(pb!.maxPace)} className="flex justify-between text-sm w-full hover:bg-white/5 rounded px-1 -mx-1">
                       <span className="text-[#64748B]">Max Pace</span>
                       <span className="text-blue-400 font-medium">{formatPaceMinKm(pb!.maxPace.max_pace_min_km!)}</span>
-                    </div>
+                    </button>
                   )}
                   {pb!.maxHr && (
-                    <div className="flex justify-between text-sm">
+                    <button onClick={() => setEditingActivity(pb!.maxHr)} className="flex justify-between text-sm w-full hover:bg-white/5 rounded px-1 -mx-1">
                       <span className="text-[#64748B]">Max HR</span>
                       <span className="text-blue-400 font-medium">{pb!.maxHr.max_hr} bpm</span>
-                    </div>
+                    </button>
                   )}
                 </div>
               </div>
@@ -264,22 +410,24 @@ export default function PBsPage() {
                 <h3 className="font-semibold text-white mb-3">{RUN_TYPE_LABELS[pb!.type]}</h3>
                 <div className="grid grid-cols-1 gap-2">
                   {pb!.longestDist && (
-                    <div className="flex justify-between text-sm">
+                    <button onClick={() => setEditingActivity(pb!.longestDist)} className="flex justify-between text-sm w-full hover:bg-white/5 rounded px-1 -mx-1">
                       <span className="text-[#64748B]">Longest Distance</span>
                       <span className="text-blue-400 font-medium">{pb!.longestDist.distance_km} km</span>
-                    </div>
+                    </button>
                   )}
                   {pb!.longestTime && (
-                    <div className="flex justify-between text-sm">
+                    <button onClick={() => setEditingActivity(pb!.longestTime)} className="flex justify-between text-sm w-full hover:bg-white/5 rounded px-1 -mx-1">
                       <span className="text-[#64748B]">Longest Time</span>
                       <span className="text-blue-400 font-medium">{formatDuration(pb!.longestTime.duration_minutes, pb!.longestTime.duration_seconds)}</span>
-                    </div>
+                    </button>
                   )}
-                  {pb!.bestPace && (
-                    <div className="flex justify-between text-sm">
+                  {pb!.bestPace ? (
+                    <button onClick={() => setEditingActivity(pb!.bestPace!)} className="flex justify-between text-sm w-full hover:bg-white/5 rounded px-1 -mx-1">
                       <span className="text-[#64748B]">Best Pace</span>
                       <span className="text-blue-400 font-medium">{formatPaceMinKm(pb!.bestPace.pace_min_km!)}</span>
-                    </div>
+                    </button>
+                  ) : REST_BREAK_RUN_TYPES.includes(pb!.type) && (
+                    <p className="text-[11px] text-[#475569] italic">Pace not shown — rest between reps makes the overall time misleading.</p>
                   )}
                 </div>
               </div>
@@ -405,6 +553,21 @@ export default function PBsPage() {
           dateLabel={formatDate(sharing.date)}
           accentColor={EXERCISE_TYPE_COLORS[sharing.exercise_type]}
           onClose={() => setSharing(null)}
+        />
+      )}
+
+      {editingActivity && (
+        <EditActivityModal
+          activity={editingActivity}
+          onClose={() => setEditingActivity(null)}
+          onSaved={updated => {
+            setActivities(prev => prev.map(a => a.id === updated.id ? updated : a));
+            setEditingActivity(null);
+          }}
+          onDeleted={id => {
+            setActivities(prev => prev.filter(a => a.id !== id));
+            setEditingActivity(null);
+          }}
         />
       )}
     </div>
