@@ -74,8 +74,8 @@ export default function PBsPage() {
   const [manualDate, setManualDate] = useState(new Date().toISOString().split('T')[0]);
   const [manualDistance, setManualDistance] = useState('');
   const [manualDuration, setManualDuration] = useState('');
-  const [activeTab, setActiveTab] = useState<'starred' | 'distance' | 'type' | 'monthly' | 'manual' | 'additional'>('starred');
-  const [starredFilter, setStarredFilter] = useState<'all' | 'manual'>('all');
+  const [activeTab, setActiveTab] = useState<'starred' | 'distance' | 'type' | 'monthly' | 'manual'>('starred');
+  const [starredFilter, setStarredFilter] = useState<'all' | 'manual' | 'additional'>('all');
   const [sharing, setSharing] = useState<Activity | null>(null);
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
 
@@ -238,7 +238,9 @@ export default function PBsPage() {
     });
   }
   pbFeed.sort((a, b) => b.date.localeCompare(a.date));
-  const filteredFeed = starredFilter === 'all' ? pbFeed : pbFeed.filter(f => f.isManual);
+  const filteredFeed = starredFilter === 'all' ? pbFeed
+    : starredFilter === 'additional' ? pbFeed.filter(f => f.kind === 'starred')
+    : pbFeed.filter(f => f.isManual);
 
   // Best months
   const monthlyStats = () => {
@@ -293,7 +295,6 @@ export default function PBsPage() {
     { key: 'distance', label: 'Distance PBs' },
     { key: 'type', label: 'By Type' },
     { key: 'monthly', label: 'Best Months' },
-    { key: 'additional', label: '⭐ Additional' },
     { key: 'manual', label: 'Add PB' },
   ] as const;
 
@@ -326,11 +327,14 @@ export default function PBsPage() {
           <div className="flex gap-1.5">
             <button onClick={() => setStarredFilter('all')} className={`text-xs px-3 py-1.5 rounded-lg border transition-all ${starredFilter === 'all' ? 'bg-yellow-500/20 border-yellow-500 text-yellow-300' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>All</button>
             <button onClick={() => setStarredFilter('manual')} className={`text-xs px-3 py-1.5 rounded-lg border transition-all ${starredFilter === 'manual' ? 'bg-yellow-500/20 border-yellow-500 text-yellow-300' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>Custom</button>
+            <button onClick={() => setStarredFilter('additional')} className={`text-xs px-3 py-1.5 rounded-lg border transition-all ${starredFilter === 'additional' ? 'bg-yellow-500/20 border-yellow-500 text-yellow-300' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>Additional</button>
           </div>
           {filteredFeed.length === 0 ? (
             <div className="card text-[#64748B] text-sm">
               {starredFilter === 'manual'
                 ? 'No manually-added PBs yet — star an activity, override a distance PB, or add one under "Add PB".'
+                : starredFilter === 'additional'
+                ? 'No additional PBs yet. When adding an activity, click the ⭐ to mark it as a personal best — or one will star itself the moment it beats a previous best.'
                 : 'No PBs yet — star an activity, or one will star itself automatically the moment it beats a previous best.'}
             </div>
           ) : filteredFeed.map(item => (
@@ -638,41 +642,6 @@ export default function PBsPage() {
               </div>
               <button onClick={() => deleteManualPB(pb.id)} className="text-[#475569] hover:text-red-400 text-xs ml-3">✕</button>
             </div>
-          ))}
-        </div>
-      )}
-
-      {/* Additional — individually-starred activities (self-starred, manual or auto) */}
-      {activeTab === 'additional' && (
-        <div className="flex flex-col gap-3">
-          <div className="flex gap-1.5">
-            <button onClick={() => setStarredFilter('all')} className={`text-xs px-3 py-1.5 rounded-lg border transition-all ${starredFilter === 'all' ? 'bg-yellow-500/20 border-yellow-500 text-yellow-300' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>All</button>
-            <button onClick={() => setStarredFilter('manual')} className={`text-xs px-3 py-1.5 rounded-lg border transition-all ${starredFilter === 'manual' ? 'bg-yellow-500/20 border-yellow-500 text-yellow-300' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>Custom</button>
-          </div>
-          {filteredFeed.filter(item => item.kind === 'starred').length === 0 ? (
-            <div className="card text-[#64748B] text-sm">
-              No additional PBs yet. When adding an activity, click the ⭐ to mark it as a personal best — or one will star itself the moment it beats a previous best.
-            </div>
-          ) : filteredFeed.filter(item => item.kind === 'starred').map(item => (
-            <button key={item.key} onClick={() => item.activity && setEditingActivity(item.activity)} className="card border-yellow-500/30 text-left w-full hover:border-yellow-500/60 transition-colors">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-lg">⭐</span>
-                    <span className="font-semibold text-white">{item.title}</span>
-                    {item.auto && <span className="text-[9px] uppercase font-bold text-blue-300 bg-blue-500/10 border border-blue-500/30 px-1.5 py-0.5 rounded flex-shrink-0">Auto</span>}
-                  </div>
-                  {item.subtitle && <p className="text-sm text-yellow-300 mt-1">{item.subtitle}</p>}
-                  <div className="flex gap-3 mt-2 flex-wrap">
-                    {item.date && <span className="text-xs text-[#64748B]">{formatDate(item.date)}</span>}
-                    {item.stat && <span className="text-xs text-[#94A3B8]">{item.stat}</span>}
-                  </div>
-                </div>
-                {item.activity && (
-                  <span onClick={e => { e.stopPropagation(); setSharing(item.activity!); }} className="text-xs text-[#64748B] hover:text-white border border-[#334155] hover:border-[#475569] rounded-lg px-2.5 py-1.5 flex-shrink-0">↗ Share</span>
-                )}
-              </div>
-            </button>
           ))}
         </div>
       )}
