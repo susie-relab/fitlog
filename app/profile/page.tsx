@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
 import Avatar from '@/components/Avatar';
 import Toast from '@/components/Toast';
+import AccountSwitcher from '@/components/AccountSwitcher';
 import { uploadImages, deleteImage } from '@/lib/images';
 import { Activity, EXERCISE_TYPE_ORDER, EXERCISE_TYPE_LABELS, allFavouriteItems, topActivityCounts, FavouriteItem } from '@/types';
 
@@ -141,6 +142,12 @@ export default function ProfilePage() {
           )}
           <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handlePickAvatar} />
         </div>
+      </div>
+
+      {/* Accounts — switch between multiple logins saved on this device */}
+      <div className="card mb-6">
+        <h2 className="text-sm font-semibold text-white mb-3">Accounts</h2>
+        <AccountSwitcher />
       </div>
 
       {/* Display name + age */}

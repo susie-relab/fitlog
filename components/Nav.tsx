@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { Plus, LayoutDashboard, List, Footprints, TrendingUp, Award, BookOpen, Target, Upload, Download, LogOut, HelpCircle, User } from 'lucide-react';
 import { useAuth } from './AuthProvider';
 import { useDirtyForm } from './DirtyFormContext';
+import AccountSwitcher from './AccountSwitcher';
 
 const mainTabs = [
   { href: '/add', label: 'Add', icon: Plus },
@@ -95,8 +96,8 @@ export default function Nav() {
         </div>
         {user && (
           <div className="mt-4 pt-4 border-t border-[#334155]">
-            <p className="text-xs text-[#475569] truncate mb-2">{user.email}</p>
-            <button onClick={signOut} className="flex items-center gap-2 text-xs text-[#64748B] hover:text-white transition-colors">
+            <AccountSwitcher direction="up" />
+            <button onClick={signOut} className="flex items-center gap-2 text-xs text-[#64748B] hover:text-white transition-colors mt-2 px-2">
               <LogOut size={14} /> Sign out
             </button>
           </div>
