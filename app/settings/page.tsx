@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
+import StravaCard from '@/components/StravaCard';
 
 export default function SettingsPage() {
   const { user, signOut } = useAuth();
@@ -62,14 +63,8 @@ export default function SettingsPage() {
 
       {/* Connections */}
       <p className="text-xs font-semibold text-[#64748B] uppercase tracking-wide mb-2">Connections</p>
-      <div className="card mb-6">
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <h2 className="text-sm font-semibold text-white flex items-center gap-2"><span>🔗</span> Strava</h2>
-            <p className="text-xs text-[#64748B] mt-1">Auto-sync your Garmin &amp; other activities via Strava.</p>
-          </div>
-          <span className="text-[10px] font-semibold uppercase tracking-wide text-[#64748B] border border-[#334155] rounded-full px-2 py-1 flex-shrink-0">Coming soon</span>
-        </div>
+      <div className="mb-6">
+        <StravaCard />
       </div>
 
       {/* Preferences */}
