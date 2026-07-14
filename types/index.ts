@@ -69,7 +69,7 @@ const SUBTYPE_EMOJI_OVERRIDES: Record<string, string> = {
   // Fitness Training subtypes
   boxing: '🥊',
   jump_rope: '🪢',
-  dance: '💃',
+  dance: '💃🏽',
   skateboard: '🛹',
   rock_climbing: '🧗',
   trampoline: '🤸',
@@ -311,6 +311,23 @@ const ALL_SUB_LABELS: Record<string, string> = {
 export function subTypeLabel(subType?: string | null): string {
   if (!subType) return '';
   return subType.split(',').map(k => ALL_SUB_LABELS[k.trim()] ?? k.trim()).join(', ');
+}
+
+// Which exercise type each subtype key belongs to — used to group "By Subtype" PBs under
+// their parent exercise type once that type has enough of its own subtypes with PBs.
+const SUBTYPE_PARENT_TYPE: Record<string, ExerciseType> = {
+  ...Object.fromEntries(Object.keys(SPORT_SUB_LABELS).map(k => [k, 'sport' as ExerciseType])),
+  ...Object.fromEntries(Object.keys(GYM_SUB_LABELS).map(k => [k, 'hiit' as ExerciseType])),
+  ...Object.fromEntries(Object.keys(WATER_SUB_LABELS).map(k => [k, 'water' as ExerciseType])),
+  ...Object.fromEntries(Object.keys(SNOW_SUB_LABELS).map(k => [k, 'snow' as ExerciseType])),
+  ...Object.fromEntries(Object.keys(SWIM_SUB_LABELS).map(k => [k, 'swim' as ExerciseType])),
+  ...Object.fromEntries(Object.keys(FITNESS_SUB_LABELS).map(k => [k, 'solo_fitness' as ExerciseType])),
+  ...Object.fromEntries(Object.keys(BIKE_SUB_LABELS).map(k => [k, 'bike' as ExerciseType])),
+  ...Object.fromEntries(Object.keys(STRETCH_SUB_LABELS).map(k => [k, 'stretch' as ExerciseType])),
+  ...Object.fromEntries(Object.keys(WALK_SUB_LABELS).map(k => [k, 'walk' as ExerciseType])),
+};
+export function subtypeParentType(subtypeKey: string): ExerciseType | undefined {
+  return SUBTYPE_PARENT_TYPE[subtypeKey];
 }
 
 /** Combined display label for a sport activity's three optional fields, e.g.

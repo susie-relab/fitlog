@@ -443,8 +443,15 @@ export default function DashPage() {
         </div>
       )}
 
-      <LastWeekSummaryCard activities={activities} plans={plans} weekStartDay={weekStartPref} todayISO={todayISO} />
-      <FavouritesCard favourites={user?.user_metadata?.favourite_activities ?? []} activities={activities} />
+      {/* Desktop: last week + favourites side by side, mirroring the Today's Plan / This Year grid above */}
+      <div className="lg:grid lg:grid-cols-2 lg:gap-5 lg:items-start">
+        <div>
+          <LastWeekSummaryCard activities={activities} plans={plans} weekStartDay={weekStartPref} todayISO={todayISO} />
+        </div>
+        <div>
+          <FavouritesCard favourites={user?.user_metadata?.favourite_activities ?? []} activities={activities} />
+        </div>
+      </div>
 
       {/* 14-day snapshot — sits directly above the 14-Day Activity Mix chart below */}
       <h2 className="text-sm font-semibold text-[#64748B] uppercase tracking-wide mb-3">Last 14 Days</h2>

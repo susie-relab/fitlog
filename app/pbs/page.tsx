@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
-import { Activity, ExerciseType, RunType, EXERCISE_TYPE_LABELS, EXERCISE_TYPE_COLORS, RUN_TYPE_LABELS, REST_BREAK_RUN_TYPES, subTypeLabel, activityEmoji } from '@/types';
+import { Activity, ExerciseType, RunType, EXERCISE_TYPE_LABELS, EXERCISE_TYPE_COLORS, RUN_TYPE_LABELS, REST_BREAK_RUN_TYPES, subTypeLabel, activityEmoji, subtypeParentType } from '@/types';
 import { formatPaceMinKm, formatDuration, formatDate, openDatePicker, formatDistance } from '@/lib/utils';
 import ShareCard, { ShareStat } from '@/components/ShareCard';
 import EditActivityModal from '@/components/EditActivityModal';
@@ -77,8 +77,8 @@ export default function PBsPage() {
   const [activeTab, setActiveTab] = useState<'starred' | 'distance' | 'type' | 'monthly' | 'manual'>('starred');
   const [starredFilter, setStarredFilter] = useState<'all' | 'manual' | 'additional'>('all');
   const [typeSearch, setTypeSearch] = useState('');
-  const [collapsedTypeSections, setCollapsedTypeSections] = useState<Set<'exercise' | 'run' | 'subtype'>>(new Set());
-  const toggleTypeSection = (key: 'exercise' | 'run' | 'subtype') => setCollapsedTypeSections(prev => {
+  const [collapsedTypeSections, setCollapsedTypeSections] = useState<Set<string>>(new Set());
+  const toggleTypeSection = (key: string) => setCollapsedTypeSections(prev => {
     const next = new Set(prev);
     if (next.has(key)) next.delete(key); else next.add(key);
     return next;
@@ -213,6 +213,23 @@ export default function PBsPage() {
     };
   }).filter(Boolean).sort((a, b) => a!.label.localeCompare(b!.label));
 
+  // Once a parent exercise type has 3+ of its own subtypes with PBs, break those out of the
+  // generic "By Subtype" list into their own "<Type> Subtypes" grouping (e.g. Hyrox/Core/HIIT
+  // all under "Gym Workout Subtypes" instead of mixed in with Football, MTB, etc.).
+  const subtypesByParent = new Map<ExerciseType, typeof subtypePBs>();
+  for (const pb of subtypePBs) {
+    const parent = subtypeParentType(pb!.key);
+    if (!parent) continue;
+    if (!subtypesByParent.has(parent)) subtypesByParent.set(parent, []);
+    subtypesByParent.get(parent)!.push(pb);
+  }
+  const dedicatedSubtypeGroups = Array.from(subtypesByParent.entries()).filter(([, list]) => list.length >= 3);
+  const dedicatedParentTypes = new Set(dedicatedSubtypeGroups.map(([type]) => type));
+  const genericSubtypePBs = subtypePBs.filter(pb => {
+    const parent = subtypeParentType(pb!.key);
+    return !parent || !dedicatedParentTypes.has(parent);
+  });
+
   // Unified "All PBs" feed — every starred activity, every distance-bucket PB, every
   // by-type/by-run-type metric, and every manually-added PB, so nothing lives only in
   // its own tab. Sorted newest-first by whatever date each entry is tied to.
@@ -337,6 +354,44 @@ export default function PBsPage() {
     { key: 'monthly', label: 'Best Months' },
     { key: 'manual', label: 'Add PB' },
   ] as const;
+
+  const renderSubtypeCard = (pb: NonNullable<typeof subtypePBs[number]>) => (
+    <div key={pb.key} className="card mb-3">
+      <h3 className="font-semibold text-white mb-3">{pb.emoji} {pb.label}</h3>
+      <div className="grid grid-cols-1 gap-2">
+        {pb.longestDist && (
+          <button onClick={() => setEditingActivity(pb.longestDist)} className="flex justify-between text-sm w-full hover:bg-white/5 rounded px-1 -mx-1">
+            <span className="text-[#64748B]">Longest Distance</span>
+            <span className="text-blue-400 font-medium">{formatDistance(pb.longestDist.distance_km!, pb.longestDist.exercise_type)}</span>
+          </button>
+        )}
+        {pb.longestTime && (
+          <button onClick={() => setEditingActivity(pb.longestTime)} className="flex justify-between text-sm w-full hover:bg-white/5 rounded px-1 -mx-1">
+            <span className="text-[#64748B]">Longest Time</span>
+            <span className="text-blue-400 font-medium">{formatDuration(pb.longestTime.duration_minutes, pb.longestTime.duration_seconds)}</span>
+          </button>
+        )}
+        {pb.bestPace && (
+          <button onClick={() => setEditingActivity(pb.bestPace)} className="flex justify-between text-sm w-full hover:bg-white/5 rounded px-1 -mx-1">
+            <span className="text-[#64748B]">Best Pace</span>
+            <span className="text-blue-400 font-medium">{formatPaceMinKm(pb.bestPace.pace_min_km!)}</span>
+          </button>
+        )}
+        {pb.maxPace && (
+          <button onClick={() => setEditingActivity(pb.maxPace)} className="flex justify-between text-sm w-full hover:bg-white/5 rounded px-1 -mx-1">
+            <span className="text-[#64748B]">Max Pace</span>
+            <span className="text-blue-400 font-medium">{formatPaceMinKm(pb.maxPace.max_pace_min_km!)}</span>
+          </button>
+        )}
+        {pb.maxHr && (
+          <button onClick={() => setEditingActivity(pb.maxHr)} className="flex justify-between text-sm w-full hover:bg-white/5 rounded px-1 -mx-1">
+            <span className="text-[#64748B]">Max HR</span>
+            <span className="text-blue-400 font-medium">{pb.maxHr.max_hr} bpm</span>
+          </button>
+        )}
+      </div>
+    </div>
+  );
 
   if (loading) return <div className="text-[#64748B] text-sm">Loading...</div>;
 
@@ -580,48 +635,25 @@ export default function PBsPage() {
             ))}
           </div>
 
-          {subtypePBs.length > 0 && (
+          {dedicatedSubtypeGroups.map(([parentType, list]) => {
+            const sectionKey = `subtype:${parentType}`;
+            const filtered = list.filter(pb => !typeSearch || pb!.label.toLowerCase().includes(typeSearch.toLowerCase()));
+            return (
+              <div key={sectionKey}>
+                <button onClick={() => toggleTypeSection(sectionKey)} className="flex items-center gap-1.5 text-sm text-[#94A3B8] font-semibold uppercase tracking-wide mb-3 hover:text-white transition-colors">
+                  {collapsedTypeSections.has(sectionKey) ? '▶' : '▼'} {EXERCISE_TYPE_LABELS[parentType]} Subtypes
+                </button>
+                {!collapsedTypeSections.has(sectionKey) && filtered.map(pb => renderSubtypeCard(pb!))}
+              </div>
+            );
+          })}
+
+          {genericSubtypePBs.length > 0 && (
             <div>
               <button onClick={() => toggleTypeSection('subtype')} className="flex items-center gap-1.5 text-sm text-[#94A3B8] font-semibold uppercase tracking-wide mb-3 hover:text-white transition-colors">
                 {collapsedTypeSections.has('subtype') ? '▶' : '▼'} By Subtype
               </button>
-              {!collapsedTypeSections.has('subtype') && subtypePBs.filter(pb => !typeSearch || pb!.label.toLowerCase().includes(typeSearch.toLowerCase())).map(pb => (
-                <div key={pb!.key} className="card mb-3">
-                  <h3 className="font-semibold text-white mb-3">{pb!.emoji} {pb!.label}</h3>
-                  <div className="grid grid-cols-1 gap-2">
-                    {pb!.longestDist && (
-                      <button onClick={() => setEditingActivity(pb!.longestDist)} className="flex justify-between text-sm w-full hover:bg-white/5 rounded px-1 -mx-1">
-                        <span className="text-[#64748B]">Longest Distance</span>
-                        <span className="text-blue-400 font-medium">{formatDistance(pb!.longestDist.distance_km!, pb!.longestDist.exercise_type)}</span>
-                      </button>
-                    )}
-                    {pb!.longestTime && (
-                      <button onClick={() => setEditingActivity(pb!.longestTime)} className="flex justify-between text-sm w-full hover:bg-white/5 rounded px-1 -mx-1">
-                        <span className="text-[#64748B]">Longest Time</span>
-                        <span className="text-blue-400 font-medium">{formatDuration(pb!.longestTime.duration_minutes, pb!.longestTime.duration_seconds)}</span>
-                      </button>
-                    )}
-                    {pb!.bestPace && (
-                      <button onClick={() => setEditingActivity(pb!.bestPace)} className="flex justify-between text-sm w-full hover:bg-white/5 rounded px-1 -mx-1">
-                        <span className="text-[#64748B]">Best Pace</span>
-                        <span className="text-blue-400 font-medium">{formatPaceMinKm(pb!.bestPace.pace_min_km!)}</span>
-                      </button>
-                    )}
-                    {pb!.maxPace && (
-                      <button onClick={() => setEditingActivity(pb!.maxPace)} className="flex justify-between text-sm w-full hover:bg-white/5 rounded px-1 -mx-1">
-                        <span className="text-[#64748B]">Max Pace</span>
-                        <span className="text-blue-400 font-medium">{formatPaceMinKm(pb!.maxPace.max_pace_min_km!)}</span>
-                      </button>
-                    )}
-                    {pb!.maxHr && (
-                      <button onClick={() => setEditingActivity(pb!.maxHr)} className="flex justify-between text-sm w-full hover:bg-white/5 rounded px-1 -mx-1">
-                        <span className="text-[#64748B]">Max HR</span>
-                        <span className="text-blue-400 font-medium">{pb!.maxHr.max_hr} bpm</span>
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
+              {!collapsedTypeSections.has('subtype') && genericSubtypePBs.filter(pb => !typeSearch || pb!.label.toLowerCase().includes(typeSearch.toLowerCase())).map(pb => renderSubtypeCard(pb!))}
             </div>
           )}
         </div>
