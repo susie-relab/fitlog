@@ -130,7 +130,7 @@ export async function GET(request: Request) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const resendKey = process.env.RESEND_API_KEY;
   const from = process.env.RESEND_FROM || 'SportLog <onboarding@resend.dev>';
-  const appUrl = process.env.APP_URL || 'https://sportlogrun.app.nz';
+  const appUrl = process.env.APP_URL || 'https://sportlogrun.vercel.app';
 
   const cronSecret = process.env.CRON_SECRET;
   if (cronSecret && request.headers.get('authorization') !== `Bearer ${cronSecret}`) {

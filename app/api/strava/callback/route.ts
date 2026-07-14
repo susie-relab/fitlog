@@ -11,7 +11,7 @@ export async function GET(request: Request) {
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const clientId = process.env.STRAVA_CLIENT_ID;
   const clientSecret = process.env.STRAVA_CLIENT_SECRET;
-  const appUrl = process.env.APP_URL || 'https://sportlogrun.app.nz';
+  const appUrl = process.env.APP_URL || 'https://sportlogrun.vercel.app';
 
   const { searchParams } = new URL(request.url);
   const code = searchParams.get('code');

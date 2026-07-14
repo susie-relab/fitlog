@@ -24,7 +24,7 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.APP_URL || "https://sportlogrun.app.nz"),
+  metadataBase: new URL(process.env.APP_URL || "https://sportlogrun.vercel.app"),
   title: "SportLog — Exercise Tracker",
   description: "Personal exercise and run tracker",
   manifest: "/manifest.json",

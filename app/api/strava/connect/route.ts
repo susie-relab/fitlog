@@ -10,7 +10,7 @@ export async function GET(request: Request) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const clientId = process.env.STRAVA_CLIENT_ID;
-  const appUrl = process.env.APP_URL || 'https://sportlogrun.app.nz';
+  const appUrl = process.env.APP_URL || 'https://sportlogrun.vercel.app';
 
   if (!supabaseUrl || !anonKey || !clientId) {
     return Response.json({ error: 'Strava sync is not configured (missing env vars).' }, { status: 503 });
