@@ -1,9 +1,11 @@
 'use client';
 import { useMemo, useState } from 'react';
+import { Plus, X } from 'lucide-react';
 import {
   Activity, ExerciseType, EXERCISE_TYPE_COLORS, YearTotalTile, DEFAULT_YEAR_TOTAL_TILES, MAX_YEAR_TOTAL_TILES,
   activityMatchesFavouriteKey, allFavouriteItems, FavouriteItem,
 } from '@/types';
+import { EXERCISE_TYPE_ICONS } from '@/lib/shareIcons';
 import { todayLocalISO } from '@/lib/utils';
 
 interface Props {
@@ -25,6 +27,13 @@ function displayValue(tile: YearTotalTile, periodActivities: Activity[]): string
 function baseType(key: string): ExerciseType {
   const sep = key.indexOf(':');
   return (sep === -1 ? key : key.slice(0, sep)) as ExerciseType;
+}
+
+/** The tab's line-art "doodle" icon — one per exercise type (shared by every subtype
+ *  tab of that type), reusing the same icon set as the share cards. */
+function TabDoodle({ tileKey, size = 20, className }: { tileKey: string; size?: number; className?: string }) {
+  const Icon = EXERCISE_TYPE_ICONS[baseType(tileKey)];
+  return <Icon size={size} className={className} />;
 }
 
 // Pure UTC-based date arithmetic — avoids the classic bug where round-tripping through a
@@ -101,20 +110,25 @@ export default function YearTotalsCard({ activities, config, onSave }: Props) {
 
       {editing ? (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="flex flex-wrap gap-3">
             {draft.map(tile => {
               const item = registry.get(tile.key);
               return (
-                <div key={tile.key} className="stat-card relative">
+                <div key={tile.key} className="relative">
+                  <div
+                    title={item?.label ?? tile.key}
+                    aria-label={item?.label ?? tile.key}
+                    className="w-11 h-11 rounded-xl border border-[#334155] flex items-center justify-center text-[#94A3B8]"
+                  >
+                    <TabDoodle tileKey={tile.key} />
+                  </div>
                   <button
                     onClick={() => removeTile(tile.key)}
                     aria-label={`Remove ${item?.label ?? tile.key}`}
-                    className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-[#334155] text-[#94A3B8] hover:bg-red-900/60 hover:text-red-300 flex items-center justify-center text-xs leading-none"
+                    className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-[#334155] text-[#94A3B8] hover:bg-red-900/60 hover:text-red-300 flex items-center justify-center"
                   >
-                    ✕
+                    <X size={12} />
                   </button>
-                  <div className="stat-value">{displayValue(tile, yearActivities)}</div>
-                  <div className="stat-label">{item?.emoji} {item?.label ?? tile.key}</div>
                 </div>
               );
             })}
@@ -152,7 +166,10 @@ export default function YearTotalsCard({ activities, config, onSave }: Props) {
                   </>
                 ) : (
                   <>
-                    <h3 className="text-lg font-bold text-white mb-1">{registry.get(pickedKey)?.emoji} {registry.get(pickedKey)?.label}</h3>
+                    <h3 className="flex items-center gap-2 text-lg font-bold text-white mb-1">
+                      <TabDoodle tileKey={pickedKey} className="text-[#94A3B8]" />
+                      {registry.get(pickedKey)?.label}
+                    </h3>
                     <p className="text-sm text-[#94A3B8] mb-4">Total distance or activity count — used for both the Year and Month figures.</p>
                     <div className="flex flex-col gap-2">
                       <button onClick={() => addTile(pickedKey, 'distance')} className="btn-secondary text-sm py-2.5">Total distance (km)</button>
@@ -169,7 +186,7 @@ export default function YearTotalsCard({ activities, config, onSave }: Props) {
         <p className="text-sm text-[#475569]">No sports selected — tap ✏️ to add one.</p>
       ) : (
         <>
-          {/* Tab strip — one icon per configured sport/subtype, scrolls horizontally if it overflows */}
+          {/* Tab strip — one doodle icon per configured sport/subtype, scrolls horizontally if it overflows */}
           <div className="flex gap-1.5 overflow-x-auto pb-1 mb-4 -mx-1 px-1">
             {tiles.map(tile => {
               const item = registry.get(tile.key);
@@ -180,16 +197,17 @@ export default function YearTotalsCard({ activities, config, onSave }: Props) {
                   onClick={() => setActiveKey(tile.key)}
                   title={item?.label ?? tile.key}
                   aria-label={item?.label ?? tile.key}
-                  className={`flex-shrink-0 w-11 h-11 rounded-xl border flex items-center justify-center text-lg transition-colors ${active ? 'bg-[#293548] border-blue-500' : 'border-[#334155] hover:border-[#475569]'}`}
+                  className={`flex-shrink-0 w-11 h-11 rounded-xl border flex items-center justify-center transition-colors ${active ? 'bg-[#293548] border-blue-500 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}
                 >
-                  {item?.emoji}
+                  <TabDoodle tileKey={tile.key} />
                 </button>
               );
             })}
           </div>
 
-          <div className="text-center mb-1">
-            <p className="text-sm text-white font-semibold">{registry.get(activeTile.key)?.emoji} {registry.get(activeTile.key)?.label}</p>
+          <div className="flex items-center justify-center gap-1.5 mb-1 text-white">
+            <TabDoodle tileKey={activeTile.key} size={16} />
+            <p className="text-sm font-semibold">{registry.get(activeTile.key)?.label}</p>
           </div>
 
           <div className="text-center mb-4">
@@ -229,9 +247,12 @@ export default function YearTotalsCard({ activities, config, onSave }: Props) {
 
 function AddTileButton({ onOpen }: { onOpen: () => void }) {
   return (
-    <button onClick={onOpen} className="stat-card border-dashed flex flex-col items-center justify-center text-[#64748B] hover:text-white hover:border-[#475569] transition-colors">
-      <span className="text-xl leading-none">+</span>
-      <span className="text-xs mt-1">Add</span>
+    <button
+      onClick={onOpen}
+      aria-label="Add a tab"
+      className="w-11 h-11 rounded-xl border border-dashed border-[#334155] flex items-center justify-center text-[#64748B] hover:text-white hover:border-[#475569] transition-colors"
+    >
+      <Plus size={18} />
     </button>
   );
 }
