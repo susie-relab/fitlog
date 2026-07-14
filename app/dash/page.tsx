@@ -225,6 +225,14 @@ export default function DashPage() {
       bucket[key] = (bucket[key] || 0) + 1;
     }
   }
+  // Any type with a subtype breakdown but some activities logged with no subtype at all —
+  // count those as "Generic" so the breakdown total matches the type's overall count.
+  for (const type of Object.keys(subtypeByType) as ExerciseType[]) {
+    const bucket = subtypeByType[type]!;
+    const bucketTotal = Object.values(bucket).reduce((s, v) => s + v, 0);
+    const total = byType[type] || 0;
+    if (bucketTotal < total) bucket['Generic'] = total - bucketTotal;
+  }
   const presentTypes14 = Object.keys(byType) as ExerciseType[];
 
   // 14-day stacked-by-type chart: one row per day, one key per activity type present.
@@ -243,6 +251,12 @@ export default function DashPage() {
         const bucket = detail[a.exercise_type] || (detail[a.exercise_type] = {});
         bucket[key] = (bucket[key] || 0) + 1;
       }
+    }
+    for (const type of Object.keys(detail) as ExerciseType[]) {
+      const bucket = detail[type]!;
+      const bucketTotal = Object.values(bucket).reduce((s, v) => s + v, 0);
+      const total = (row[type] as number) || 0;
+      if (bucketTotal < total) bucket['Generic'] = total - bucketTotal;
     }
     day14Details[label] = detail;
     return row;

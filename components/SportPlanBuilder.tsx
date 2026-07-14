@@ -186,7 +186,7 @@ export default function SportPlanBuilder({ existing, onSaved, onCancel }: Props)
             <div className="bg-[#0F172A] -mx-5 px-5 pt-3 pb-4">
               <p className="text-[10px] text-[#64748B] uppercase tracking-wide font-semibold mb-2">Which one?</p>
               <div className="grid grid-cols-3 gap-1.5">
-                <button onClick={() => setSubType('')} className={`py-1.5 px-2 rounded-lg text-[11px] font-medium border transition-all ${!subType && !customSport ? 'bg-blue-600 border-blue-600 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>General</button>
+                <button onClick={() => setSubType('')} className={`py-1.5 px-2 rounded-lg text-[11px] font-medium border transition-all ${!subType && !customSport ? 'bg-blue-600 border-blue-600 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>Generic</button>
                 {Object.entries(subs).map(([k, lbl]) => (
                   <button key={k} onClick={() => { setSubType(k); setCustomSport(''); }} className={`py-1.5 px-2 rounded-lg text-[11px] font-medium border transition-all ${subType === k ? 'bg-blue-600 border-blue-600 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>{lbl}</button>
                 ))}
