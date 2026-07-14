@@ -51,9 +51,9 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#0F172A] p-4">
       <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <div className="text-4xl mb-3">🏃</div>
-          <h1 className="text-3xl font-extrabold text-white tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>SportLog</h1>
+        <div className="text-center mb-8 flex flex-col items-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.png" alt="SportLogRun" className="w-32 h-32 rounded-3xl mb-3" />
           <p className="text-[#64748B] text-sm mt-1 font-medium">Exercise Tracker</p>
         </div>
 
