@@ -49,7 +49,7 @@ export default function Nav() {
   return (
     <>
       {/* Desktop sidebar */}
-      <nav className="hidden md:flex flex-col w-56 h-screen bg-[#1E293B] border-r border-[#334155] p-4 fixed top-0 left-0 overflow-y-auto">
+      <nav className="hidden md:flex flex-col w-56 h-screen bg-[#1E293B] border-r border-[#334155] p-4 fixed top-0 left-0 overflow-y-auto no-scrollbar">
         <Link href="/dash" className="mb-8 mt-2 flex flex-col items-start gap-1">
           <SportLogRunMark size={100} />
           <p className="text-xs text-[#64748B] font-medium" style={{ fontFamily: 'var(--font-body)' }}>Exercise Tracker</p>
