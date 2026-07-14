@@ -20,7 +20,10 @@ function baseType(key: string): ExerciseType {
   return (sep === -1 ? key : key.slice(0, sep)) as ExerciseType;
 }
 
-function displayValue(tile: YearTotalTile, periodActivities: Activity[]): string {
+// For a "both" tile, the Year figure only shows distance (the Month figure below it already
+// gives the fuller distance-and-count breakdown, so repeating both at the Year level is just
+// noise) — Month shows the full "distance | count" combo.
+function displayValue(tile: YearTotalTile, periodActivities: Activity[], period: 'year' | 'month'): string {
   const matches = periodActivities.filter(a => activityMatchesFavouriteKey(a, tile.key));
   const kmSum = matches.reduce((s, a) => s + (a.distance_km || 0), 0);
   // Round before formatting — summing many decimal distance_km values leaves floating-point
@@ -29,7 +32,7 @@ function displayValue(tile: YearTotalTile, periodActivities: Activity[]): string
   const dist = formatDistance(km, baseType(tile.key));
   if (tile.metric === 'distance') return dist;
   if (tile.metric === 'count') return String(matches.length);
-  return `${dist} | ${matches.length}`;
+  return period === 'year' ? dist : `${dist} | ${matches.length}`;
 }
 
 function subtypeOf(key: string): string {
@@ -283,7 +286,7 @@ export default function YearTotalsCard({ activities, config, onSave }: Props) {
 
           <div className="text-center mb-4">
             <p className="text-xs font-semibold text-[#64748B] uppercase tracking-wide mb-1">This Year</p>
-            <p className="text-4xl font-extrabold text-white" style={{ fontFamily: 'var(--font-display)' }}>{displayValue(activeTile, yearActivities)}</p>
+            <p className="text-4xl font-extrabold text-white" style={{ fontFamily: 'var(--font-display)' }}>{displayValue(activeTile, yearActivities, 'year')}</p>
           </div>
 
           {/* Last 7 days (rolling, not the calendar week) — which days had this activity */}
@@ -308,7 +311,7 @@ export default function YearTotalsCard({ activities, config, onSave }: Props) {
 
           <div className="text-center">
             <p className="text-xs font-semibold text-[#64748B] uppercase tracking-wide mb-1">This Month</p>
-            <p className="text-2xl font-bold text-white" style={{ fontFamily: 'var(--font-display)' }}>{displayValue(activeTile, monthActivities)}</p>
+            <p className="text-2xl font-bold text-white" style={{ fontFamily: 'var(--font-display)' }}>{displayValue(activeTile, monthActivities, 'month')}</p>
           </div>
         </>
       )}
