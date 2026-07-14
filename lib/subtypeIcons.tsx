@@ -13,7 +13,7 @@ function GolfIconComponent({ size = 24, className }: { size?: number; className?
       className={className}
     >
       <path d="M11 2 6 18" />
-      <path d="M6 18 2 19" />
+      <path d="M6 18 1 18" />
       <circle cx="17" cy="19" r="2.2" fill="currentColor" stroke="none" />
     </svg>
   );

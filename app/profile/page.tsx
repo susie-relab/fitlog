@@ -188,7 +188,12 @@ export default function ProfilePage() {
         <h1 className="text-xl font-bold text-white">Profile</h1>
         <Link href="/dash" aria-label="Close" className="text-[#64748B] hover:text-white text-xl leading-none">✕</Link>
       </div>
-      <p className="text-sm text-[#64748B] mb-5">{user?.email}</p>
+      <p className={`text-sm text-[#64748B] ${(username || birthday) ? 'mb-1' : 'mb-5'}`}>{user?.email}</p>
+      {(username || birthday) && (
+        <p className="text-sm text-white mb-5">
+          {username}{username && birthday ? ' · ' : ''}{birthday ? `Age ${calcAge(birthday)}` : ''}
+        </p>
+      )}
 
       <Toast msg={msg} />
 
@@ -232,9 +237,9 @@ export default function ProfilePage() {
         <h2 className="text-sm font-semibold text-white mb-3">Display Name</h2>
         <input className="input mb-3" placeholder="Enter a username" value={username} onChange={e => setUsername(e.target.value)} />
         <h2 className="text-sm font-semibold text-white mb-3">Birthday <span className="text-[#64748B] font-normal">(optional)</span></h2>
-        <div className="flex items-center gap-2 mb-3">
+        <div className="flex flex-wrap items-center gap-2 mb-3">
           <select
-            className="input w-28 flex-shrink-0"
+            className="input w-24 flex-shrink-0"
             value={birthday ? birthday.slice(0, 4) : ''}
             onChange={e => {
               const y = e.target.value;
@@ -245,7 +250,7 @@ export default function ProfilePage() {
             <option value="">Year</option>
             {BIRTH_YEAR_OPTIONS.map(y => <option key={y} value={y}>{y}</option>)}
           </select>
-          <input type="date" className="input flex-1" value={birthday} onClick={openDatePicker} onChange={e => setBirthday(e.target.value)} />
+          <input type="date" className="input flex-1 min-w-[150px]" value={birthday} onClick={openDatePicker} onChange={e => setBirthday(e.target.value)} />
           {birthday && <span className="text-sm text-[#94A3B8] whitespace-nowrap">Age: {calcAge(birthday)}</span>}
         </div>
         <button onClick={handleUpdateUsername} disabled={saving} className="btn-primary w-full">Save Profile</button>
