@@ -24,12 +24,24 @@ function makeIcon(render: (props: IconProps) => ReactNode): LucideIcon {
 }
 
 const FriendsIcon = makeIcon(({ size, className }) => (
-  // Two overlapping figures — one slightly forward, one behind.
+  // Three stick figures holding hands — the outer two joining the middle one at the hand.
   <Svg size={size} className={className}>
-    <circle cx="15" cy="7" r="3" />
-    <path d="M9 20c0-4 2.5-6 6-6s6 2 6 6" />
-    <circle cx="7" cy="9" r="2.5" />
-    <path d="M2 20c0-3.5 2-5.5 5-5.5" />
+    <circle cx="5" cy="6" r="2" />
+    <path d="M5 8v7" />
+    <path d="M5 11 8 13" />
+    <path d="M5 15 3 21" />
+    <path d="M5 15 7 20" />
+    <circle cx="12" cy="4" r="2.3" />
+    <path d="M12 6.3v9" />
+    <path d="M12 9 8 13" />
+    <path d="M12 9 16 13" />
+    <path d="M12 15 10 21" />
+    <path d="M12 15 14 21" />
+    <circle cx="19" cy="6" r="2" />
+    <path d="M19 8v7" />
+    <path d="M19 11 16 13" />
+    <path d="M19 15 17 20" />
+    <path d="M19 15 21 21" />
   </Svg>
 ));
 
