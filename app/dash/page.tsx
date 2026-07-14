@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
-import { Activity, ExerciseType, EXERCISE_TYPE_LABELS, EXERCISE_TYPE_COLORS, subTypeLabel, combinedRunTypeLabel } from '@/types';
+import { Activity, ExerciseType, EXERCISE_TYPE_LABELS, EXERCISE_TYPE_COLORS, subTypeLabel, combinedRunTypeLabel, YearTotalTile } from '@/types';
 import { formatDuration, daysAgo, calcDayStreak, calcWeekStreak, todayLocalISO } from '@/lib/utils';
 import { PlanRecord, PlanData, Session, Weekday, runPlanDisplayName, todaysSession, nextSession, isRunSession, planSessionHref, WEEKDAYS, movePlanSession, addSessionToDay, sessionParts } from '@/lib/runPlanGenerator';
 import PlanWeekTable, { sessionColor, sessionTarget, exerciseTypeTag } from '@/components/PlanWeekTable';
@@ -14,6 +14,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recha
 import RecapCard from '@/components/RecapCard';
 import LastWeekSummaryCard from '@/components/LastWeekSummaryCard';
 import FavouritesCard from '@/components/FavouritesCard';
+import YearTotalsCard from '@/components/YearTotalsCard';
 
 /** The subtype label for any activity — sub_type for most types, run_type for runs. */
 function activitySubLabel(a: Activity): string | null {
@@ -128,6 +129,9 @@ export default function DashPage() {
   const persistDetailPlan = (newData: PlanData) => {
     if (!detailPlan) return;
     persistPlanData(detailPlan.id, newData);
+  };
+  const saveYearTotalTiles = (tiles: YearTotalTile[]) => {
+    supabase.auth.updateUser({ data: { ...user?.user_metadata, year_total_tiles: tiles } });
   };
 
   useEffect(() => {
@@ -327,6 +331,8 @@ export default function DashPage() {
           <div className="text-xs text-yellow-400/70 mt-1 uppercase tracking-wide font-semibold">Week Streak ⚡</div>
         </button>
       </div>
+
+      <YearTotalsCard activities={activities} config={user?.user_metadata?.year_total_tiles} onSave={saveYearTotalTiles} />
 
       {/* Desktop: plan + streaks/14-day side by side instead of one long column */}
       <div className="lg:grid lg:grid-cols-2 lg:gap-5 lg:items-start">

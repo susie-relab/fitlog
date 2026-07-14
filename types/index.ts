@@ -370,6 +370,15 @@ export function allFavouriteItems(): FavouriteItem[] {
   return items;
 }
 
+/** An activity's subtype keys — run_type/run_type_modifier for runs, the (possibly
+ *  comma-joined) sub_type for everything else. Shared by top-N counts and by the
+ *  This Year totals tile matcher below. */
+function activitySubKeys(a: Activity): string[] {
+  return a.exercise_type === 'run'
+    ? [a.run_type, a.run_type_modifier].filter(Boolean) as string[]
+    : (a.sub_type ? a.sub_type.split(',').map(s => s.trim()).filter(Boolean) : []);
+}
+
 /** Counts of logged activities over the last N months, by bare type and by specific
  *  subtype (only activities that actually have one) — used for "Top 5" on Profile/Dash. */
 export function topActivityCounts(activities: Activity[], months = 3) {
@@ -383,10 +392,7 @@ export function topActivityCounts(activities: Activity[], months = 3) {
   const subtypeCounts = new Map<string, number>();
   for (const a of recent) {
     typeCounts.set(a.exercise_type, (typeCounts.get(a.exercise_type) || 0) + 1);
-    const subKeys = a.exercise_type === 'run'
-      ? [a.run_type, a.run_type_modifier].filter(Boolean) as string[]
-      : (a.sub_type ? a.sub_type.split(',').map(s => s.trim()).filter(Boolean) : []);
-    for (const sk of subKeys) {
+    for (const sk of activitySubKeys(a)) {
       const key = `${a.exercise_type}:${sk}`;
       subtypeCounts.set(key, (subtypeCounts.get(key) || 0) + 1);
     }
@@ -398,6 +404,32 @@ export function topActivityCounts(activities: Activity[], months = 3) {
       .map(([key, count]) => ({ item: registry.get(key) ?? { key, type: key as ExerciseType, label: key, emoji: '🏅' }, count }));
 
   return { topTypes: topN(typeCounts, 5), topSubtypes: topN(subtypeCounts, 5) };
+}
+
+/** One tile in the Dash "This Year" totals card — a FavouriteItem key (bare type,
+ *  e.g. "bike", or "type:subtype", e.g. "sport:football") plus which metric to total. */
+export interface YearTotalTile {
+  key: string;
+  metric: 'distance' | 'count';
+}
+
+export const DEFAULT_YEAR_TOTAL_TILES: YearTotalTile[] = [
+  { key: 'run', metric: 'distance' },
+  { key: 'bike', metric: 'distance' },
+  { key: 'swim', metric: 'distance' },
+  { key: 'sport:football', metric: 'count' },
+];
+
+export const MAX_YEAR_TOTAL_TILES = 10;
+
+/** Whether an activity counts toward a YearTotalTile's key — bare type matches any
+ *  activity of that type, "type:subtype" also requires the subtype to be present. */
+export function activityMatchesFavouriteKey(a: Activity, key: string): boolean {
+  const sep = key.indexOf(':');
+  const type = (sep === -1 ? key : key.slice(0, sep)) as ExerciseType;
+  if (a.exercise_type !== type) return false;
+  if (sep === -1) return true;
+  return activitySubKeys(a).includes(key.slice(sep + 1));
 }
 
 export interface Activity {
