@@ -334,7 +334,7 @@ export default function DashPage() {
 
       <YearTotalsCard activities={activities} config={user?.user_metadata?.year_total_tiles} onSave={saveYearTotalTiles} />
 
-      {/* Desktop: plan + streaks/14-day side by side instead of one long column */}
+      {/* Desktop: today's plan + last-week/favourites side by side instead of one long column */}
       <div className="lg:grid lg:grid-cols-2 lg:gap-5 lg:items-start">
       <div>
       {/* Today's Plan / what's next */}
@@ -401,9 +401,18 @@ export default function DashPage() {
         </div>
       )}
 
+      </div>
+
+      <div>
+      <LastWeekSummaryCard activities={activities} plans={plans} weekStartDay={weekStartPref} todayISO={todayISO} />
+      <FavouritesCard favourites={user?.user_metadata?.favourite_activities ?? []} activities={activities} />
+      </div>
+      </div>
+
       {/* This week's plan — one PlanWeekTable per active plan, so drag-to-reorder (press and
-          hold the ⠿ handle, works on touch too) and cross-week moves work exactly like the
-          full Training Plan view. */}
+          hold anywhere, works on touch too) and cross-week moves work exactly like the
+          full Training Plan view. Full width (like YearTotalsCard above) so the week table
+          has room to breathe instead of being squeezed into half the desktop layout. */}
       {todayPlanItems.length > 0 && (
         <div className="card mb-5">
           <button onClick={() => setShowWeek(v => !v)} className="text-sm font-semibold text-[#94A3B8] hover:text-white transition-colors uppercase tracking-wide">
@@ -431,10 +440,8 @@ export default function DashPage() {
           )}
         </div>
       )}
-      </div>
 
-      <div>
-      {/* 14-day snapshot */}
+      {/* 14-day snapshot — sits directly above the 14-Day Activity Mix chart below */}
       <h2 className="text-sm font-semibold text-[#64748B] uppercase tracking-wide mb-3">Last 14 Days</h2>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
         <StatCard value={String(total14)} label="Activities" />
@@ -445,12 +452,6 @@ export default function DashPage() {
       <div className="grid grid-cols-2 gap-3 mb-5">
         <StatCard value={String(intensity14)} label="Intensity Mins" color="#06B6D4" />
         <StatCard value={String(total14 > 0 ? Math.round(dist14 / total14 * 10) / 10 : 0)} label="Avg km/session" color="#A78BFA" />
-      </div>
-
-      <LastWeekSummaryCard activities={activities} plans={plans} weekStartDay={weekStartPref} todayISO={todayISO} />
-      <FavouritesCard favourites={user?.user_metadata?.favourite_activities ?? []} activities={activities} />
-
-      </div>
       </div>
 
       {/* 14-day activity mix — stacked by type, one bar per day (full width) */}
