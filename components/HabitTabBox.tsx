@@ -233,18 +233,14 @@ export default function HabitTabBox({ categoryLabel, habits, logsByHabit, select
         })}
       </div>
 
-      <div className="flex items-start justify-between mb-4">
-        <div>
-          <p className="text-xs text-[#64748B] mb-0.5">Repeat</p>
-          <p className="text-sm font-medium text-white">{frequencyLabel(selected)}</p>
-        </div>
-        <div className="text-right">
-          <p className="text-xs text-[#64748B] mb-0.5">Target</p>
-          <p className="text-sm font-medium text-white">{selected.target_per_period} / {targetUnitLabel(selected.frequency_type, String(selected.frequency_interval_days || 2))}</p>
-        </div>
+      <div className="text-center mb-4">
+        <p className="text-xs text-[#64748B] mb-0.5">Repeat</p>
+        <p className="text-sm font-medium text-white mb-3">{frequencyLabel(selected)}</p>
+        <p className="text-xs text-[#64748B] mb-0.5">Target</p>
+        <p className="text-sm font-medium text-white">{selected.target_per_period} / {targetUnitLabel(selected.frequency_type, String(selected.frequency_interval_days || 2))}</p>
       </div>
 
-      <div className="flex items-center justify-between mb-5 px-3 py-2 rounded-lg bg-black/20">
+      <div className="flex flex-col items-center gap-2 mb-5 px-3 py-2 rounded-lg bg-black/20">
         <span className="text-xs font-medium text-[#94A3B8]">Today</span>
         <div className="flex items-center gap-3">
           <button
@@ -266,11 +262,13 @@ export default function HabitTabBox({ categoryLabel, habits, logsByHabit, select
         </div>
       </div>
 
+      <div className="text-center mb-5">
       <p className="text-xs font-medium text-[#64748B] uppercase tracking-wide mb-1">Overview</p>
       <p className="text-5xl font-bold text-white mb-1">{monthPct}%</p>
-      <div className="flex gap-4 text-sm text-[#94A3B8] mb-5">
+      <div className="flex justify-center gap-4 text-sm text-[#94A3B8]">
         <span>Month <span className="text-white font-semibold">{monthPct}%</span></span>
         <span>Year <span className="text-white font-semibold">{yearPct}%</span></span>
+      </div>
       </div>
 
       {dayStats && (

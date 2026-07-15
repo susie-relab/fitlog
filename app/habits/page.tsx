@@ -199,21 +199,42 @@ export default function HabitsPage() {
     });
   };
 
-  const moveHabit = async (id: string, direction: 'up' | 'down') => {
-    const currentOrder = habits.filter(h => h.category === activeCategory);
-    const from = currentOrder.findIndex(h => h.id === id);
-    const to = direction === 'up' ? from - 1 : from + 1;
-    if (from === -1 || to < 0 || to >= currentOrder.length) return;
-    const reordered = [...currentOrder];
-    [reordered[from], reordered[to]] = [reordered[to], reordered[from]];
-    // Re-number just this category's habits, then merge back into the full list so other
-    // categories' sort_order values are untouched.
-    const updates = reordered.map((h, i) => ({ ...h, sort_order: i }));
-    setHabits(prev => {
-      const others = prev.filter(h => h.category !== activeCategory);
-      return [...others, ...updates].sort((a, b) => a.sort_order - b.sort_order);
-    });
-    await Promise.all(updates.map(h => supabase.from('habits').update({ sort_order: h.sort_order }).eq('id', h.id)));
+  // Renumbers every habit's sort_order to match its position in `ordered`, so the flat
+  // habit-list's global order and each category's tab-box order stay consistent with each
+  // other (both are just this same array filtered/sliced, not independently maintained).
+  const persistHabitOrder = async (ordered: Habit[]) => {
+    const withOrder = ordered.map((h, i) => ({ ...h, sort_order: i }));
+    setHabits(withOrder);
+    await Promise.all(withOrder.map(h => supabase.from('habits').update({ sort_order: h.sort_order }).eq('id', h.id)));
+  };
+
+  // Up/down in the tab box's edit panel — moves a habit past its nearest neighbour *within
+  // the same category*, skipping over any other categories' habits interleaved between them.
+  const moveHabit = (id: string, direction: 'up' | 'down') => {
+    const idx = habits.findIndex(h => h.id === id);
+    if (idx === -1) return;
+    const category = habits[idx].category;
+    let swapIdx = -1;
+    if (direction === 'up') {
+      for (let i = idx - 1; i >= 0; i--) { if (habits[i].category === category) { swapIdx = i; break; } }
+    } else {
+      for (let i = idx + 1; i < habits.length; i++) { if (habits[i].category === category) { swapIdx = i; break; } }
+    }
+    if (swapIdx === -1) return;
+    const reordered = [...habits];
+    [reordered[idx], reordered[swapIdx]] = [reordered[swapIdx], reordered[idx]];
+    persistHabitOrder(reordered);
+  };
+
+  // Press-and-hold drag reorder on the flat habit list below — reorders across categories too.
+  const reorderAllHabits = (fromId: string, toId: string) => {
+    const from = habits.findIndex(h => h.id === fromId);
+    const to = habits.findIndex(h => h.id === toId);
+    if (from === -1 || to === -1) return;
+    const reordered = [...habits];
+    const [moved] = reordered.splice(from, 1);
+    reordered.splice(to, 0, moved);
+    persistHabitOrder(reordered);
   };
 
   const updateHabit = async (habitId: string, patch: Partial<Habit>) => {
@@ -308,8 +329,10 @@ export default function HabitsPage() {
             />
           </div>
 
-          <div className="flex flex-col gap-3 mb-5">
-            {habitsInCategory.map(habit => (
+          {/* All habits across every category — press and hold (not the day-tap/stepper/pencil
+              controls) to drag and reorder. The category tabs above only affect the tab box. */}
+          <div className="flex flex-col gap-2 mb-5">
+            {habits.map(habit => (
               <HabitListRow
                 key={habit.id}
                 habit={habit}
@@ -317,6 +340,7 @@ export default function HabitsPage() {
                 onIncrement={() => incrementToday(habit)}
                 onDecrement={() => decrementToday(habit)}
                 onUpdateHabit={patch => updateHabit(habit.id, patch)}
+                onReorder={toId => reorderAllHabits(habit.id, toId)}
               />
             ))}
           </div>
