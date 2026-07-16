@@ -80,14 +80,14 @@ const NetballIcon = makeIcon(({ size, className }) => (
 
 // The ball's classic seamed panels — moved here from Netball so Volleyball gets the more
 // recognisable "ball" glyph and Netball gets its own hoop-and-net glyph instead.
+// Three curved panel seams all converging near the right edge and fanning out across the
+// ball, plus a short seam curling up to the top — matches the classic volleyball glyph.
 const VolleyballIcon = makeIcon(({ size, className }) => (
   <Svg size={size} className={className}>
     <circle cx="12" cy="12" r="9" />
-    <path d="M12 3a9 9 0 0 0-6.36 15.36" />
-    <path d="M12 3a9 9 0 0 1 6.36 15.36" />
-    <path d="M4.5 8.5a9 9 0 0 0 0 7" />
-    <path d="M19.5 8.5a9 9 0 0 1 0 7" />
-    <path d="M8 20.5a9 9 0 0 0 8 0" />
+    <path d="M20.5 12c-5-3.5-11-3.5-16 0" />
+    <path d="M20.5 12c-5 3.5-11 3.5-16 0" />
+    <path d="M20 8.5c-4 1-8 1-8-5.3" />
   </Svg>
 ));
 
@@ -103,15 +103,17 @@ const TurboTouchIcon = makeIcon(({ size, className }) => (
 
 // Two small paddle-shaped racquets crossing each other, rather than one racquet + ball —
 // reads more clearly as "padel" (a doubles game played with two solid paddles).
+// Both heads centred on the crossing point with the handles extending outward past them,
+// rather than handles that pass through the centre toward the opposite racquet.
 const PadelIcon = makeIcon(({ size, className }) => (
   <Svg size={size} className={className}>
     <g transform="rotate(-25 12 12)">
-      <rect x="7" y="2.5" width="7" height="9" rx="3.5" />
-      <path d="M10.5 11.5v6.5" />
+      <rect x="8.5" y="4" width="7" height="10" rx="3.5" />
+      <path d="M12 14v7" />
     </g>
     <g transform="rotate(25 12 12)">
-      <rect x="10" y="2.5" width="7" height="9" rx="3.5" />
-      <path d="M13.5 11.5v6.5" />
+      <rect x="8.5" y="4" width="7" height="10" rx="3.5" />
+      <path d="M12 14v7" />
     </g>
   </Svg>
 ));
@@ -182,8 +184,8 @@ const FrisbeeIcon = makeIcon(({ size, className }) => (
   <Svg size={size} className={className}>
     <ellipse cx="14" cy="15" rx="7" ry="3.2" />
     <ellipse cx="14" cy="15" rx="3.3" ry="1.5" />
-    <path d="M9.5 10.5c-2-2-2.8-4.2-1.8-6.2" />
-    <path d="M6.5 12.5c-2.3-2-3.2-4.4-2.2-6.8" />
+    <path d="M9 9c-2-2-2.8-4.2-1.8-6.2" />
+    <path d="M6 10.5c-2.3-2-3.2-4.4-2.2-6.8" />
   </Svg>
 ));
 
