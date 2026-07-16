@@ -30,7 +30,14 @@ export function getWeekDays(dateISO: string): string[] {
 /** 0..1 completion ratio for one habit on one day, from its log count vs its target. */
 export function completionRatio(habit: Habit, log: HabitLog | undefined): number {
   if (!log || habit.target_per_period <= 0) return 0;
-  return Math.min(1, log.count / habit.target_per_period);
+  return Math.max(0, Math.min(1, log.count / habit.target_per_period));
+}
+
+/** A day explicitly marked "didn't happen" — stored as the sentinel count -1, distinct from
+ *  a day that's simply unlogged so far. Failed days still count as a miss for streaks/stats
+ *  (see the `< target` checks below), this only changes what the UI shows for that day. */
+export function isFailedLog(log: HabitLog | undefined): boolean {
+  return log?.count === -1;
 }
 
 const isDone = (habit: Habit, logsByDate: Map<string, HabitLog>, dateISO: string) => {
@@ -87,7 +94,7 @@ export function bestStreak(habit: Habit, logs: HabitLog[]): number {
 
 /** Total completions logged (sum of counts, not just days done) across all history. */
 export function totalCompletions(logs: HabitLog[]): number {
-  return logs.reduce((s, l) => s + l.count, 0);
+  return logs.reduce((s, l) => s + Math.max(0, l.count), 0);
 }
 
 /** % of scheduled days fully completed within an inclusive date range. */
@@ -156,7 +163,7 @@ export function periodProgress(habit: Habit, logs: HabitLog[], todayISO: string)
     let sum = 0;
     let cursor = start;
     while (cursor <= end) {
-      sum += logsByDate.get(cursor)?.count || 0;
+      sum += Math.max(0, logsByDate.get(cursor)?.count || 0);
       cursor = addDaysISO(cursor, 1);
     }
     return sum;

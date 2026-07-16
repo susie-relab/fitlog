@@ -37,6 +37,7 @@ interface Props {
   onDeleteHabit: (id: string) => void;
   onIncrementToday: (habit: Habit) => void;
   onDecrementToday: (habit: Habit) => void;
+  onMarkFailedToday: (habit: Habit) => void;
 }
 
 const WEEKDAY_OPTIONS = [
@@ -185,7 +186,7 @@ export function StartDateFields({
  *  reorder). */
 export default function HabitTabBox({
   categories, activeCategory, onSelectCategory, onReorderCategory, onMoveCategory, onRenameCategory, onRemoveCategory, onCreateCategory,
-  categoryLabel, habits, logsByHabit, selectedHabitId, onSelectHabit, onCreateHabit, onMoveHabit, onUpdateHabit, onArchiveHabit, onDeleteHabit, onIncrementToday, onDecrementToday,
+  categoryLabel, habits, logsByHabit, selectedHabitId, onSelectHabit, onCreateHabit, onMoveHabit, onUpdateHabit, onArchiveHabit, onDeleteHabit, onIncrementToday, onDecrementToday, onMarkFailedToday,
 }: Props) {
   const [showEdit, setShowEdit] = useState(false);
   const [showManageCategories, setShowManageCategories] = useState(false);
@@ -387,13 +388,21 @@ export default function HabitTabBox({
           >
             −
           </button>
-          <span className="text-sm font-semibold text-white w-4 text-center">{logsByDate.get(todayISO)?.count || 0}</span>
+          <span className="text-sm font-semibold text-white w-4 text-center">{Math.max(0, logsByDate.get(todayISO)?.count || 0)}</span>
           <button
             onClick={() => onIncrementToday(selected)}
             aria-label="Add one for today"
             className="w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold bg-[#334155] text-white hover:bg-[#475569]"
           >
             +
+          </button>
+          <button
+            onClick={() => onMarkFailedToday(selected)}
+            title="Didn't happen"
+            aria-label="Didn't happen"
+            className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold ${logsByDate.get(todayISO)?.count === -1 ? 'bg-red-500/80 text-white' : 'bg-[#334155] text-white hover:bg-[#475569]'}`}
+          >
+            ×
           </button>
         </div>
       </div>

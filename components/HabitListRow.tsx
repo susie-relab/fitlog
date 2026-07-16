@@ -12,6 +12,7 @@ interface Props {
   onDecrement: () => void;
   onUpdateHabit: (patch: Partial<Habit>) => void;
   onReorder: (toHabitId: string) => void;
+  onMarkFailed: () => void;
   onArchive: () => void;
   onDelete: () => void;
 }
@@ -29,7 +30,7 @@ function hexToRgba(hex: string, alpha: number): string {
  *  window. Tapping anywhere on the row (other than the +/- stepper or pencil) opens/closes the
  *  quick editor; press-and-hold anywhere else drags the row to reorder it within the full
  *  habit list (across every category). */
-export default function HabitListRow({ habit, logs, onIncrement, onDecrement, onUpdateHabit, onReorder, onArchive, onDelete }: Props) {
+export default function HabitListRow({ habit, logs, onIncrement, onDecrement, onMarkFailed, onUpdateHabit, onReorder, onArchive, onDelete }: Props) {
   const [editing, setEditing] = useState(false);
   const [dragging, setDragging] = useState(false);
   const dragMovedRef = useRef(false);
@@ -41,7 +42,9 @@ export default function HabitListRow({ habit, logs, onIncrement, onDecrement, on
 
   const todayISO = todayLocalISO();
   const { pct, sum, target: periodTarget, periodLabel } = periodProgress(habit, logs, todayISO);
-  const todayCount = logs.find(l => l.date === todayISO)?.count || 0;
+  const rawTodayCount = logs.find(l => l.date === todayISO)?.count || 0;
+  const isFailedToday = rawTodayCount === -1;
+  const todayCount = isFailedToday ? 0 : rawTodayCount;
 
   // A tap toggles the editor open/closed (like the Cancel button); opening also refreshes
   // the form fields to the habit's current values.
@@ -143,6 +146,15 @@ export default function HabitListRow({ habit, logs, onIncrement, onDecrement, on
               className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold bg-black/25 text-white hover:bg-black/40"
             >
               +
+            </button>
+            <button
+              onClick={e => { e.stopPropagation(); onMarkFailed(); }}
+              onPointerDown={e => e.stopPropagation()}
+              title="Didn't happen"
+              aria-label="Didn't happen"
+              className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${isFailedToday ? 'bg-red-500/80 text-white' : 'bg-black/25 text-white/70 hover:bg-black/40'}`}
+            >
+              ×
             </button>
             <button
               onClick={e => { e.stopPropagation(); toggleEditor(); }}

@@ -407,20 +407,44 @@ export default function HabitsPage() {
 
   /** Tap-to-cycle: 0 -> 1 -> 2 -> ... -> target -> 0. Used by the month calendar's day popover. */
   const cycleHabitLog = (habit: Habit, date: string) => {
-    const current = logsByHabit.get(habit.id)?.find(l => l.date === date)?.count || 0;
+    const current = Math.max(0, logsByHabit.get(habit.id)?.find(l => l.date === date)?.count || 0);
     const next = current >= habit.target_per_period ? 0 : current + 1;
     logHabit(habit, date, next);
   };
 
   /** +/- steppers on the tab box and progress rows — a second, more precise way to log a
-   *  completion for today alongside the calendar's tap-to-cycle. */
+   *  completion for today alongside the calendar's tap-to-cycle. Clamping a negative "didn't
+   *  happen" sentinel to 0 here means tapping + after marking a fail just starts counting up,
+   *  which naturally overwrites the fail mark via logHabit's normal upsert. */
   const incrementToday = (habit: Habit) => {
-    const current = logsByHabit.get(habit.id)?.find(l => l.date === todayLocalISO())?.count || 0;
+    const current = Math.max(0, logsByHabit.get(habit.id)?.find(l => l.date === todayLocalISO())?.count || 0);
     logHabit(habit, todayLocalISO(), current + 1);
   };
   const decrementToday = (habit: Habit) => {
-    const current = logsByHabit.get(habit.id)?.find(l => l.date === todayLocalISO())?.count || 0;
+    const current = Math.max(0, logsByHabit.get(habit.id)?.find(l => l.date === todayLocalISO())?.count || 0);
     logHabit(habit, todayLocalISO(), Math.max(0, current - 1));
+  };
+
+  // "Didn't happen" — an explicit fail for today, stored as the sentinel count -1 so it's
+  // distinguishable from a day that's simply not logged yet. Tapping again clears it.
+  const markFailedToday = async (habit: Habit) => {
+    if (!user) return;
+    const todayISO = todayLocalISO();
+    const existing = logsByHabit.get(habit.id)?.find(l => l.date === todayISO);
+    if (existing?.count === -1) {
+      setLogs(prev => prev.filter(l => l.id !== existing.id));
+      await supabase.from('habit_logs').delete().eq('id', existing.id);
+      return;
+    }
+    if (existing) {
+      setLogs(prev => prev.map(l => l.id === existing.id ? { ...l, count: -1 } : l));
+      await supabase.from('habit_logs').update({ count: -1 }).eq('id', existing.id);
+    } else {
+      const { data } = await supabase.from('habit_logs').insert({
+        habit_id: habit.id, user_id: user.id, date: todayISO, count: -1,
+      }).select().single();
+      if (data) setLogs(prev => [...prev, data as HabitLog]);
+    }
   };
 
   if (loading) return <div className="text-[#64748B] text-sm">Loading...</div>;
@@ -494,6 +518,7 @@ export default function HabitsPage() {
               onUpdateHabit={updateHabit}
               onIncrementToday={incrementToday}
               onDecrementToday={decrementToday}
+              onMarkFailedToday={markFailedToday}
             />
           </div>
 
@@ -558,6 +583,7 @@ export default function HabitsPage() {
                 logs={logsByHabit.get(habit.id) || []}
                 onIncrement={() => incrementToday(habit)}
                 onDecrement={() => decrementToday(habit)}
+                onMarkFailed={() => markFailedToday(habit)}
                 onUpdateHabit={patch => updateHabit(habit.id, patch)}
                 onReorder={toId => reorderAllHabits(habit.id, toId)}
                 onArchive={() => archiveHabit(habit.id)}
