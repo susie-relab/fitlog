@@ -162,7 +162,7 @@ function DayCell({ s, onClick, compact, drag }: {
                   {p.completed && <span className="text-green-400 text-xs ml-auto flex-shrink-0">✓</span>}
                   {p.variant && <span className="text-[9px] uppercase text-[#64748B] flex-shrink-0">{p.variant}</span>}
                 </div>
-                {exerciseTypeTag(p) && <div className="text-[10px] text-[#64748B] mt-0.5">{exerciseTypeTag(p)}</div>}
+                {exerciseTypeTag(p) && <div className="text-xs text-[#94A3B8] mt-0.5">{exerciseTypeTag(p)}</div>}
                 {target(p) && <div className="text-xs font-bold mt-0.5" style={{ color }}>{target(p)}</div>}
                 {!compact && !isCombined && p.detail && !muted && (
                   <div className="text-[10px] text-[#64748B] mt-1 leading-snug line-clamp-2 whitespace-pre-line">{p.detail}</div>

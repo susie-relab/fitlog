@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import NumberWheelColumn from './NumberWheelColumn';
 
 interface Props {
@@ -35,6 +35,8 @@ export default function ScrollFieldPicker({ label, unit, value, onChange, max, m
   const [focused, setFocused] = useState(false);
   const [wholeText, setWholeText] = useState('');
   const [fracText, setFracText] = useState('');
+  const wholeInputRef = useRef<HTMLInputElement>(null);
+  const fracInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!focused) {
@@ -43,17 +45,21 @@ export default function ScrollFieldPicker({ label, unit, value, onChange, max, m
     }
   }, [whole, frac, focused]);
 
+  // Land the cursor (with the existing value pre-selected) straight in the whole-number
+  // input as soon as the picker opens, so a single tap-to-open is immediately followed by
+  // typing the new value — no extra tap needed to focus/clear the field first.
+  useEffect(() => {
+    if (open) {
+      const id = requestAnimationFrame(() => wholeInputRef.current?.select());
+      return () => cancelAnimationFrame(id);
+    }
+  }, [open]);
+
   const openPicker = () => {
     const parsed = (preferSuggestion && suggestion != null) ? suggestion : (value ? parseFloat(value) : (suggestion ?? min));
     setWhole(Math.max(min, Math.floor(parsed)));
     setFrac(Math.round((parsed - Math.floor(parsed)) * 100));
     setOpen(true);
-  };
-
-  const handleWholeText = (v: string) => {
-    setWholeText(v);
-    const n = parseInt(v, 10);
-    if (!isNaN(n) && n >= min && n <= max) setWhole(n);
   };
 
   const handleFracText = (v: string) => {
@@ -62,8 +68,30 @@ export default function ScrollFieldPicker({ label, unit, value, onChange, max, m
     if (!isNaN(n) && n >= 0 && n <= 99) setFrac(n);
   };
 
+  // Typing a "." (or a whole value with one already in it, e.g. pasting "2.5") splits at the
+  // dot and hands the remainder to the fraction field — handled here in onChange, not just
+  // onKeyDown, so it also covers paste/autofill/IME input that never fires a normal keydown.
+  const handleWholeText = (v: string) => {
+    if (decimals === 2 && v.includes('.')) {
+      const [wholePart, fracPart] = v.split('.');
+      setWholeText(wholePart);
+      const wn = parseInt(wholePart || '0', 10);
+      if (!isNaN(wn) && wn >= min && wn <= max) setWhole(wn);
+      if (fracPart) handleFracText(fracPart.slice(0, 2));
+      requestAnimationFrame(() => fracInputRef.current?.focus());
+      return;
+    }
+    setWholeText(v);
+    const n = parseInt(v, 10);
+    if (!isNaN(n) && n >= min && n <= max) setWhole(n);
+  };
+
   const commitAndClose = () => {
-    const final = decimals === 2 ? whole + frac / 100 : whole;
+    // A single fraction digit left at commit time (e.g. typed "2.5" and stopped) reads as
+    // tenths, not hundredths — "5" means .50, matching how people actually write decimals.
+    // A second typed digit ("2.05" or "2.50") always wins since fracText is then 2 chars.
+    const effectiveFrac = (decimals === 2 && fracText.length === 1) ? frac * 10 : frac;
+    const final = decimals === 2 ? whole + effectiveFrac / 100 : whole;
     onChange(final > 0 || value ? String(decimals === 2 ? Math.round(final * 100) / 100 : final) : '');
     setOpen(false);
   };
@@ -103,12 +131,19 @@ export default function ScrollFieldPicker({ label, unit, value, onChange, max, m
             </div>
             <div className="pointer-events-none absolute left-0 right-0 top-1/2 -translate-y-1/2 flex items-center justify-center gap-1">
               <input
+                ref={wholeInputRef}
                 type="text"
                 inputMode="numeric"
                 value={wholeText}
-                onFocus={() => setFocused(true)}
+                onFocus={e => { setFocused(true); e.target.select(); }}
                 onBlur={() => setFocused(false)}
                 onChange={e => handleWholeText(e.target.value)}
+                onKeyDown={e => {
+                  if (decimals === 2 && (e.key === '.' || e.key === ',')) {
+                    e.preventDefault();
+                    fracInputRef.current?.focus();
+                  }
+                }}
                 style={{ width: wholeWidth }}
                 className="pointer-events-auto bg-transparent text-white text-lg font-bold text-center outline-none"
               />
@@ -116,10 +151,11 @@ export default function ScrollFieldPicker({ label, unit, value, onChange, max, m
                 <>
                   <span className="text-white text-lg pb-1 invisible">.</span>
                   <input
+                    ref={fracInputRef}
                     type="text"
                     inputMode="numeric"
                     value={fracText}
-                    onFocus={() => setFocused(true)}
+                    onFocus={e => { setFocused(true); e.target.select(); }}
                     onBlur={() => setFocused(false)}
                     onChange={e => handleFracText(e.target.value)}
                     style={{ width: fracWidth }}

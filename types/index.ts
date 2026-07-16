@@ -214,24 +214,26 @@ export type WalkSubType = 'multi_day' | 'stroll' | 'speed' | 'urban' | 'bush' | 
 
 // --- Companions & conditions — universal tags, apply to any exercise type ---
 
-export type Companion = 'friends' | 'family' | 'kids' | 'pets';
+export type Companion = 'team' | 'friends' | 'family' | 'kids' | 'pets';
 export const COMPANION_LABELS: Record<Companion, string> = {
-  friends: 'With Friend/s', family: 'With Fam', kids: 'With Kid/s', pets: 'With Pet/s',
+  team: 'With Team', friends: 'With Friend/s', family: 'With Fam', kids: 'With Kid/s', pets: 'With Pet/s',
 };
 export const COMPANION_EMOJI: Record<Companion, string> = {
-  friends: '👫', family: '👪', kids: '🧒', pets: '🐾',
+  team: '🤝', friends: '👫', family: '👪', kids: '🧒', pets: '🐾',
 };
 
-export type WeatherCondition = 'rainy' | 'sunny' | 'windy' | 'cloudy' | 'foggy' | 'snowy' | 'stormy' | 'freezing' | 'cold' | 'hot' | 'humid' | 'dusty';
+export type WeatherCondition = 'rainy' | 'sunny' | 'windy' | 'cloudy' | 'foggy' | 'snowy' | 'stormy' | 'freezing' | 'cold' | 'hot' | 'humid' | 'dusty' | 'sunrise' | 'morning' | 'afternoon' | 'sunset' | 'night';
 export const CONDITION_LABELS: Record<WeatherCondition, string> = {
   rainy: 'Rainy', sunny: 'Sunny', windy: 'Windy', cloudy: 'Cloudy', foggy: 'Foggy', snowy: 'Snowy',
   stormy: 'Stormy', dusty: 'Dusty', freezing: 'Freezing', cold: 'Cold', hot: 'Hot', humid: 'Humid',
+  sunrise: 'Sunrise', morning: 'Morning', afternoon: 'Afternoon', sunset: 'Sunset', night: 'Night',
 };
 // Plain glyph icons (no smiley/photographic-style faces) so they read as simple sketch-style
 // doodles rather than emoji reactions.
 export const CONDITION_EMOJI: Record<WeatherCondition, string> = {
   rainy: '🌧️', sunny: '☀️', windy: '💨', cloudy: '☁️', foggy: '🌫️', snowy: '🌨️',
   stormy: '⛈️', dusty: '🌪️', freezing: '🧊', cold: '❄️', hot: '🌡️', humid: '💧',
+  sunrise: '🌅', morning: '🌄', afternoon: '🌇', sunset: '🌆', night: '🌙',
 };
 
 export const SPORT_SUB_LABELS: Record<SportSubType, string> = {

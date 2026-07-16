@@ -392,7 +392,7 @@ export default function DashPage() {
                       <span className={`text-sm font-semibold truncate ${done ? 'text-[#64748B] line-through' : 'text-white'}`}>{s.title}</span>
                       {done && <span className="text-green-400 text-xs">✓</span>}
                     </div>
-                    <span className="text-xs text-[#64748B]">{planLabel(plan)}{sessionTarget(s) ? ` · ${sessionTarget(s)}` : ''} · tap for details</span>
+                    <span className="text-xs text-[#64748B]">{planLabel(plan)}{exerciseTypeTag(s) ? ` · ${exerciseTypeTag(s)}` : ''}{sessionTarget(s) ? ` · ${sessionTarget(s)}` : ''} · tap for details</span>
                   </button>
                   {runnable && !done && (
                     <Link href={planSessionHref(s, plan.id, today.week, today.day, undefined, true)}
@@ -411,7 +411,7 @@ export default function DashPage() {
                   <span className="w-1.5 h-9 rounded-full flex-shrink-0" style={{ background: sessionColor(nextRun.next.session) }} />
                   <div className="flex-1 min-w-0">
                     <span className="text-sm font-semibold text-white truncate block">{nextRun.next.session.title}</span>
-                    <span className="text-xs text-[#64748B]">{planLabel(nextRun.plan)}{sessionTarget(nextRun.next.session) ? ` · ${sessionTarget(nextRun.next.session)}` : ''}</span>
+                    <span className="text-xs text-[#64748B]">{planLabel(nextRun.plan)}{exerciseTypeTag(nextRun.next.session) ? ` · ${exerciseTypeTag(nextRun.next.session)}` : ''}{sessionTarget(nextRun.next.session) ? ` · ${sessionTarget(nextRun.next.session)}` : ''}</span>
                   </div>
                   <Link href={planSessionHref(nextRun.next.session, nextRun.plan.id, nextRun.next.week, nextRun.next.day, undefined, true)}
                     className="btn-secondary text-xs px-3 py-1.5 flex-shrink-0">Log</Link>

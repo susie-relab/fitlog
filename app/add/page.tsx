@@ -12,6 +12,7 @@ import {
   SPORT_SUB_LABELS, SPORT_FOCUS_LABELS, SPORT_STYLE_LABELS, GYM_SUB_LABELS, WATER_SUB_LABELS, WATER_STYLE_LABELS, SNOW_SUB_LABELS, SNOW_STYLE_LABELS, SWIM_SUB_LABELS, SWIM_FOCUS_LABELS, SWIM_STYLE_LABELS, FITNESS_SUB_LABELS, BIKE_SUB_LABELS, STRETCH_SUB_LABELS, WALK_SUB_LABELS,
   suggestedMaxHr, suggestedAvgHr,
   Companion, COMPANION_LABELS, COMPANION_EMOJI, WeatherCondition, CONDITION_LABELS, CONDITION_EMOJI,
+  Activity,
 } from '@/types';
 import TagToggleGrid from '@/components/TagToggleGrid';
 import { COMPANION_ICON_OVERRIDES } from '@/lib/companionIcons';
@@ -24,7 +25,7 @@ import ConfettiBurst from '@/components/ConfettiBurst';
 import PbCelebrationModal from '@/components/PbCelebrationModal';
 import ActivitySavedModal, { randomEncouragement } from '@/components/ActivitySavedModal';
 import { detectAutoPBs } from '@/lib/pbDetect';
-import { todayLocalISO, openDatePicker, calcAge } from '@/lib/utils';
+import { todayLocalISO, openDatePicker, calcAge, formatDuration, formatDistance } from '@/lib/utils';
 
 function ColorDot({ color }: { color: string }) {
   return <span className="inline-block w-2.5 h-2.5 rounded-full mr-2" style={{ background: color }} />;
@@ -76,6 +77,9 @@ export default function AddPage() {
   const [planLink, setPlanLink] = useState<{ planId: string; week: number; day: string; part?: number } | null>(null);
   const [fromDash, setFromDash] = useState(false);
   const [planCompleted, setPlanCompleted] = useState<{ planId: string; totalRuns: number; totalKm: number; totalMin: number } | null>(null);
+  const [showRepeatPicker, setShowRepeatPicker] = useState(false);
+  const [recentActivities, setRecentActivities] = useState<Activity[] | null>(null);
+  const [loadingRecent, setLoadingRecent] = useState(false);
 
   // Prefill from query params (e.g. clicking a session in a training plan)
   useEffect(() => {
@@ -114,6 +118,19 @@ export default function AddPage() {
   const durationMinutes = Math.floor(durationSeconds / 60);
   const durationExtraSeconds = durationSeconds % 60;
 
+  // Rolls an overflowing minutes/seconds field up into the unit above it (e.g. typing "70"
+  // minutes becomes 1h 10m) as soon as the user taps out of any of the three duration fields.
+  const normalizeDuration = () => {
+    let h = parseInt(hours || '0');
+    let m = parseInt(mins || '0');
+    let s = parseInt(secs || '0');
+    if (s >= 60) { m += Math.floor(s / 60); s = s % 60; }
+    if (m >= 60) { h += Math.floor(m / 60); m = m % 60; }
+    setHours(h ? String(h) : '');
+    setMins(m ? String(m) : '');
+    setSecs(s ? String(s) : '');
+  };
+
   const paceToDecimal = (m: string, s: string) => {
     if (!m && !s) return undefined;
     return parseFloat(m || '0') + parseFloat(s || '0') / 60;
@@ -127,6 +144,55 @@ export default function AddPage() {
 
   const toggleCompanion = (key: Companion) => setCompanions(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]);
   const toggleCondition = (key: WeatherCondition) => setConditions(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]);
+
+  const openRepeatPicker = async () => {
+    setShowRepeatPicker(true);
+    if (recentActivities !== null || !user) return;
+    setLoadingRecent(true);
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 30);
+    const cutoffISO = cutoff.toISOString().slice(0, 10);
+    const { data } = await supabase.from('activities').select('*')
+      .eq('user_id', user.id).gte('date', cutoffISO).order('date', { ascending: false }).limit(50);
+    setRecentActivities((data as Activity[]) || []);
+    setLoadingRecent(false);
+  };
+
+  // Prefills the form from a past activity so the user can tweak it before saving — deliberately
+  // leaves notes, photos, the PB flag, and the date alone, since those belong to that past
+  // session specifically, not to today's repeat of it.
+  const applyRecentActivity = (a: Activity) => {
+    setName(a.name);
+    setExerciseType(a.exercise_type);
+    setRunType(a.run_type || '');
+    setRunTypeModifier(a.run_type_modifier || '');
+    if (a.exercise_type === 'hiit') { setGymTypes(a.sub_type ? a.sub_type.split(',') : []); setWalkTypes([]); setSubType(''); }
+    else if (a.exercise_type === 'walk') { setWalkTypes(a.sub_type ? a.sub_type.split(',') : []); setGymTypes([]); setSubType(''); }
+    else { setSubType(a.sub_type || ''); setGymTypes([]); setWalkTypes([]); }
+    setSportFocus(a.sport_focus || '');
+    setSportStyle(a.sport_style || '');
+    setSwimFocus(a.swim_focus || '');
+    setSwimStyles(a.swim_styles ? a.swim_styles.split(',') : []);
+    setSnowStyles(a.snow_styles ? a.snow_styles.split(',') : []);
+    setWaterStyles(a.water_styles ? a.water_styles.split(',') : []);
+    setCompanions(a.companions ? a.companions.split(',') as Companion[] : []);
+    setConditions(a.conditions ? a.conditions.split(',') as WeatherCondition[] : []);
+    const totalSec = a.duration_minutes * 60 + (a.duration_seconds || 0);
+    setHours(Math.floor(totalSec / 3600) ? String(Math.floor(totalSec / 3600)) : '');
+    setMins(Math.floor((totalSec % 3600) / 60) ? String(Math.floor((totalSec % 3600) / 60)) : '');
+    setSecs(totalSec % 60 ? String(totalSec % 60) : '');
+    setEffort(a.effort);
+    setDistance(a.distance_km != null ? (a.exercise_type === 'swim' ? String(Math.round(a.distance_km * 1000)) : String(a.distance_km)) : '');
+    setIntensityMins(a.intensity_minutes != null ? String(a.intensity_minutes) : '');
+    if (a.pace_min_km != null) { setPaceMin(String(Math.floor(a.pace_min_km))); setPaceSec(String(Math.round((a.pace_min_km % 1) * 60))); } else { setPaceMin(''); setPaceSec(''); }
+    if (a.max_pace_min_km != null) { setMaxPaceMin(String(Math.floor(a.max_pace_min_km))); setMaxPaceSec(String(Math.round((a.max_pace_min_km % 1) * 60))); } else { setMaxPaceMin(''); setMaxPaceSec(''); }
+    setMaxHr(a.max_hr != null ? String(a.max_hr) : '');
+    setAvgHr(a.avg_hr != null ? String(a.avg_hr) : '');
+    setElevationGain(a.elevation_gain_m != null ? String(a.elevation_gain_m) : '');
+    if (a.sport_focus || a.sport_style || a.swim_focus || a.swim_styles || a.snow_styles || a.water_styles) setShowMore(true);
+    if (a.pace_min_km != null || a.max_pace_min_km != null || a.max_hr != null || a.avg_hr != null || a.intensity_minutes != null || a.elevation_gain_m != null) setShowMore(true);
+    setShowRepeatPicker(false);
+  };
 
   const handleSave = async () => {
     if (!name.trim()) return setError('Please enter an activity name.');
@@ -257,7 +323,12 @@ export default function AddPage() {
 
   return (
     <div className="max-w-lg lg:max-w-2xl mx-auto">
-      <h1 className="text-xl font-bold text-white mb-5">Add Exercise</h1>
+      <div className="flex items-center justify-between mb-5">
+        <h1 className="text-xl font-bold text-white">Add Exercise</h1>
+        <button type="button" onClick={openRepeatPicker} className="text-sm text-blue-400 hover:text-blue-300">
+          ↻ Repeat a recent activity
+        </button>
+      </div>
 
       {confettiColor && <ConfettiBurst color={confettiColor} />}
       {error && (
@@ -553,6 +624,7 @@ export default function AddPage() {
                 min="0"
                 value={hours}
                 onChange={e => setHours(e.target.value)}
+                onBlur={normalizeDuration}
               />
             </div>
             <div className="flex-1">
@@ -564,6 +636,7 @@ export default function AddPage() {
                 max="59"
                 value={mins}
                 onChange={e => setMins(e.target.value)}
+                onBlur={normalizeDuration}
               />
             </div>
             <div className="flex-1">
@@ -575,6 +648,7 @@ export default function AddPage() {
                 max="59"
                 value={secs}
                 onChange={e => setSecs(e.target.value)}
+                onBlur={normalizeDuration}
               />
             </div>
           </div>
@@ -624,23 +698,6 @@ export default function AddPage() {
 
         {showMore && (
           <>
-            {/* Companions & conditions — universal tags, shown regardless of exercise type.
-                Two groups (not one flat list) so companions always keep their own top row,
-                never sharing it with conditions regardless of the column count at this width. */}
-            <TagToggleGrid
-              label="Select all that apply"
-              groups={[
-                (Object.keys(COMPANION_LABELS) as Companion[]).map(key => ({
-                  key, label: COMPANION_LABELS[key], emoji: COMPANION_EMOJI[key], doodle: COMPANION_ICON_OVERRIDES[key],
-                  active: companions.includes(key), onToggle: () => toggleCompanion(key),
-                })),
-                (Object.keys(CONDITION_LABELS) as WeatherCondition[]).map(key => ({
-                  key, label: CONDITION_LABELS[key], emoji: CONDITION_EMOJI[key],
-                  active: conditions.includes(key), onToggle: () => toggleCondition(key),
-                })),
-              ]}
-            />
-
             {/* Pace */}
             <div>
               <label className="label">Average Pace <span className="text-[#64748B]">min/km</span></label>
@@ -689,6 +746,23 @@ export default function AddPage() {
               <label className="label">Elevation Gain <span className="text-[#64748B]">m</span></label>
               <ScrollFieldPicker label="Elevation Gain" unit="m" max={9000} value={elevationGain} onChange={setElevationGain} suggestion={0} placeholder="e.g. 120" />
             </div>
+
+            {/* Companions & conditions — universal tags, shown regardless of exercise type.
+                Two groups (not one flat list) so companions always keep their own top row,
+                never sharing it with conditions regardless of the column count at this width. */}
+            <TagToggleGrid
+              label="Select all that apply"
+              groups={[
+                (Object.keys(COMPANION_LABELS) as Companion[]).map(key => ({
+                  key, label: COMPANION_LABELS[key], emoji: COMPANION_EMOJI[key], doodle: COMPANION_ICON_OVERRIDES[key],
+                  active: companions.includes(key), onToggle: () => toggleCompanion(key),
+                })),
+                (Object.keys(CONDITION_LABELS) as WeatherCondition[]).map(key => ({
+                  key, label: CONDITION_LABELS[key], emoji: CONDITION_EMOJI[key],
+                  active: conditions.includes(key), onToggle: () => toggleCondition(key),
+                })),
+              ]}
+            />
           </>
         )}
 
@@ -743,6 +817,40 @@ export default function AddPage() {
           {saving ? 'Saving...' : 'Save Exercise'}
         </button>
       </div>
+
+      {/* Repeat a recent activity */}
+      {showRepeatPicker && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60" onClick={() => setShowRepeatPicker(false)}>
+          <div className="card w-full sm:w-96 max-h-[75vh] overflow-y-auto rounded-b-none sm:rounded-b-xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-semibold text-white">Repeat a Recent Activity</span>
+              <button onClick={() => setShowRepeatPicker(false)} className="p-1 rounded-lg hover:bg-[#334155] text-[#94A3B8]">✕</button>
+            </div>
+            {loadingRecent && <p className="text-xs text-[#64748B]">Loading...</p>}
+            {!loadingRecent && recentActivities?.length === 0 && (
+              <p className="text-xs text-[#64748B]">No activities logged in the last 30 days.</p>
+            )}
+            <div className="flex flex-col gap-2">
+              {recentActivities?.map(a => (
+                <button
+                  key={a.id}
+                  onClick={() => applyRecentActivity(a)}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg border border-[#334155] hover:border-[#475569] text-left"
+                >
+                  <ColorDot color={a.exercise_type === 'run' && a.run_type ? RUN_TYPE_COLORS[a.run_type] : EXERCISE_TYPE_COLORS[a.exercise_type]} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm text-white truncate">{a.name}</span>
+                    <span className="block text-xs text-[#64748B]">
+                      {a.date.split('-').reverse().join('/')} · {formatDuration(a.duration_minutes)}
+                      {a.distance_km ? ` · ${formatDistance(a.distance_km, a.exercise_type)}` : ''}
+                    </span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Unsaved changes modal */}
       {showWarning && (

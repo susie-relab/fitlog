@@ -23,6 +23,18 @@ function makeIcon(render: (props: IconProps) => ReactNode): LucideIcon {
   return ((props: IconProps) => render(props)) as unknown as LucideIcon;
 }
 
+const TeamIcon = makeIcon(({ size, className }) => (
+  // A trophy/shield-style badge — reads as "team"/organised group rather than casual friends.
+  <Svg size={size} className={className}>
+    <path d="M7 4h10v6a5 5 0 0 1-10 0V4Z" />
+    <path d="M7 6H4a3 3 0 0 0 3 5" />
+    <path d="M17 6h3a3 3 0 0 1-3 5" />
+    <path d="M12 15v3" />
+    <path d="M9 21h6" />
+    <path d="M10 18h4v3h-4Z" />
+  </Svg>
+));
+
 const FriendsIcon = makeIcon(({ size, className }) => (
   // Three stick figures holding hands — the outer two joining the middle one at the hand.
   <Svg size={size} className={className}>
@@ -79,6 +91,7 @@ const PetsIcon = makeIcon(({ size, className }) => (
 ));
 
 export const COMPANION_ICON_OVERRIDES: Record<Companion, LucideIcon> = {
+  team: TeamIcon,
   friends: FriendsIcon,
   family: FamilyIcon,
   kids: KidsIcon,

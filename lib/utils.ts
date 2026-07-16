@@ -35,7 +35,7 @@ export function formatSpeedKmh(paceMinKm: number): string {
  *  not fractional km, even though distance_km is the column every exercise type shares. */
 export function formatDistance(distanceKm: number, exerciseType?: string): string {
   if (exerciseType === 'swim') return `${Math.round(distanceKm * 1000)} m`;
-  return `${distanceKm} km`;
+  return `${Number(distanceKm.toFixed(2))} km`;
 }
 
 /** Today's date in the browser's local timezone, as YYYY-MM-DD. Avoids the
