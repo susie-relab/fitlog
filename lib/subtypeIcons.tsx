@@ -156,25 +156,33 @@ const CricketIcon = makeIcon(({ size, className }) => (
 
 // A proper shuttlecock: rounded cork base with the feather skirt fanning out to a wider rim,
 // instead of a plain flat-sided triangle.
+// Cork base plus four fanning feather spines, each with a short cross-stroke near the tip
+// suggesting the feather's blade width/overlap — closer to the reference than plain rays.
 const BadmintonIcon = makeIcon(({ size, className }) => (
   <Svg size={size} className={className}>
-    <circle cx="12" cy="4.5" r="2" fill="currentColor" stroke="none" />
-    <path d="M12 6.5 6 16" />
-    <path d="M12 6.5 9 17" />
-    <path d="M12 6.5 12 17.5" />
-    <path d="M12 6.5 15 17" />
-    <path d="M12 6.5 18 16" />
-    <path d="M6 16h12" />
+    <path d="M8.5 18a3.5 3.5 0 1 1 7 0" />
+    <path d="M8.5 18 5 5" />
+    <path d="M10.5 18 9 3.5" />
+    <path d="M13.5 18 15 3.5" />
+    <path d="M15.5 18 19 5" />
+    <path d="M5 5c1.3 1 2.7 1.6 4 2" />
+    <path d="M9 3.5c1 1.2 2 2 3 2.5" />
+    <path d="M15 3.5c-1 1.2-2 2-3 2.5" />
+    <path d="M19 5c-1.3 1-2.7 1.6-4 2" />
   </Svg>
 ));
 
 // A dynamic swoosh-seam ball emblem (per reference logo) instead of a plain oval with a
 // straight lace line across it.
+// A tilted oval ball with two close-together seam curves running its length, per the
+// reference — instead of a single centred lace line.
 const RugbyIcon = makeIcon(({ size, className }) => (
   <Svg size={size} className={className}>
-    <ellipse cx="12" cy="12" rx="9" ry="5" transform="rotate(-25 12 12)" />
-    <path d="M6 8c3 1.5 10 8 13 9" />
-    <path d="M6 8c1 2.5 2.2 4.3 4 6" />
+    <g transform="rotate(-35 12 12)">
+      <ellipse cx="12" cy="12" rx="9" ry="5" />
+      <path d="M4 10c3-3 13-3 16 0" />
+      <path d="M4 12.5c3-3 13-3 16 0" />
+    </g>
   </Svg>
 ));
 
