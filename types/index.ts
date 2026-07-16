@@ -512,17 +512,17 @@ export interface Activity {
 // The app's built-in categories. Users can also create their own on the fly (see
 // HabitCategoryRow below) — a habit's `category` column holds either one of these fixed
 // keys or a habit_categories.id, so it's typed as a plain string, not this union.
-export type HabitCategory = 'health' | 'nutrition' | 'lifestyle' | 'self_care' | 'sleep' | 'phone_use' | 'spiritual';
+export type HabitCategory = 'health' | 'nutrition' | 'lifestyle' | 'self_care' | 'sleep' | 'phone_use' | 'spiritual' | 'home' | 'fitness' | 'connection';
 
 export const HABIT_CATEGORY_LABELS: Record<HabitCategory, string> = {
   health: 'Health', nutrition: 'Nutrition', lifestyle: 'Lifestyle', self_care: 'Self-Care', sleep: 'Sleep',
-  phone_use: 'Phone Use', spiritual: 'Spiritual',
+  phone_use: 'Phone Use', spiritual: 'Spiritual', home: 'Home', fitness: 'Fitness', connection: 'Connection',
 };
 export const HABIT_CATEGORY_EMOJI: Record<HabitCategory, string> = {
   health: '😁', nutrition: '🥑', lifestyle: '🌱', self_care: '🧽', sleep: '💤',
-  phone_use: '📵', spiritual: '🙏',
+  phone_use: '📵', spiritual: '🙏', home: '🏠', fitness: '💪', connection: '🤝',
 };
-export const HABIT_CATEGORY_ORDER: HabitCategory[] = ['health', 'nutrition', 'lifestyle', 'self_care', 'sleep', 'phone_use', 'spiritual'];
+export const HABIT_CATEGORY_ORDER: HabitCategory[] = ['health', 'nutrition', 'lifestyle', 'self_care', 'sleep', 'phone_use', 'spiritual', 'home', 'fitness', 'connection'];
 
 /** A user-created habit category (unlimited, in addition to the fixed ones above). */
 export interface HabitCategoryRow {
@@ -538,6 +538,9 @@ export const HABIT_COLORS = {
   blue: '#60A5FA', teal: '#2DD4BF', green: '#4ADE80', lime: '#A3E635',
   yellow: '#FACC15', orange: '#FB923C', red: '#F87171', pink: '#F472B6',
   purple: '#C084FC', slate: '#94A3B8',
+  navy: '#1E3A8A', azure: '#2563EB', forest: '#15803D', rust: '#C2410C',
+  hotpink: '#EC4899', crimson: '#DC2626', plum: '#7E22CE', brown: '#92400E',
+  cream: '#F5E6C8', bluegrey: '#5B7B99',
 } as const;
 export type HabitColorKey = keyof typeof HABIT_COLORS;
 
@@ -560,6 +563,7 @@ export interface Habit {
   target_per_period: number; // the goal amount for whichever period frequency_type defines
   sort_order: number;
   archived: boolean;
+  start_date?: string | null; // YYYY-MM-DD — habit doesn't apply/show before this date; null = always applied
   created_at: string;
 }
 
@@ -575,9 +579,11 @@ const WEEKDAY_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
 export type HabitWeekday = typeof WEEKDAY_KEYS[number];
 const JS_DAY_TO_WEEKDAY_KEY: HabitWeekday[] = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 
-/** Whether a habit is scheduled on a given local date — true for 'daily'/'weekly' (frequency_days
- *  unset means every day), or checked against frequency_days for 'custom_days'. */
+/** Whether a habit is scheduled on a given local date — false before its start_date (if set),
+ *  otherwise true for 'daily'/'weekly' (frequency_days unset means every day), or checked
+ *  against frequency_days for 'custom_days'. */
 export function isHabitScheduledOn(habit: Habit, dateISO: string): boolean {
+  if (habit.start_date && dateISO < habit.start_date) return false;
   if (habit.frequency_type !== 'custom_days' || !habit.frequency_days) return true;
   const [y, m, d] = dateISO.split('-').map(Number);
   const jsDay = new Date(y, m - 1, d).getDay();

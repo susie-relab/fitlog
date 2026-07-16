@@ -326,3 +326,7 @@ create index if not exists training_plans_user on training_plans(user_id, create
 --   using (auth.uid() = user_id)
 --   with check (auth.uid() = user_id);
 -- create index if not exists habit_categories_user on habit_categories(user_id, sort_order);
+
+-- Migration: habit start date — a habit doesn't apply/show on the calendar or progress bars
+-- before this date. Null means it always applied (existing habits are unaffected).
+-- alter table habits add column if not exists start_date date;

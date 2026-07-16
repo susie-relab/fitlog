@@ -6,15 +6,21 @@ import {
   HABIT_COLORS, HABIT_FREQUENCY_LABELS, isHabitScheduledOn,
 } from '@/types';
 import { todayLocalISO } from '@/lib/utils';
-import { getMonthDays, completionPctInRange, completionRatio, habitDayStats } from '@/lib/habitStats';
+import { getMonthDays, completionPctInRange, completionRatio, habitDayStats, addDaysISO } from '@/lib/habitStats';
 
-interface CategoryDef { key: string; label: string; emoji: string }
+interface CategoryDef { key: string; label: string; emoji: string; isCustom: boolean; habitCount: number }
+
+export type StartOption = 'today' | 'tomorrow' | 'date';
 
 interface Props {
   categories: CategoryDef[];
   activeCategory: string;
   onSelectCategory: (key: string) => void;
   onReorderCategory: (fromKey: string, toKey: string) => void;
+  onMoveCategory: (key: string, direction: 'up' | 'down') => void;
+  onRenameCategory: (key: string, newName: string) => void;
+  onRemoveCategory: (key: string) => void;
+  onCreateCategory: (name: string, emoji: string) => void;
   categoryLabel: string;
   habits: Habit[];
   logsByHabit: Map<string, HabitLog[]>;
@@ -23,6 +29,7 @@ interface Props {
   onCreateHabit: (fields: {
     name: string; color: string; frequency_type: HabitFrequencyType;
     frequency_days: string | null; frequency_interval_days: number | null; target_per_period: number;
+    start_date: string;
   }) => void;
   onMoveHabit: (id: string, direction: 'up' | 'down') => void;
   onUpdateHabit: (id: string, patch: Partial<Habit>) => void;
@@ -36,6 +43,8 @@ const WEEKDAY_OPTIONS = [
 ];
 
 const FREQUENCY_ORDER: HabitFrequencyType[] = ['daily', 'every_n_days', 'weekly', 'fortnightly', 'monthly', 'custom_days'];
+
+const CATEGORY_EMOJI_CHOICES = ['⭐', '🎯', '💡', '🎨', '🎵', '📚', '🏠', '🚗', '💰', '🎮', '🐶', '🌟', '🔥', '✨', '🧠', '🧺'];
 
 function hexToRgba(hex: string, alpha: number): string {
   const m = hex.replace('#', '');
@@ -70,6 +79,13 @@ export function targetUnitLabel(frequency: HabitFrequencyType, intervalDays: str
     case 'monthly': return 'month';
     default: return 'day';
   }
+}
+
+/** Resolves a StartOption + optional picked date into the actual YYYY-MM-DD to store. */
+export function resolveStartDate(option: StartOption, dateValue: string, todayISO: string): string {
+  if (option === 'today') return todayISO;
+  if (option === 'tomorrow') return addDaysISO(todayISO, 1);
+  return dateValue || todayISO;
 }
 
 /** Frequency + goal-amount picker shared by the "add a habit" and per-habit "edit" forms. */
@@ -130,12 +146,47 @@ export function FrequencyFields({
   );
 }
 
-/** Per-category box: tab-switch between the category's habits (like YearTotalsCard),
- *  showing the selected habit's repeat/target, overview %, a streak/completion stats grid,
- *  and a circular-day history calendar. The pencil opens an edit panel to add a habit or
- *  reorder/edit existing ones (including frequency and day-of-week schedule). */
-export default function HabitTabBox({ categories, activeCategory, onSelectCategory, onReorderCategory, categoryLabel, habits, logsByHabit, selectedHabitId, onSelectHabit, onCreateHabit, onMoveHabit, onUpdateHabit, onIncrementToday, onDecrementToday }: Props) {
+/** Today / Tomorrow / pick-a-date picker for when a newly-created habit should start applying —
+ *  shared by every "add a habit" form so it doesn't show up on the calendar before that date. */
+export function StartDateFields({
+  option, setOption, dateValue, setDateValue,
+}: {
+  option: StartOption; setOption: (o: StartOption) => void;
+  dateValue: string; setDateValue: (v: string) => void;
+}) {
+  return (
+    <div>
+      <label className="label">Starts</label>
+      <div className="flex gap-1.5 mb-2">
+        {(['today', 'tomorrow', 'date'] as StartOption[]).map(o => (
+          <button
+            key={o}
+            onClick={() => setOption(o)}
+            className={`flex-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all ${option === o ? 'border-blue-500 bg-blue-500/20 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}
+          >
+            {o === 'today' ? 'Today' : o === 'tomorrow' ? 'Tomorrow' : 'Pick Date'}
+          </button>
+        ))}
+      </div>
+      {option === 'date' && (
+        <input type="date" className="input" value={dateValue} onChange={e => setDateValue(e.target.value)} />
+      )}
+    </div>
+  );
+}
+
+/** Per-category box: switch between category boxes (top row) then between that category's
+ *  habits (tab row below a divider), showing the selected habit's repeat/target, overview %,
+ *  a streak/completion stats grid, and a circular-day history calendar. Two pencils: one next
+ *  to "Repeat" opens an edit panel to add a habit or reorder/edit existing ones in this
+ *  category; one top-right opens a panel to manage categories themselves (add/rename/remove/
+ *  reorder). */
+export default function HabitTabBox({
+  categories, activeCategory, onSelectCategory, onReorderCategory, onMoveCategory, onRenameCategory, onRemoveCategory, onCreateCategory,
+  categoryLabel, habits, logsByHabit, selectedHabitId, onSelectHabit, onCreateHabit, onMoveHabit, onUpdateHabit, onIncrementToday, onDecrementToday,
+}: Props) {
   const [showEdit, setShowEdit] = useState(false);
+  const [showManageCategories, setShowManageCategories] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const categoryDragRef = useRef<{ fromKey: string; moved: boolean } | null>(null);
 
@@ -145,6 +196,8 @@ export default function HabitTabBox({ categories, activeCategory, onSelectCatego
   const [newDays, setNewDays] = useState<string[]>([]);
   const [newInterval, setNewInterval] = useState('2');
   const [newTarget, setNewTarget] = useState('1');
+  const [newStartOption, setNewStartOption] = useState<StartOption>('today');
+  const [newStartDate, setNewStartDate] = useState('');
 
   const [editName, setEditName] = useState('');
   const [editColor, setEditColor] = useState<HabitColorKey>('blue');
@@ -152,6 +205,11 @@ export default function HabitTabBox({ categories, activeCategory, onSelectCatego
   const [editDays, setEditDays] = useState<string[]>([]);
   const [editInterval, setEditInterval] = useState('2');
   const [editTarget, setEditTarget] = useState('1');
+
+  const [renamingKey, setRenamingKey] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+  const [newCatName, setNewCatName] = useState('');
+  const [newCatEmoji, setNewCatEmoji] = useState('⭐');
 
   const todayISO = todayLocalISO();
   const year = Number(todayISO.slice(0, 4));
@@ -168,6 +226,7 @@ export default function HabitTabBox({ categories, activeCategory, onSelectCatego
 
   const resetNewForm = () => {
     setNewName(''); setNewColor('blue'); setNewFrequency('daily'); setNewDays([]); setNewInterval('2'); setNewTarget('1');
+    setNewStartOption('today'); setNewStartDate('');
   };
 
   const submitNew = () => {
@@ -179,6 +238,7 @@ export default function HabitTabBox({ categories, activeCategory, onSelectCatego
       frequency_days: newFrequency === 'custom_days' ? (newDays.join(',') || null) : null,
       frequency_interval_days: newFrequency === 'every_n_days' ? (parseInt(newInterval) || 2) : null,
       target_per_period: parseInt(newTarget) || 1,
+      start_date: resolveStartDate(newStartOption, newStartDate, todayISO),
     });
     resetNewForm();
   };
@@ -195,7 +255,7 @@ export default function HabitTabBox({ categories, activeCategory, onSelectCatego
   };
 
   // Press-and-hold drag to reorder category tabs — a tap (no movement) selects the category
-  // instead. The row currently under the pointer gets a ring highlight so it's clear where
+  // instead. The box currently under the pointer gets a ring highlight so it's clear where
   // the dragged tab will land, cleared again on drop.
   const handleCategoryPointerDown = (key: string) => (e: React.PointerEvent) => {
     e.preventDefault();
@@ -241,31 +301,34 @@ export default function HabitTabBox({ categories, activeCategory, onSelectCatego
     setExpandedId(null);
   };
 
+  const submitNewCategory = () => {
+    if (!newCatName.trim()) return;
+    onCreateCategory(newCatName.trim(), newCatEmoji || '⭐');
+    setNewCatName(''); setNewCatEmoji('⭐');
+  };
+
   if (!selected) return null;
 
   return (
     <div className="card relative">
       <button
-        onClick={() => setShowEdit(true)}
-        aria-label="Edit habits"
+        onClick={() => setShowManageCategories(true)}
+        aria-label="Manage categories"
         className="absolute top-4 right-4 p-1.5 rounded-lg text-[#64748B] hover:text-white hover:bg-[#334155] z-10"
       >
         <PencilIcon />
       </button>
 
-      <div className="flex overflow-x-auto mb-3 pr-10 -mx-1 px-1">
-        {categories.map((c, i) => {
+      <div className="flex flex-wrap gap-1.5 mb-3 pr-10">
+        {categories.filter(c => c.habitCount > 0).map(c => {
           const active = activeCategory === c.key;
-          const nextActive = i < categories.length - 1 && categories[i + 1].key === activeCategory;
           return (
             <button
               key={c.key}
               data-category-key={c.key}
               onPointerDown={handleCategoryPointerDown(c.key)}
-              className={`flex-shrink-0 px-3 py-2 text-sm font-medium border-r transition-colors select-none ${
-                active ? 'text-white' : 'text-[#94A3B8] hover:text-white'
-              } ${active || nextActive ? 'border-r-blue-500' : 'border-r-[#334155]'} ${
-                i === 0 ? `border-l ${active ? 'border-l-blue-500' : 'border-l-[#334155]'}` : ''
+              className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors select-none ${
+                active ? 'bg-[#293548] border-blue-500 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'
               }`}
               style={{ touchAction: 'none' }}
             >
@@ -276,7 +339,7 @@ export default function HabitTabBox({ categories, activeCategory, onSelectCatego
       </div>
       <div className="border-b border-[#334155] mb-3" />
 
-      <div className="flex overflow-x-auto mb-4 pr-10 -mx-1 px-1">
+      <div className="flex overflow-x-auto mb-4 -mx-1 px-1">
         {habits.map((h, i) => {
           const active = selected.id === h.id;
           const nextActive = i < habits.length - 1 && habits[i + 1].id === selected.id;
@@ -297,7 +360,14 @@ export default function HabitTabBox({ categories, activeCategory, onSelectCatego
         })}
       </div>
 
-      <div className="text-center mb-4">
+      <div className="relative text-center mb-4">
+        <button
+          onClick={() => setShowEdit(true)}
+          aria-label="Edit habits"
+          className="absolute right-0 top-0 p-1.5 rounded-lg text-[#64748B] hover:text-white hover:bg-[#334155]"
+        >
+          <PencilIcon />
+        </button>
         <p className="text-xs text-[#64748B] mb-0.5">Repeat</p>
         <p className="text-sm font-medium text-white mb-3">{frequencyLabel(selected)}</p>
         <p className="text-xs text-[#64748B] mb-0.5">Target</p>
@@ -375,7 +445,7 @@ export default function HabitTabBox({ categories, activeCategory, onSelectCatego
       {showEdit && (
         <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => { setShowEdit(false); setExpandedId(null); }} />
-          <div className="relative w-full md:max-w-md max-h-[85vh] flex flex-col bg-[#1E293B] border border-[#334155] rounded-t-2xl md:rounded-2xl p-5 overflow-y-auto">
+          <div className="custom-scroll relative w-full md:max-w-md max-h-[85vh] flex flex-col bg-[#1E293B] border border-[#334155] rounded-t-2xl md:rounded-2xl p-5 overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-white">Edit {categoryLabel}</h3>
               <button onClick={() => { setShowEdit(false); setExpandedId(null); }} className="p-1 rounded-lg hover:bg-[#334155] text-[#94A3B8]"><X size={18} /></button>
@@ -455,7 +525,81 @@ export default function HabitTabBox({ categories, activeCategory, onSelectCatego
                 intervalDays={newInterval} setIntervalDays={setNewInterval}
                 target={newTarget} setTarget={setNewTarget}
               />
+              <StartDateFields option={newStartOption} setOption={setNewStartOption} dateValue={newStartDate} setDateValue={setNewStartDate} />
               <button onClick={submitNew} className="btn-primary w-full">+ Add Habit</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showManageCategories && (
+        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => { setShowManageCategories(false); setRenamingKey(null); }} />
+          <div className="custom-scroll relative w-full md:max-w-md max-h-[85vh] flex flex-col bg-[#1E293B] border border-[#334155] rounded-t-2xl md:rounded-2xl p-5 overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-white">Manage Categories</h3>
+              <button onClick={() => { setShowManageCategories(false); setRenamingKey(null); }} className="p-1 rounded-lg hover:bg-[#334155] text-[#94A3B8]"><X size={18} /></button>
+            </div>
+
+            <div className="flex flex-col gap-2 mb-5">
+              {categories.map((c, i) => (
+                <div key={c.key} className="rounded-lg border border-[#334155] px-3 py-2 flex items-center gap-2">
+                  <div className="flex flex-col flex-shrink-0">
+                    <button disabled={i === 0} onClick={() => onMoveCategory(c.key, 'up')} className="text-[#64748B] hover:text-white disabled:opacity-20 leading-none text-xs">▲</button>
+                    <button disabled={i === categories.length - 1} onClick={() => onMoveCategory(c.key, 'down')} className="text-[#64748B] hover:text-white disabled:opacity-20 leading-none text-xs">▼</button>
+                  </div>
+                  <span className="flex-shrink-0">{c.emoji}</span>
+                  {renamingKey === c.key ? (
+                    <input className="input flex-1" value={renameValue} onChange={e => setRenameValue(e.target.value)} />
+                  ) : (
+                    <span className="flex-1 text-sm text-white truncate">
+                      {c.label}
+                      {!c.isCustom && <span className="text-[10px] text-[#64748B] ml-1.5">(built-in)</span>}
+                    </span>
+                  )}
+                  {c.isCustom && (
+                    renamingKey === c.key ? (
+                      <>
+                        <button onClick={() => { onRenameCategory(c.key, renameValue.trim() || c.label); setRenamingKey(null); }} className="text-xs font-medium text-blue-400 hover:text-blue-300 flex-shrink-0">Save</button>
+                        <button onClick={() => setRenamingKey(null)} className="text-xs text-[#64748B] hover:text-white flex-shrink-0">Cancel</button>
+                      </>
+                    ) : (
+                      <>
+                        <button onClick={() => { setRenamingKey(c.key); setRenameValue(c.label); }} className="text-xs font-medium text-blue-400 hover:text-blue-300 flex-shrink-0">Rename</button>
+                        <button
+                          onClick={() => onRemoveCategory(c.key)}
+                          disabled={c.habitCount > 0}
+                          title={c.habitCount > 0 ? 'Move or delete its habits first' : 'Remove category'}
+                          className="text-xs font-medium text-red-400 hover:text-red-300 disabled:opacity-30 disabled:cursor-not-allowed flex-shrink-0"
+                        >
+                          Remove
+                        </button>
+                      </>
+                    )
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <p className="text-xs font-semibold text-[#64748B] uppercase tracking-wide mb-2">Add a Category</p>
+            <div className="flex flex-col gap-3">
+              <input className="input" placeholder="e.g. Finances" value={newCatName} onChange={e => setNewCatName(e.target.value)} />
+              <div>
+                <label className="label">Emoji</label>
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {CATEGORY_EMOJI_CHOICES.map(e => (
+                    <button
+                      key={e}
+                      onClick={() => setNewCatEmoji(e)}
+                      className={`w-8 h-8 rounded-lg text-base flex items-center justify-center border transition-all ${newCatEmoji === e ? 'border-blue-500 bg-blue-500/20' : 'border-[#334155] hover:border-[#475569]'}`}
+                    >
+                      {e}
+                    </button>
+                  ))}
+                </div>
+                <input className="input" maxLength={4} value={newCatEmoji} onChange={e => setNewCatEmoji(e.target.value)} />
+              </div>
+              <button onClick={submitNewCategory} disabled={!newCatName.trim()} className="btn-primary w-full disabled:opacity-50">+ Add Category</button>
             </div>
           </div>
         </div>

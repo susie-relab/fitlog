@@ -11,7 +11,7 @@ import { HABIT_PRESETS } from '@/lib/habitPresets';
 import { todayLocalISO } from '@/lib/utils';
 import HabitListRow from '@/components/HabitListRow';
 import HabitMonthCalendar from '@/components/HabitMonthCalendar';
-import HabitTabBox, { FrequencyFields } from '@/components/HabitTabBox';
+import HabitTabBox, { FrequencyFields, StartDateFields, StartOption, resolveStartDate } from '@/components/HabitTabBox';
 
 export default function HabitsPage() {
   const { user } = useAuth();
@@ -35,6 +35,10 @@ export default function HabitsPage() {
   const [customDays, setCustomDays] = useState<string[]>([]);
   const [customInterval, setCustomInterval] = useState('2');
   const [customTarget, setCustomTarget] = useState('1');
+  const [customStartOption, setCustomStartOption] = useState<StartOption>('today');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [presetsStartOption, setPresetsStartOption] = useState<StartOption>('today');
+  const [presetsStartDate, setPresetsStartDate] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -73,6 +77,10 @@ export default function HabitsPage() {
   }, [customCategories, JSON.stringify(categoryOrderPref)]);
   const categoryDefByKey = useMemo(() => new Map(allCategoryDefs.map(d => [d.key, d])), [allCategoryDefs]);
 
+  const persistCategoryOrder = (reordered: string[]) => {
+    supabase.auth.updateUser({ data: { ...user?.user_metadata, habit_category_order: reordered } });
+  };
+
   const reorderCategories = (fromKey: string, toKey: string) => {
     const allKeys = allCategoryDefs.map(d => d.key);
     const from = allKeys.indexOf(fromKey);
@@ -81,8 +89,38 @@ export default function HabitsPage() {
     const reordered = [...allKeys];
     const [moved] = reordered.splice(from, 1);
     reordered.splice(to, 0, moved);
-    supabase.auth.updateUser({ data: { ...user?.user_metadata, habit_category_order: reordered } });
+    persistCategoryOrder(reordered);
   };
+
+  // Up/down in the "Manage Categories" panel — swaps with the immediate neighbour.
+  const moveCategoryOrder = (key: string, direction: 'up' | 'down') => {
+    const allKeys = allCategoryDefs.map(d => d.key);
+    const idx = allKeys.indexOf(key);
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (idx === -1 || swapIdx < 0 || swapIdx >= allKeys.length) return;
+    const reordered = [...allKeys];
+    [reordered[idx], reordered[swapIdx]] = [reordered[swapIdx], reordered[idx]];
+    persistCategoryOrder(reordered);
+  };
+
+  const renameCategory = async (key: string, newName: string) => {
+    setCustomCategories(prev => prev.map(c => c.id === key ? { ...c, name: newName } : c));
+    await supabase.from('habit_categories').update({ name: newName }).eq('id', key);
+  };
+
+  const removeCategory = async (key: string) => {
+    if (habits.some(h => h.category === key)) return; // guard even if the UI's disabled check is bypassed
+    setCustomCategories(prev => prev.filter(c => c.id !== key));
+    await supabase.from('habit_categories').delete().eq('id', key);
+    if (categoryOrderPref.includes(key)) persistCategoryOrder(categoryOrderPref.filter(k => k !== key));
+  };
+
+  const manageCategories = useMemo(() => {
+    const fixedKeys = new Set<string>(HABIT_CATEGORY_ORDER);
+    const habitCounts = new Map<string, number>();
+    for (const h of habits) habitCounts.set(h.category, (habitCounts.get(h.category) || 0) + 1);
+    return allCategoryDefs.map(d => ({ ...d, isCustom: !fixedKeys.has(d.key), habitCount: habitCounts.get(d.key) || 0 }));
+  }, [allCategoryDefs, habits]);
 
   const categoriesWithHabits = useMemo(() => {
     const present = new Set(habits.map(h => h.category));
@@ -118,23 +156,36 @@ export default function HabitsPage() {
     setSelectedPresetNames(new Set());
     setCustomName(''); setCustomCategory('health'); setCustomColor('blue');
     setCustomFrequency('daily'); setCustomDays([]); setCustomInterval('2'); setCustomTarget('1');
+    setCustomStartOption('today'); setCustomStartDate('');
+    setPresetsStartOption('today'); setPresetsStartDate('');
     setShowAddCategory(false); setNewCategoryName(''); setNewCategoryEmoji('⭐');
     setError('');
   };
 
   const closeAdd = () => { setShowAdd(false); resetAddForm(); };
 
-  const createCategory = async () => {
-    if (!user || !newCategoryName.trim()) return;
+  const createCategoryWithFields = async (name: string, emoji: string): Promise<HabitCategoryRow | null> => {
+    if (!user || !name.trim()) return null;
     const { data } = await supabase.from('habit_categories').insert({
       user_id: user.id,
-      name: newCategoryName.trim(),
-      emoji: newCategoryEmoji || '⭐',
+      name: name.trim(),
+      emoji: emoji || '⭐',
       sort_order: customCategories.length,
     }).select().single();
     if (data) {
       const row = data as HabitCategoryRow;
       setCustomCategories(prev => [...prev, row]);
+      return row;
+    }
+    return null;
+  };
+
+  // Used by the Manage Categories panel — just creates it, doesn't touch the "add habit" form.
+  const createCategoryFromManagePanel = (name: string, emoji: string) => { createCategoryWithFields(name, emoji); };
+
+  const createCategory = async () => {
+    const row = await createCategoryWithFields(newCategoryName, newCategoryEmoji);
+    if (row) {
       setCustomCategory(row.id); // immediately select the new category for the habit being created
       setNewCategoryName(''); setNewCategoryEmoji('⭐');
       setShowAddCategory(false);
@@ -144,6 +195,7 @@ export default function HabitsPage() {
   const createHabit = async (fields: {
     name: string; category: string; color: string; frequency_type: HabitFrequencyType;
     frequency_days: string | null; frequency_interval_days: number | null; target_per_period: number;
+    start_date?: string;
   }) => {
     if (!user) return;
     setSaving(true);
@@ -157,6 +209,7 @@ export default function HabitsPage() {
       frequency_days: fields.frequency_days,
       frequency_interval_days: fields.frequency_interval_days,
       target_per_period: fields.target_per_period,
+      start_date: fields.start_date || todayLocalISO(),
       sort_order: habits.length,
       archived: false,
     }).select().single();
@@ -183,6 +236,7 @@ export default function HabitsPage() {
     if (toAdd.length === 0) { closeAdd(); return; }
     setSaving(true);
     setError('');
+    const startDate = resolveStartDate(presetsStartOption, presetsStartDate, todayLocalISO());
     const { data, error: dbErr } = await supabase.from('habits').insert(
       toAdd.map((p, i) => ({
         user_id: user.id,
@@ -193,6 +247,7 @@ export default function HabitsPage() {
         frequency_days: null,
         frequency_interval_days: null,
         target_per_period: p.target_per_period,
+        start_date: startDate,
         sort_order: habits.length + i,
         archived: false,
       }))
@@ -217,6 +272,7 @@ export default function HabitsPage() {
       frequency_days: customFrequency === 'custom_days' ? (customDays.join(',') || null) : null,
       frequency_interval_days: customFrequency === 'every_n_days' ? (parseInt(customInterval) || 2) : null,
       target_per_period: target,
+      start_date: resolveStartDate(customStartOption, customStartDate, todayLocalISO()),
     });
   };
 
@@ -319,10 +375,14 @@ export default function HabitsPage() {
 
           <div className="mb-5">
             <HabitTabBox
-              categories={categoriesWithHabits.map(k => categoryDefByKey.get(k)!)}
+              categories={manageCategories}
               activeCategory={activeCategory}
               onSelectCategory={setActiveCategory}
               onReorderCategory={reorderCategories}
+              onMoveCategory={moveCategoryOrder}
+              onRenameCategory={renameCategory}
+              onRemoveCategory={removeCategory}
+              onCreateCategory={createCategoryFromManagePanel}
               categoryLabel={categoryDefByKey.get(activeCategory)?.label || ''}
               habits={habitsInCategory}
               logsByHabit={logsByHabit}
@@ -357,7 +417,7 @@ export default function HabitsPage() {
       {showAdd && (
         <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={closeAdd} />
-          <div className="relative w-full md:max-w-md max-h-[85vh] flex flex-col bg-[#1E293B] border border-[#334155] rounded-t-2xl md:rounded-2xl p-5 overflow-y-auto">
+          <div className="custom-scroll relative w-full md:max-w-md max-h-[85vh] flex flex-col bg-[#1E293B] border border-[#334155] rounded-t-2xl md:rounded-2xl p-5 overflow-y-auto">
             <button onClick={closeAdd} aria-label="Close" className="absolute top-4 right-4 p-1 rounded-lg hover:bg-[#334155] text-[#94A3B8] hover:text-white z-10">
               <X size={18} />
             </button>
@@ -391,6 +451,11 @@ export default function HabitsPage() {
                     );
                   })}
                 </div>
+                {selectedPresetNames.size > 0 && (
+                  <div className="mt-4">
+                    <StartDateFields option={presetsStartOption} setOption={setPresetsStartOption} dateValue={presetsStartDate} setDateValue={setPresetsStartDate} />
+                  </div>
+                )}
                 <button onClick={() => setAddStep('custom')} className="btn-secondary w-full mt-5">+ Create Custom Habit</button>
                 <button onClick={addSelectedPresets} disabled={saving} className="btn-primary w-full mt-2">
                   {saving ? 'Adding...' : selectedPresetNames.size > 0 ? `Done — Add ${selectedPresetNames.size}` : 'Done'}
@@ -478,6 +543,7 @@ export default function HabitsPage() {
                     intervalDays={customInterval} setIntervalDays={setCustomInterval}
                     target={customTarget} setTarget={setCustomTarget}
                   />
+                  <StartDateFields option={customStartOption} setOption={setCustomStartOption} dateValue={customStartDate} setDateValue={setCustomStartDate} />
                   {error && <p className="text-red-400 text-sm">{error}</p>}
                   <button onClick={submitCustom} disabled={saving} className="btn-primary w-full mt-1">{saving ? 'Saving...' : 'Save Habit'}</button>
                   <button onClick={() => setAddStep('presets')} className="text-sm text-[#64748B] hover:text-white py-1">← Back</button>
