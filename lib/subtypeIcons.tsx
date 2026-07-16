@@ -89,12 +89,20 @@ const NetballIcon = makeIcon(({ size, className }) => (
 // Three vertical seams, each spanning the ball's full height at its own x-position,
 // evenly spaced 5 units apart (7, 12, 17) — computed to touch the circle's own boundary
 // top and bottom rather than an arbitrary curve.
+// Middle seam stays a straight vertical; the two outer seams curve slightly, and three
+// short connector lines per side tie each outer seam to the ball's own edge.
 const VolleyballIcon = makeIcon(({ size, className }) => (
   <Svg size={size} className={className}>
     <circle cx="12" cy="12" r="9" />
-    <path d="M7 4.5V19.5" />
+    <path d="M7 4.5Q5.5 12 7 19.5" />
     <path d="M12 3V21" />
-    <path d="M17 4.5V19.5" />
+    <path d="M17 4.5Q18.5 12 17 19.5" />
+    <path d="M6.3 8H4" />
+    <path d="M5.5 12H3" />
+    <path d="M6.3 16H4" />
+    <path d="M17.7 8H20" />
+    <path d="M18.5 12H21" />
+    <path d="M17.7 16H20" />
   </Svg>
 ));
 
