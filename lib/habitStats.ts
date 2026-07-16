@@ -1,4 +1,25 @@
-import { Habit, HabitLog, isHabitScheduledOn } from '@/types';
+import { Habit, HabitLog, HabitFrequencyChange, HabitFrequencyConfig, isHabitScheduledOn } from '@/types';
+
+/** Which frequency/target was actually in effect for a habit on a given date — the latest
+ *  history row with effective_date <= dateISO, or the habit's own current fields if it's
+ *  never had a frequency change (or the date predates any recorded change). This is what
+ *  lets a switch from "5/7 days in winter" to "7/7 in summer" judge past winter days against
+ *  5/7 while today judges against 7/7, instead of one setting silently rewriting the past. */
+export function resolveFrequencyAt(habit: Habit, history: HabitFrequencyChange[], dateISO: string): HabitFrequencyConfig {
+  let latest: HabitFrequencyChange | null = null;
+  for (const h of history) {
+    if (h.habit_id !== habit.id) continue;
+    if (h.effective_date <= dateISO && (!latest || h.effective_date > latest.effective_date)) latest = h;
+  }
+  if (!latest) return habit;
+  return {
+    frequency_type: latest.frequency_type,
+    frequency_days: latest.frequency_days,
+    frequency_interval_days: latest.frequency_interval_days,
+    target_per_period: latest.target_per_period,
+    start_date: habit.start_date,
+  };
+}
 
 /** Add N days to a local YYYY-MM-DD date, staying in local calendar dates. */
 export function addDaysISO(dateISO: string, n: number): string {
@@ -27,10 +48,13 @@ export function getWeekDays(dateISO: string): string[] {
   return Array.from({ length: 7 }, (_, i) => addDaysISO(monday, i));
 }
 
-/** 0..1 completion ratio for one habit on one day, from its log count vs its target. */
-export function completionRatio(habit: Habit, log: HabitLog | undefined): number {
-  if (!log || habit.target_per_period <= 0) return 0;
-  return Math.max(0, Math.min(1, log.count / habit.target_per_period));
+/** 0..1 completion ratio for one habit on one day, from its log count vs its target — pass
+ *  `targetOverride` (from resolveFrequencyAt) to judge a past day against the target that was
+ *  actually in effect then, instead of the habit's current target. */
+export function completionRatio(habit: Habit, log: HabitLog | undefined, targetOverride?: number): number {
+  const target = targetOverride ?? habit.target_per_period;
+  if (!log || target <= 0) return 0;
+  return Math.max(0, Math.min(1, log.count / target));
 }
 
 /** A day explicitly marked "didn't happen" — stored as the sentinel count -1, distinct from
@@ -47,30 +71,33 @@ export function isSkippedLog(log: HabitLog | undefined): boolean {
   return log?.count === -2;
 }
 
-const isDone = (habit: Habit, logsByDate: Map<string, HabitLog>, dateISO: string) => {
+const isDoneAt = (target: number, logsByDate: Map<string, HabitLog>, dateISO: string) => {
   const log = logsByDate.get(dateISO);
-  return !!log && log.count >= habit.target_per_period;
+  return !!log && log.count >= target;
 };
 
 /** Current consecutive-day streak of fully-completed scheduled days, walking backward from
  *  today. A day the habit isn't scheduled on doesn't break the streak, it's just skipped over —
  *  and neither does a day explicitly marked "skip for today". A "streak freeze" grants one
  *  missed scheduled day of grace per streak — that single miss doesn't reset the count to 0,
- *  it just doesn't add to it either. */
-export function currentStreak(habit: Habit, logs: HabitLog[], todayISO: string): number {
+ *  it just doesn't add to it either. Each day is judged against whichever frequency/target
+ *  was actually in effect that day (see resolveFrequencyAt), not the habit's current settings. */
+export function currentStreak(habit: Habit, logs: HabitLog[], todayISO: string, history: HabitFrequencyChange[] = []): number {
   const logsByDate = new Map(logs.map(l => [l.date, l]));
   let streak = 0;
   let freezesLeft = 1;
   let cursor = todayISO;
   // Today doesn't have to be done yet to keep a streak alive from yesterday.
-  if (isHabitScheduledOn(habit, cursor) && !isDone(habit, logsByDate, cursor)) {
+  const todayCfg = resolveFrequencyAt(habit, history, cursor);
+  if (isHabitScheduledOn(todayCfg, cursor) && !isDoneAt(todayCfg.target_per_period, logsByDate, cursor)) {
     cursor = addDaysISO(cursor, -1);
   }
   for (let i = 0; i < 3650; i++) {
-    if (!isHabitScheduledOn(habit, cursor) || isSkippedLog(logsByDate.get(cursor))) {
+    const cfg = resolveFrequencyAt(habit, history, cursor);
+    if (!isHabitScheduledOn(cfg, cursor) || isSkippedLog(logsByDate.get(cursor))) {
       cursor = addDaysISO(cursor, -1); continue;
     }
-    if (!isDone(habit, logsByDate, cursor)) {
+    if (!isDoneAt(cfg.target_per_period, logsByDate, cursor)) {
       if (freezesLeft > 0) { freezesLeft--; cursor = addDaysISO(cursor, -1); continue; }
       break;
     }
@@ -81,7 +108,7 @@ export function currentStreak(habit: Habit, logs: HabitLog[], todayISO: string):
 }
 
 /** Longest-ever streak of fully-completed scheduled days across all logged history. */
-export function bestStreak(habit: Habit, logs: HabitLog[]): number {
+export function bestStreak(habit: Habit, logs: HabitLog[], history: HabitFrequencyChange[] = []): number {
   if (logs.length === 0) return 0;
   const logsByDate = new Map(logs.map(l => [l.date, l]));
   const sortedDates = [...logsByDate.keys()].sort();
@@ -90,8 +117,9 @@ export function bestStreak(habit: Habit, logs: HabitLog[]): number {
   let best = 0, running = 0;
   let cursor = firstDate;
   while (cursor <= lastDate) {
-    if (!isHabitScheduledOn(habit, cursor) || isSkippedLog(logsByDate.get(cursor))) { cursor = addDaysISO(cursor, 1); continue; }
-    if (isDone(habit, logsByDate, cursor)) {
+    const cfg = resolveFrequencyAt(habit, history, cursor);
+    if (!isHabitScheduledOn(cfg, cursor) || isSkippedLog(logsByDate.get(cursor))) { cursor = addDaysISO(cursor, 1); continue; }
+    if (isDoneAt(cfg.target_per_period, logsByDate, cursor)) {
       running++;
       best = Math.max(best, running);
     } else {
@@ -126,14 +154,15 @@ export function displayTarget(habit: Habit): { amount: number; unit: string } {
 }
 
 /** % of scheduled days fully completed within an inclusive date range. */
-export function completionPctInRange(habit: Habit, logs: HabitLog[], startISO: string, endISO: string): number {
+export function completionPctInRange(habit: Habit, logs: HabitLog[], startISO: string, endISO: string, history: HabitFrequencyChange[] = []): number {
   const logsByDate = new Map(logs.map(l => [l.date, l]));
   let scheduled = 0, done = 0;
   let cursor = startISO;
   while (cursor <= endISO) {
-    if (isHabitScheduledOn(habit, cursor) && !isSkippedLog(logsByDate.get(cursor))) {
+    const cfg = resolveFrequencyAt(habit, history, cursor);
+    if (isHabitScheduledOn(cfg, cursor) && !isSkippedLog(logsByDate.get(cursor))) {
       scheduled++;
-      if (isDone(habit, logsByDate, cursor)) done++;
+      if (isDoneAt(cfg.target_per_period, logsByDate, cursor)) done++;
     }
     cursor = addDaysISO(cursor, 1);
   }
@@ -227,7 +256,7 @@ export interface HabitDayStats {
  *  target that day), Partly Done (logged something but short of target), Incomplete (nothing
  *  logged, or explicitly marked "didn't happen"), Skipped (not scheduled, or explicitly
  *  skipped for the day), and Stacked (over-achieved beyond the target). */
-export function habitDayStats(habit: Habit, logs: HabitLog[], todayISO: string): HabitDayStats {
+export function habitDayStats(habit: Habit, logs: HabitLog[], todayISO: string, history: HabitFrequencyChange[] = []): HabitDayStats {
   const logsByDate = new Map(logs.map(l => [l.date, l]));
   const sortedDates = [...logsByDate.keys()].sort();
   const startISO = sortedDates.length > 0 ? sortedDates[0] : todayISO;
@@ -235,14 +264,15 @@ export function habitDayStats(habit: Habit, logs: HabitLog[], todayISO: string):
   let daysAchieved = 0, daysPartial = 0, daysIncomplete = 0, daysSkipped = 0, daysStacked = 0;
   let cursor = startISO;
   while (cursor <= todayISO) {
-    const scheduled = isHabitScheduledOn(habit, cursor);
+    const cfg = resolveFrequencyAt(habit, history, cursor);
+    const scheduled = isHabitScheduledOn(cfg, cursor);
     const log = logsByDate.get(cursor);
     const count = log?.count || 0;
     if (!scheduled || isSkippedLog(log)) {
       daysSkipped++;
-    } else if (count >= habit.target_per_period) {
+    } else if (count >= cfg.target_per_period) {
       daysAchieved++;
-      if (count > habit.target_per_period) daysStacked++;
+      if (count > cfg.target_per_period) daysStacked++;
     } else if (count > 0) {
       daysPartial++;
     } else {
@@ -252,8 +282,8 @@ export function habitDayStats(habit: Habit, logs: HabitLog[], todayISO: string):
   }
 
   return {
-    currentStreak: currentStreak(habit, logs, todayISO),
-    longestStreak: bestStreak(habit, logs),
+    currentStreak: currentStreak(habit, logs, todayISO, history),
+    longestStreak: bestStreak(habit, logs, history),
     daysAchieved, daysPartial, daysIncomplete, daysSkipped, daysStacked,
   };
 }

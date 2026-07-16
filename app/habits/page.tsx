@@ -4,15 +4,15 @@ import { X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
 import {
-  Habit, HabitLog, HabitCategoryRow, HabitFrequencyType,
+  Habit, HabitLog, HabitCategoryRow, HabitFrequencyType, HabitFrequencyChange,
   HABIT_CATEGORY_LABELS, HABIT_CATEGORY_EMOJI, HABIT_CATEGORY_ORDER, HABIT_COLORS, HabitColorKey,
 } from '@/types';
 import { HABIT_PRESETS } from '@/lib/habitPresets';
 import { todayLocalISO } from '@/lib/utils';
-import { currentStreak, totalCompletions, periodProgress } from '@/lib/habitStats';
+import { currentStreak, totalCompletions, periodProgress, addDaysISO } from '@/lib/habitStats';
 import HabitListRow from '@/components/HabitListRow';
 import HabitMonthCalendar from '@/components/HabitMonthCalendar';
-import HabitTabBox, { FrequencyFields, StartDateFields, StartOption, resolveStartDate } from '@/components/HabitTabBox';
+import HabitTabBox, { ApplyOption, FrequencyFields, StartDateFields, StartOption, resolveStartDate } from '@/components/HabitTabBox';
 
 type SortKey = 'name' | 'category' | 'colour' | 'frequency' | 'amount' | 'streak' | 'most_done' | 'completion' | 'time_of_day';
 
@@ -34,6 +34,7 @@ export default function HabitsPage() {
   const { user } = useAuth();
   const [habits, setHabits] = useState<Habit[]>([]);
   const [logs, setLogs] = useState<HabitLog[]>([]);
+  const [frequencyHistory, setFrequencyHistory] = useState<HabitFrequencyChange[]>([]);
   const [customCategories, setCustomCategories] = useState<HabitCategoryRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState<string>('health');
@@ -74,16 +75,18 @@ export default function HabitsPage() {
 
   const load = async () => {
     if (!user) return;
-    const [{ data: h }, { data: l }, { data: c }] = await Promise.all([
+    const [{ data: h }, { data: l }, { data: c }, { data: f }] = await Promise.all([
       supabase.from('habits').select('*').eq('user_id', user.id).eq('archived', false).order('sort_order'),
       // A year back is enough range for streaks/best-streak and the month calendar without
       // pulling someone's entire multi-year history on every load.
       supabase.from('habit_logs').select('*').eq('user_id', user.id).gte('date', todayLocalISO().slice(0, 4) + '-01-01'),
       supabase.from('habit_categories').select('*').eq('user_id', user.id).order('sort_order'),
+      supabase.from('habit_frequency_changes').select('*').eq('user_id', user.id),
     ]);
     setHabits((h as Habit[]) || []);
     setLogs((l as HabitLog[]) || []);
     setCustomCategories((c as HabitCategoryRow[]) || []);
+    setFrequencyHistory((f as HabitFrequencyChange[]) || []);
     setLoading(false);
   };
 
@@ -323,6 +326,62 @@ export default function HabitsPage() {
     await supabase.from('habits').update(patch).eq('id', habitId);
   };
 
+  // Changing a habit's frequency/goal asks *when* the new setting should start applying
+  // (see FrequencyApplyPicker) instead of silently rewriting every past day's stats.
+  // "Beginning of habit" collapses any existing history — the new setting now covers the
+  // whole habit uniformly. Any other choice seeds the *old* settings as a historical row
+  // (only on the very first change) so past days keep being judged by them, then adds a new
+  // row for the new settings starting on the chosen date. The habit's own current fields are
+  // updated immediately in every case — see the "tomorrow" caveat in FrequencyApplyPicker's
+  // helper text: today/this-week stats intentionally use the current fields, not history.
+  const changeHabitFrequency = async (
+    habit: Habit,
+    fields: { frequency_type: HabitFrequencyType; frequency_days: string | null; frequency_interval_days: number | null; target_per_period: number },
+    applyOption: ApplyOption,
+    customDate?: string,
+  ) => {
+    if (!user) return;
+    const todayISO = todayLocalISO();
+
+    if (applyOption === 'start') {
+      setFrequencyHistory(prev => prev.filter(fh => fh.habit_id !== habit.id));
+      await supabase.from('habit_frequency_changes').delete().eq('habit_id', habit.id);
+      await updateHabit(habit.id, fields);
+      return;
+    }
+
+    const effectiveDate = applyOption === 'today' ? todayISO
+      : applyOption === 'tomorrow' ? addDaysISO(todayISO, 1)
+      : (customDate || todayISO);
+
+    const existingForHabit = frequencyHistory.filter(fh => fh.habit_id === habit.id);
+    const rowsToInsert: Array<{
+      habit_id: string; user_id: string; effective_date: string;
+      frequency_type: HabitFrequencyType; frequency_days: string | null;
+      frequency_interval_days: number | null; target_per_period: number;
+    }> = [];
+
+    // First-ever change for this habit: seed a row with the *old* settings from the habit's
+    // start date, so days before the new effective_date still resolve to what was actually
+    // in effect then, rather than falling through to the habit's (about-to-change) current fields.
+    if (existingForHabit.length === 0) {
+      rowsToInsert.push({
+        habit_id: habit.id, user_id: user.id, effective_date: habit.start_date || todayISO,
+        frequency_type: habit.frequency_type, frequency_days: habit.frequency_days ?? null,
+        frequency_interval_days: habit.frequency_interval_days ?? null, target_per_period: habit.target_per_period,
+      });
+    }
+    rowsToInsert.push({
+      habit_id: habit.id, user_id: user.id, effective_date: effectiveDate,
+      frequency_type: fields.frequency_type, frequency_days: fields.frequency_days,
+      frequency_interval_days: fields.frequency_interval_days, target_per_period: fields.target_per_period,
+    });
+
+    const { data } = await supabase.from('habit_frequency_changes').insert(rowsToInsert).select();
+    if (data) setFrequencyHistory(prev => [...prev, ...(data as HabitFrequencyChange[])]);
+    await updateHabit(habit.id, fields);
+  };
+
   // Archiving a habit pauses it (hides it everywhere) without losing its history, unlike a
   // hard delete — it just drops out of the loaded `habits` list, same as the DB query filters.
   const archiveHabit = async (habitId: string) => {
@@ -433,7 +492,7 @@ export default function HabitsPage() {
       case 'colour': return h.color;
       case 'frequency': return FREQUENCY_SORT_ORDER.indexOf(h.frequency_type);
       case 'amount': return h.target_per_period;
-      case 'streak': return currentStreak(h, logsByHabit.get(h.id) || [], todayLocalISO());
+      case 'streak': return currentStreak(h, logsByHabit.get(h.id) || [], todayLocalISO(), frequencyHistory);
       case 'most_done': return totalCompletions(logsByHabit.get(h.id) || []);
       case 'completion': return periodProgress(h, logsByHabit.get(h.id) || [], todayLocalISO()).pct;
       // Habits with no time set sort after every timed habit, regardless of direction.
@@ -587,7 +646,7 @@ export default function HabitsPage() {
         <div className="card text-[#64748B] text-sm">No habits yet — tap "+ Add Habit" to get started.</div>
       ) : (
         <>
-          <HabitMonthCalendar habits={habits} logs={logs} onCycle={cycleHabitLog} />
+          <HabitMonthCalendar habits={habits} logs={logs} frequencyHistory={frequencyHistory} onCycle={cycleHabitLog} />
 
           <div className="mb-5">
             <HabitTabBox
@@ -601,6 +660,7 @@ export default function HabitsPage() {
               categoryLabel={categoryDefByKey.get(activeCategory)?.label || ''}
               habits={habitsInCategory}
               logsByHabit={logsByHabit}
+              frequencyHistory={frequencyHistory}
               selectedHabitId={selectedHabitId}
               onSelectHabit={setSelectedHabitId}
               onCreateHabit={fields => createHabit({ ...fields, category: activeCategory })}
@@ -608,6 +668,7 @@ export default function HabitsPage() {
               onArchiveHabit={archiveHabit}
               onDeleteHabit={deleteHabit}
               onUpdateHabit={updateHabit}
+              onChangeFrequency={changeHabitFrequency}
               onIncrementToday={incrementToday}
               onDecrementToday={decrementToday}
               onMarkFailedToday={markFailedToday}
@@ -742,6 +803,7 @@ export default function HabitsPage() {
                 onMarkFailed={() => markFailedToday(habit)}
                 onSkip={() => skipToday(habit)}
                 onUpdateHabit={patch => updateHabit(habit.id, patch)}
+                onChangeFrequency={(fields, applyOption, customDate) => changeHabitFrequency(habit, fields, applyOption, customDate)}
                 onReorder={toId => reorderAllHabits(habit.id, toId)}
                 onArchive={() => archiveHabit(habit.id)}
                 onDelete={() => deleteHabit(habit.id)}

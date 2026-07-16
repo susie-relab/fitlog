@@ -334,3 +334,26 @@ create index if not exists training_plans_user on training_plans(user_id, create
 -- Migration: habit time-of-day — an optional reminder/planning cue (hour increments only,
 -- e.g. '08:00'), not enforced anywhere; null means no time set.
 -- alter table habits add column if not exists time_of_day text;
+
+-- Migration: habit frequency history — lets a frequency/target change ("5/7 days in winter"
+-- to "7/7 in summer") apply from a chosen date onward instead of silently rewriting every
+-- past day's stats. One row per period; a period runs from its own effective_date up to the
+-- next row's effective_date (or today, for the latest row). A habit with no rows here has
+-- never had its frequency changed.
+-- create table if not exists habit_frequency_changes (
+--   id uuid default gen_random_uuid() primary key,
+--   habit_id uuid references habits(id) on delete cascade not null,
+--   user_id uuid references auth.users(id) on delete cascade not null,
+--   effective_date date not null,
+--   frequency_type text not null,
+--   frequency_days text,
+--   frequency_interval_days integer,
+--   target_per_period integer not null,
+--   created_at timestamptz default now()
+-- );
+-- alter table habit_frequency_changes enable row level security;
+-- create policy "Users can manage their own habit frequency history"
+--   on habit_frequency_changes for all
+--   using (auth.uid() = user_id)
+--   with check (auth.uid() = user_id);
+-- create index if not exists habit_frequency_changes_habit on habit_frequency_changes(habit_id, effective_date);

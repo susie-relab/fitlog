@@ -1,13 +1,14 @@
 'use client';
 import { useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
-import { Habit, HabitLog, isHabitScheduledOn } from '@/types';
+import { Habit, HabitLog, HabitFrequencyChange, isHabitScheduledOn } from '@/types';
 import { todayLocalISO } from '@/lib/utils';
-import { completionRatio, isFailedLog, isSkippedLog } from '@/lib/habitStats';
+import { completionRatio, isFailedLog, isSkippedLog, resolveFrequencyAt } from '@/lib/habitStats';
 
 interface Props {
   habits: Habit[];
   logs: HabitLog[];
+  frequencyHistory: HabitFrequencyChange[];
   onCycle: (habit: Habit, date: string) => void;
 }
 
@@ -32,7 +33,7 @@ function gridSizeForCount(habitCount: number): number {
 
 /** Combined month calendar — every scheduled habit shows as a small density-filled
  *  circle in its day cell. Tapping a day opens a popover to tap-cycle each habit. */
-export default function HabitMonthCalendar({ habits, logs, onCycle }: Props) {
+export default function HabitMonthCalendar({ habits, logs, frequencyHistory, onCycle }: Props) {
   const todayISO = todayLocalISO();
   const [year, setYear] = useState(Number(todayISO.slice(0, 4)));
   const [month0, setMonth0] = useState(Number(todayISO.slice(5, 7)) - 1);
@@ -62,7 +63,7 @@ export default function HabitMonthCalendar({ habits, logs, onCycle }: Props) {
     if (month0 === 11) { setYear(y => y + 1); setMonth0(0); } else setMonth0(m => m + 1);
   };
 
-  const habitsForDate = (date: string) => habits.filter(h => isHabitScheduledOn(h, date));
+  const habitsForDate = (date: string) => habits.filter(h => isHabitScheduledOn(resolveFrequencyAt(h, frequencyHistory, date), date));
   const gridSize = gridSizeForCount(habits.length);
 
   return (
@@ -106,7 +107,7 @@ export default function HabitMonthCalendar({ habits, logs, onCycle }: Props) {
                     that simply isn't scheduled — rather than showing a special marker. */}
                 {scheduled.filter(h => !isSkippedLog(logsByHabitDate.get(`${h.id}|${date}`))).slice(0, 49).map(h => {
                   const log = logsByHabitDate.get(`${h.id}|${date}`);
-                  const ratio = completionRatio(h, log);
+                  const ratio = completionRatio(h, log, resolveFrequencyAt(h, frequencyHistory, date).target_per_period);
                   const failed = isFailedLog(log);
                   return (
                     <div key={h.id} className="flex items-center justify-center min-w-0 min-h-0 p-px">
@@ -146,7 +147,8 @@ export default function HabitMonthCalendar({ habits, logs, onCycle }: Props) {
                 const failed = isFailedLog(log);
                 const skipped = isSkippedLog(log);
                 const count = (failed || skipped) ? 0 : (log?.count ?? 0);
-                const ratio = completionRatio(h, log);
+                const dayTarget = resolveFrequencyAt(h, frequencyHistory, selectedDate).target_per_period;
+                const ratio = completionRatio(h, log, dayTarget);
                 return (
                   <button
                     key={h.id}
@@ -158,7 +160,7 @@ export default function HabitMonthCalendar({ habits, logs, onCycle }: Props) {
                       <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: h.color }} />
                       <span className="text-sm text-white truncate">{h.name}</span>
                     </span>
-                    <span className="text-xs font-medium text-[#94A3B8] flex-shrink-0">{failed ? "Didn't happen" : skipped ? 'Skipped' : `${count}/${h.target_per_period}`}</span>
+                    <span className="text-xs font-medium text-[#94A3B8] flex-shrink-0">{failed ? "Didn't happen" : skipped ? 'Skipped' : `${count}/${dayTarget}`}</span>
                   </button>
                 );
               })}

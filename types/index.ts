@@ -588,6 +588,37 @@ export interface HabitLog {
   count: number;
 }
 
+// A dated frequency/target that was (or will be) in effect for a habit, e.g. "5/7 days from
+// 1 June" then "7/7 days from 1 Sept" — lets stats resolve the *correct historical* target
+// for any given day rather than judging every past day against whatever the habit's
+// settings happen to be right now. One row per period; a period runs from its own
+// effective_date up to (exclusive of) the next row's effective_date, or to today for the
+// latest row. A habit with no rows here has never had its frequency changed — every stats
+// function falls back to the habit's own current fields in that case.
+export interface HabitFrequencyChange {
+  id: string;
+  habit_id: string;
+  user_id: string;
+  effective_date: string; // YYYY-MM-DD — this period's fields apply from this date onward
+  frequency_type: HabitFrequencyType;
+  frequency_days?: string | null;
+  frequency_interval_days?: number | null;
+  target_per_period: number;
+  created_at: string;
+}
+
+// The subset of a Habit's fields that determine scheduling/target — a Habit already
+// satisfies this structurally, so every existing isHabitScheduledOn(habit, date) call site
+// keeps working unchanged; resolveFrequencyAt (lib/habitStats.ts) builds one of these from
+// historical rows for date-specific lookups.
+export interface HabitFrequencyConfig {
+  frequency_type: HabitFrequencyType;
+  frequency_days?: string | null;
+  frequency_interval_days?: number | null;
+  target_per_period: number;
+  start_date?: string | null;
+}
+
 const WEEKDAY_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
 export type HabitWeekday = typeof WEEKDAY_KEYS[number];
 const JS_DAY_TO_WEEKDAY_KEY: HabitWeekday[] = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
@@ -595,7 +626,7 @@ const JS_DAY_TO_WEEKDAY_KEY: HabitWeekday[] = ['sun', 'mon', 'tue', 'wed', 'thu'
 /** Whether a habit is scheduled on a given local date — false before its start_date (if set),
  *  otherwise true for 'daily'/'weekly' (frequency_days unset means every day), or checked
  *  against frequency_days for 'custom_days'. */
-export function isHabitScheduledOn(habit: Habit, dateISO: string): boolean {
+export function isHabitScheduledOn(habit: HabitFrequencyConfig, dateISO: string): boolean {
   if (habit.start_date && dateISO < habit.start_date) return false;
   if (habit.frequency_type !== 'custom_days' || !habit.frequency_days) return true;
   const [y, m, d] = dateISO.split('-').map(Number);

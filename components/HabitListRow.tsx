@@ -4,7 +4,7 @@ import { SkipForward } from 'lucide-react';
 import { Habit, HabitLog, HabitFrequencyType, HabitColorKey, HABIT_COLORS } from '@/types';
 import { todayLocalISO } from '@/lib/utils';
 import { periodProgress } from '@/lib/habitStats';
-import { FrequencyFields, PencilIcon, TimeOfDayField, Tip } from '@/components/HabitTabBox';
+import { ApplyOption, FrequencyApplyPicker, FrequencyFields, PencilIcon, TimeOfDayField, Tip } from '@/components/HabitTabBox';
 
 interface CategoryOption { key: string; label: string; emoji: string }
 
@@ -15,6 +15,10 @@ interface Props {
   onIncrement: () => void;
   onDecrement: () => void;
   onUpdateHabit: (patch: Partial<Habit>) => void;
+  onChangeFrequency: (fields: {
+    frequency_type: HabitFrequencyType; frequency_days: string | null;
+    frequency_interval_days: number | null; target_per_period: number;
+  }, applyOption: ApplyOption, customDate?: string) => void;
   onReorder: (toHabitId: string) => void;
   onMarkFailed: () => void;
   onSkip: () => void;
@@ -37,7 +41,7 @@ function hexToRgba(hex: string, alpha: number): string {
  *  window. Tapping anywhere on the row (other than the +/- stepper or pencil) opens/closes the
  *  quick editor; press-and-hold anywhere else drags the row to reorder it within the full
  *  habit list (across every category). */
-export default function HabitListRow({ habit, logs, categories, onIncrement, onDecrement, onMarkFailed, onSkip, onUpdateHabit, onReorder, onArchive, onDelete }: Props) {
+export default function HabitListRow({ habit, logs, categories, onIncrement, onDecrement, onMarkFailed, onSkip, onUpdateHabit, onChangeFrequency, onReorder, onArchive, onDelete }: Props) {
   const [editing, setEditing] = useState(false);
   const [dragging, setDragging] = useState(false);
   const dragMovedRef = useRef(false);
@@ -49,6 +53,9 @@ export default function HabitListRow({ habit, logs, categories, onIncrement, onD
   const [timeOfDay, setTimeOfDay] = useState(habit.time_of_day || '');
   const [revealed, setRevealed] = useState<RevealSection>(null);
   const [nameValue, setNameValue] = useState(habit.name);
+  const [showApplyPicker, setShowApplyPicker] = useState(false);
+  const [applyOption, setApplyOption] = useState<ApplyOption>('today');
+  const [applyCustomDate, setApplyCustomDate] = useState('');
 
   const todayISO = todayLocalISO();
   const { pct, sum, target: periodTarget, periodLabel } = periodProgress(habit, logs, todayISO);
@@ -60,7 +67,7 @@ export default function HabitListRow({ habit, logs, categories, onIncrement, onD
   // A tap toggles the editor open/closed (like the Cancel button); opening also refreshes
   // the form fields to the habit's current values.
 const toggleEditor = () => {
-    if (editing) { setEditing(false); setRevealed(null); return; }
+    if (editing) { setEditing(false); setRevealed(null); setShowApplyPicker(false); return; }
     setFrequency(habit.frequency_type);
     setDays(habit.frequency_days ? habit.frequency_days.split(',') : []);
     setIntervalDays(String(habit.frequency_interval_days || 2));
@@ -68,6 +75,7 @@ const toggleEditor = () => {
     setTimeOfDay(habit.time_of_day || '');
     setNameValue(habit.name);
     setRevealed(null);
+    setShowApplyPicker(false);
     setEditing(true);
   };
 
@@ -77,13 +85,37 @@ const toggleEditor = () => {
   };
 
   const save = () => {
-    onUpdateHabit({
+    const newFreq = {
       frequency_type: frequency,
       frequency_days: frequency === 'custom_days' ? (days.join(',') || null) : null,
       frequency_interval_days: frequency === 'every_n_days' ? (parseInt(intervalDays) || 2) : null,
       target_per_period: parseInt(target) || 1,
-      time_of_day: timeOfDay || null,
-    });
+    };
+    const freqChanged = habit.frequency_type !== newFreq.frequency_type
+      || (habit.frequency_days || null) !== newFreq.frequency_days
+      || (habit.frequency_interval_days || null) !== newFreq.frequency_interval_days
+      || habit.target_per_period !== newFreq.target_per_period;
+
+    onUpdateHabit({ time_of_day: timeOfDay || null });
+
+    if (freqChanged) {
+      setApplyOption('today');
+      setApplyCustomDate('');
+      setShowApplyPicker(true);
+      return;
+    }
+    setEditing(false);
+  };
+
+  const confirmApplyFrequency = () => {
+    const newFreq = {
+      frequency_type: frequency,
+      frequency_days: frequency === 'custom_days' ? (days.join(',') || null) : null,
+      frequency_interval_days: frequency === 'every_n_days' ? (parseInt(intervalDays) || 2) : null,
+      target_per_period: parseInt(target) || 1,
+    };
+    onChangeFrequency(newFreq, applyOption, applyOption === 'custom' ? applyCustomDate : undefined);
+    setShowApplyPicker(false);
     setEditing(false);
   };
 
@@ -265,12 +297,20 @@ const toggleEditor = () => {
             target={target} setTarget={setTarget}
           />
           <TimeOfDayField value={timeOfDay} setValue={setTimeOfDay} />
-          <div className="flex gap-2">
-            <button onClick={save} className="btn-primary flex-1">Save</button>
-            <button onClick={() => setEditing(false)} className="text-sm text-[#64748B] hover:text-white px-3">Cancel</button>
-            <button onClick={onArchive} className="text-sm text-[#94A3B8] hover:text-white px-2">Pause</button>
-            <button onClick={onDelete} className="text-sm text-red-400 hover:text-red-300 px-2">Delete</button>
-          </div>
+          {showApplyPicker ? (
+            <FrequencyApplyPicker
+              option={applyOption} setOption={setApplyOption}
+              customDate={applyCustomDate} setCustomDate={setApplyCustomDate}
+              onConfirm={confirmApplyFrequency} onCancel={() => setShowApplyPicker(false)}
+            />
+          ) : (
+            <div className="flex gap-2">
+              <button onClick={save} className="btn-primary flex-1">Save</button>
+              <button onClick={() => setEditing(false)} className="text-sm text-[#64748B] hover:text-white px-3">Cancel</button>
+              <button onClick={onArchive} className="text-sm text-[#94A3B8] hover:text-white px-2">Pause</button>
+              <button onClick={onDelete} className="text-sm text-red-400 hover:text-red-300 px-2">Delete</button>
+            </div>
+          )}
         </div>
       )}
     </div>

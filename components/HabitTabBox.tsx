@@ -2,11 +2,11 @@
 import { useRef, useState, type ReactNode } from 'react';
 import { X, SkipForward } from 'lucide-react';
 import {
-  Habit, HabitLog, HabitFrequencyType, HabitColorKey,
+  Habit, HabitLog, HabitFrequencyType, HabitFrequencyChange, HabitColorKey,
   HABIT_COLORS, HABIT_FREQUENCY_LABELS, isHabitScheduledOn,
 } from '@/types';
 import { todayLocalISO } from '@/lib/utils';
-import { getMonthDays, completionPctInRange, completionRatio, habitDayStats, addDaysISO, displayTarget } from '@/lib/habitStats';
+import { getMonthDays, completionPctInRange, completionRatio, habitDayStats, addDaysISO, displayTarget, resolveFrequencyAt } from '@/lib/habitStats';
 
 interface CategoryDef { key: string; label: string; emoji: string; isCustom: boolean; habitCount: number }
 
@@ -23,6 +23,7 @@ interface Props {
   categoryLabel: string;
   habits: Habit[];
   logsByHabit: Map<string, HabitLog[]>;
+  frequencyHistory: HabitFrequencyChange[];
   selectedHabitId: string | null;
   onSelectHabit: (id: string) => void;
   onCreateHabit: (fields: {
@@ -32,6 +33,10 @@ interface Props {
   }) => void;
   onReorderHabit: (fromId: string, toId: string) => void;
   onUpdateHabit: (id: string, patch: Partial<Habit>) => void;
+  onChangeFrequency: (habit: Habit, fields: {
+    frequency_type: HabitFrequencyType; frequency_days: string | null;
+    frequency_interval_days: number | null; target_per_period: number;
+  }, applyOption: ApplyOption, customDate?: string) => void;
   onArchiveHabit: (id: string) => void;
   onDeleteHabit: (id: string) => void;
   onIncrementToday: (habit: Habit) => void;
@@ -225,6 +230,53 @@ export function StartDateFields({
   );
 }
 
+export type ApplyOption = 'today' | 'tomorrow' | 'start' | 'custom';
+
+/** Shown after editing a habit's frequency/goal — asks *when* the new setting should start
+ *  applying, since past days keep being judged against whatever was in effect at the time
+ *  (see resolveFrequencyAt in lib/habitStats.ts) rather than the new value rewriting history. */
+export function FrequencyApplyPicker({
+  option, setOption, customDate, setCustomDate, onConfirm, onCancel,
+}: {
+  option: ApplyOption; setOption: (o: ApplyOption) => void;
+  customDate: string; setCustomDate: (v: string) => void;
+  onConfirm: () => void; onCancel: () => void;
+}) {
+  return (
+    <div className="flex flex-col gap-3 rounded-lg border border-blue-500/40 bg-blue-500/10 p-3">
+      <p className="text-xs font-semibold text-white">Apply this frequency/goal change from:</p>
+      <div className="grid grid-cols-2 gap-1.5">
+        {([
+          { key: 'today', label: 'Today' },
+          { key: 'tomorrow', label: 'Tomorrow' },
+          { key: 'start', label: 'Beginning of habit' },
+          { key: 'custom', label: 'Custom date' },
+        ] as { key: ApplyOption; label: string }[]).map(o => (
+          <button
+            key={o.key}
+            onClick={() => setOption(o.key)}
+            className={`px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all ${option === o.key ? 'border-blue-500 bg-blue-500/20 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+      {option === 'custom' && (
+        <input type="date" className="input" value={customDate} onChange={e => setCustomDate(e.target.value)} />
+      )}
+      <p className="text-[11px] text-[#64748B]">
+        {option === 'start'
+          ? "Rewrites every past day's stats to use the new setting."
+          : "Days before this date keep being judged by the old setting."}
+      </p>
+      <div className="flex gap-2">
+        <button onClick={onConfirm} disabled={option === 'custom' && !customDate} className="btn-primary flex-1 disabled:opacity-40">Confirm</button>
+        <button onClick={onCancel} className="text-sm text-[#64748B] hover:text-white px-3">Cancel</button>
+      </div>
+    </div>
+  );
+}
+
 /** Per-category box: switch between category boxes (top row) then between that category's
  *  habits (tab row below a divider), showing the selected habit's repeat/target, overview %,
  *  a streak/completion stats grid, and a circular-day history calendar. Two pencils: one next
@@ -233,7 +285,7 @@ export function StartDateFields({
  *  reorder). */
 export default function HabitTabBox({
   categories, activeCategory, onSelectCategory, onReorderCategory, onRenameCategory, onRemoveCategory, onCreateCategory,
-  categoryLabel, habits, logsByHabit, selectedHabitId, onSelectHabit, onCreateHabit, onReorderHabit, onUpdateHabit, onArchiveHabit, onDeleteHabit, onIncrementToday, onDecrementToday, onMarkFailedToday, onSkipToday,
+  categoryLabel, habits, logsByHabit, frequencyHistory, selectedHabitId, onSelectHabit, onCreateHabit, onReorderHabit, onUpdateHabit, onChangeFrequency, onArchiveHabit, onDeleteHabit, onIncrementToday, onDecrementToday, onMarkFailedToday, onSkipToday,
 }: Props) {
   const [showEdit, setShowEdit] = useState(false);
   const [showManageCategories, setShowManageCategories] = useState(false);
@@ -259,6 +311,12 @@ export default function HabitTabBox({
   const [editInterval, setEditInterval] = useState('2');
   const [editTarget, setEditTarget] = useState('1');
   const [editTimeOfDay, setEditTimeOfDay] = useState('');
+  const [pendingFreq, setPendingFreq] = useState<{ habit: Habit; fields: {
+    frequency_type: HabitFrequencyType; frequency_days: string | null;
+    frequency_interval_days: number | null; target_per_period: number;
+  } } | null>(null);
+  const [applyOption, setApplyOption] = useState<ApplyOption>('today');
+  const [applyCustomDate, setApplyCustomDate] = useState('');
 
   const [renamingKey, setRenamingKey] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
@@ -274,9 +332,9 @@ export default function HabitTabBox({
   const logs = selected ? logsByHabit.get(selected.id) || [] : [];
   const logsByDate = new Map(logs.map(l => [l.date, l]));
 
-  const monthPct = selected ? completionPctInRange(selected, logs, `${year}-${String(month0 + 1).padStart(2, '0')}-01`, todayISO) : 0;
-  const yearPct = selected ? completionPctInRange(selected, logs, `${year}-01-01`, todayISO) : 0;
-  const dayStats = selected ? habitDayStats(selected, logs, todayISO) : null;
+  const monthPct = selected ? completionPctInRange(selected, logs, `${year}-${String(month0 + 1).padStart(2, '0')}-01`, todayISO, frequencyHistory) : 0;
+  const yearPct = selected ? completionPctInRange(selected, logs, `${year}-01-01`, todayISO, frequencyHistory) : 0;
+  const dayStats = selected ? habitDayStats(selected, logs, todayISO, frequencyHistory) : null;
 
   const resetNewForm = () => {
     setNewName(''); setNewColor('blue'); setNewFrequency('daily'); setNewDays([]); setNewInterval('2'); setNewTarget('1');
@@ -416,17 +474,43 @@ export default function HabitTabBox({
 
   const saveEditing = (habitId: string) => {
     if (!editName.trim()) return;
-    onUpdateHabit(habitId, {
-      name: editName.trim(),
-      color: HABIT_COLORS[editColor],
+    const habit = habits.find(h => h.id === habitId);
+    if (!habit) return;
+
+    const newFreq = {
       frequency_type: editFrequency,
       frequency_days: editFrequency === 'custom_days' ? (editDays.join(',') || null) : null,
       frequency_interval_days: editFrequency === 'every_n_days' ? (parseInt(editInterval) || 2) : null,
       target_per_period: parseInt(editTarget) || 1,
+    };
+    const freqChanged = habit.frequency_type !== newFreq.frequency_type
+      || (habit.frequency_days || null) !== newFreq.frequency_days
+      || (habit.frequency_interval_days || null) !== newFreq.frequency_interval_days
+      || habit.target_per_period !== newFreq.target_per_period;
+
+    onUpdateHabit(habitId, {
+      name: editName.trim(),
+      color: HABIT_COLORS[editColor],
       time_of_day: editTimeOfDay || null,
     });
+
+    if (freqChanged) {
+      setPendingFreq({ habit, fields: newFreq });
+      setApplyOption('today');
+      setApplyCustomDate('');
+      return;
+    }
     setExpandedId(null);
   };
+
+  const confirmApplyFrequency = () => {
+    if (!pendingFreq) return;
+    onChangeFrequency(pendingFreq.habit, pendingFreq.fields, applyOption, applyOption === 'custom' ? applyCustomDate : undefined);
+    setPendingFreq(null);
+    setExpandedId(null);
+  };
+
+  const cancelApplyFrequency = () => setPendingFreq(null);
 
   const submitNewCategory = () => {
     if (!newCatName.trim()) return;
@@ -579,9 +663,10 @@ export default function HabitTabBox({
       <p className="text-xs font-medium text-[#64748B] uppercase tracking-wide mb-2">History</p>
       <div className="flex flex-wrap gap-1.5">
         {monthDays.map(date => {
-          const scheduled = isHabitScheduledOn(selected, date);
+          const dayCfg = resolveFrequencyAt(selected, frequencyHistory, date);
+          const scheduled = isHabitScheduledOn(dayCfg, date);
           const log = logsByDate.get(date);
-          const ratio = completionRatio(selected, log);
+          const ratio = completionRatio(selected, log, dayCfg.target_per_period);
           const isFuture = date > todayISO;
           const dayNum = Number(date.slice(8, 10));
           return (
@@ -660,11 +745,19 @@ export default function HabitTabBox({
                         target={editTarget} setTarget={setEditTarget}
                       />
                       <TimeOfDayField value={editTimeOfDay} setValue={setEditTimeOfDay} />
-                      <div className="flex gap-2">
-                        <button onClick={() => saveEditing(h.id)} className="btn-primary flex-1">Save</button>
-                        <button onClick={() => { onArchiveHabit(h.id); setExpandedId(null); }} className="text-sm text-[#94A3B8] hover:text-white px-2">Pause</button>
-                        <button onClick={() => { onDeleteHabit(h.id); setExpandedId(null); }} className="text-sm text-red-400 hover:text-red-300 px-2">Delete</button>
-                      </div>
+                      {pendingFreq?.habit.id === h.id ? (
+                        <FrequencyApplyPicker
+                          option={applyOption} setOption={setApplyOption}
+                          customDate={applyCustomDate} setCustomDate={setApplyCustomDate}
+                          onConfirm={confirmApplyFrequency} onCancel={cancelApplyFrequency}
+                        />
+                      ) : (
+                        <div className="flex gap-2">
+                          <button onClick={() => saveEditing(h.id)} className="btn-primary flex-1">Save</button>
+                          <button onClick={() => { onArchiveHabit(h.id); setExpandedId(null); }} className="text-sm text-[#94A3B8] hover:text-white px-2">Pause</button>
+                          <button onClick={() => { onDeleteHabit(h.id); setExpandedId(null); }} className="text-sm text-red-400 hover:text-red-300 px-2">Delete</button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
