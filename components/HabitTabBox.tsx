@@ -1,6 +1,6 @@
 'use client';
 import { useRef, useState } from 'react';
-import { X } from 'lucide-react';
+import { X, SkipForward } from 'lucide-react';
 import {
   Habit, HabitLog, HabitFrequencyType, HabitColorKey,
   HABIT_COLORS, HABIT_FREQUENCY_LABELS, isHabitScheduledOn,
@@ -312,6 +312,7 @@ export default function HabitTabBox({
   const handleHabitManagePointerDown = (id: string) => (e: React.PointerEvent) => {
     e.preventDefault();
     habitManageDragRef.current = { fromId: id };
+    (e.currentTarget.closest('[data-habit-manage-key]') as HTMLElement | null)?.classList.add('ring-2', 'ring-amber-400', 'ring-inset');
     window.addEventListener('pointermove', handleHabitManagePointerMove);
     window.addEventListener('pointerup', handleHabitManagePointerUp);
   };
@@ -320,7 +321,9 @@ export default function HabitTabBox({
     if (!drag) return;
     const el = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
     const overEl = el?.closest('[data-habit-manage-key]') as HTMLElement | null;
-    document.querySelectorAll('[data-habit-manage-key]').forEach(t => t.classList.remove('ring-2', 'ring-blue-400', 'ring-inset'));
+    document.querySelectorAll('[data-habit-manage-key]').forEach(t => {
+      if (t.getAttribute('data-habit-manage-key') !== drag.fromId) t.classList.remove('ring-2', 'ring-blue-400', 'ring-inset');
+    });
     if (overEl && overEl.dataset.habitManageKey !== drag.fromId) {
       overEl.classList.add('ring-2', 'ring-blue-400', 'ring-inset');
     }
@@ -330,7 +333,7 @@ export default function HabitTabBox({
     habitManageDragRef.current = null;
     window.removeEventListener('pointermove', handleHabitManagePointerMove);
     window.removeEventListener('pointerup', handleHabitManagePointerUp);
-    document.querySelectorAll('[data-habit-manage-key]').forEach(t => t.classList.remove('ring-2', 'ring-blue-400', 'ring-inset'));
+    document.querySelectorAll('[data-habit-manage-key]').forEach(t => t.classList.remove('ring-2', 'ring-blue-400', 'ring-amber-400', 'ring-inset'));
     if (!drag) return;
     const el = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
     const overEl = el?.closest('[data-habit-manage-key]') as HTMLElement | null;
@@ -338,10 +341,13 @@ export default function HabitTabBox({
     if (toId && toId !== drag.fromId) onReorderHabit(drag.fromId, toId);
   };
 
-  // Same pattern for the "Manage Categories" panel's reorder list.
+  // Same pattern for the "Manage Categories" panel's reorder list. The dragged row keeps an
+  // amber ring for the whole drag so it's clear what's moving, separate from the blue ring
+  // marking whichever row is currently under the pointer as the drop target.
   const handleCategoryManagePointerDown = (key: string) => (e: React.PointerEvent) => {
     e.preventDefault();
     categoryManageDragRef.current = { fromKey: key };
+    (e.currentTarget.closest('[data-category-manage-key]') as HTMLElement | null)?.classList.add('ring-2', 'ring-amber-400', 'ring-inset');
     window.addEventListener('pointermove', handleCategoryManagePointerMove);
     window.addEventListener('pointerup', handleCategoryManagePointerUp);
   };
@@ -350,7 +356,9 @@ export default function HabitTabBox({
     if (!drag) return;
     const el = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
     const overEl = el?.closest('[data-category-manage-key]') as HTMLElement | null;
-    document.querySelectorAll('[data-category-manage-key]').forEach(t => t.classList.remove('ring-2', 'ring-blue-400', 'ring-inset'));
+    document.querySelectorAll('[data-category-manage-key]').forEach(t => {
+      if (t.getAttribute('data-category-manage-key') !== drag.fromKey) t.classList.remove('ring-2', 'ring-blue-400', 'ring-inset');
+    });
     if (overEl && overEl.dataset.categoryManageKey !== drag.fromKey) {
       overEl.classList.add('ring-2', 'ring-blue-400', 'ring-inset');
     }
@@ -360,7 +368,7 @@ export default function HabitTabBox({
     categoryManageDragRef.current = null;
     window.removeEventListener('pointermove', handleCategoryManagePointerMove);
     window.removeEventListener('pointerup', handleCategoryManagePointerUp);
-    document.querySelectorAll('[data-category-manage-key]').forEach(t => t.classList.remove('ring-2', 'ring-blue-400', 'ring-inset'));
+    document.querySelectorAll('[data-category-manage-key]').forEach(t => t.classList.remove('ring-2', 'ring-blue-400', 'ring-amber-400', 'ring-inset'));
     if (!drag) return;
     const el = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
     const overEl = el?.closest('[data-category-manage-key]') as HTMLElement | null;
@@ -427,10 +435,9 @@ export default function HabitTabBox({
             <button
               key={h.id}
               onClick={() => onSelectHabit(h.id)}
-              className={`flex-shrink-0 px-3 py-2 text-sm font-medium border-r transition-colors ${
-                active ? 'text-white' : 'text-[#94A3B8] hover:text-white'
-              } ${active || nextActive ? 'border-r-blue-500' : 'border-r-[#334155]'} ${
-                i === 0 ? `border-l ${active ? 'border-l-blue-500' : 'border-l-[#334155]'}` : ''
+              style={active ? ({ '--tab-color': '#3B82F6' } as React.CSSProperties) : undefined}
+              className={`flex-shrink-0 px-3 py-2 text-sm font-medium transition-colors ${
+                active ? 'habit-tab-active text-white' : `text-[#94A3B8] hover:text-white border-r ${nextActive ? 'border-r-blue-500' : 'border-r-[#334155]'} ${i === 0 ? 'border-l border-l-[#334155]' : ''}`
               }`}
             >
               <span className="inline-block w-2 h-2 rounded-full mr-1.5" style={{ background: h.color }} />
@@ -460,6 +467,7 @@ export default function HabitTabBox({
           <button
             onClick={() => onDecrementToday(selected)}
             disabled={(logsByDate.get(todayISO)?.count || 0) <= 0}
+            title="Reduce"
             aria-label="Remove one for today"
             className="w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold bg-[#334155] text-white hover:bg-[#475569] disabled:opacity-30"
           >
@@ -468,6 +476,7 @@ export default function HabitTabBox({
           <span className="text-sm font-semibold text-white w-4 text-center">{Math.max(0, logsByDate.get(todayISO)?.count || 0)}</span>
           <button
             onClick={() => onIncrementToday(selected)}
+            title="Add"
             aria-label="Add one for today"
             className="w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold bg-[#334155] text-white hover:bg-[#475569]"
           >
@@ -485,9 +494,9 @@ export default function HabitTabBox({
             onClick={() => onSkipToday(selected)}
             title="Skip for today"
             aria-label="Skip for today"
-            className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold ${logsByDate.get(todayISO)?.count === -2 ? 'bg-slate-400/80 text-white' : 'bg-[#334155] text-white hover:bg-[#475569]'}`}
+            className={`w-7 h-7 rounded-full flex items-center justify-center ${logsByDate.get(todayISO)?.count === -2 ? 'bg-slate-400/80 text-white' : 'bg-[#334155] text-white hover:bg-[#475569]'}`}
           >
-            –
+            <SkipForward size={14} fill="currentColor" />
           </button>
         </div>
       </div>

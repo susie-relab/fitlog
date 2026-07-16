@@ -33,9 +33,9 @@ const TEAM_PERSON = (
 );
 
 const TeamIcon = makeIcon(({ size, className }) => (
-  // A ring of 8 people holding hands, viewed from above — reads as "team"/group huddle.
+  // A ring of 5 people holding hands, viewed from above — reads as "team"/group huddle.
   <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className}>
-    {[0, 45, 90, 135, 180, 225, 270, 315].map(deg => (
+    {[0, 72, 144, 216, 288].map(deg => (
       <g key={deg} transform={`rotate(${deg} 12 12)`}>{TEAM_PERSON}</g>
     ))}
   </svg>

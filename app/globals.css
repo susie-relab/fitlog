@@ -49,6 +49,37 @@ h1, h2, h3, h4, h5, h6,
   background-color: #64748B;
 }
 
+/* Browser-tab outline for the active habit-name tab: a flat top edge connecting the two
+   sides, with the bottom of each side flaring outward into the divider line below instead
+   of stopping in a hard corner. The flare is drawn with a radial-gradient ring at each
+   bottom corner — the same trick used for classic "folder tab" shapes. */
+.habit-tab-active {
+  position: relative;
+  border-top: 2px solid var(--tab-color, #3B82F6);
+  border-left: 2px solid var(--tab-color, #3B82F6);
+  border-right: 2px solid var(--tab-color, #3B82F6);
+  border-bottom: none !important;
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
+}
+.habit-tab-active::before,
+.habit-tab-active::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  width: 9px;
+  height: 9px;
+  pointer-events: none;
+}
+.habit-tab-active::before {
+  left: -9px;
+  background: radial-gradient(circle at top left, transparent 68%, var(--tab-color, #3B82F6) 70% 76%, transparent 78%);
+}
+.habit-tab-active::after {
+  right: -9px;
+  background: radial-gradient(circle at top right, transparent 68%, var(--tab-color, #3B82F6) 70% 76%, transparent 78%);
+}
+
 .card {
   background: #1E293B;
   border: 1px solid #334155;

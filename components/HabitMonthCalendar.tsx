@@ -112,11 +112,9 @@ export default function HabitMonthCalendar({ habits, logs, onCycle }: Props) {
                     <div key={h.id} className="flex items-center justify-center min-w-0 min-h-0 p-px">
                       {failed ? (
                         <span
-                          className="rounded-full w-full h-full flex items-center justify-center leading-none font-bold text-black"
-                          style={{ background: '#E2E8F0', border: `1px solid ${h.color}`, fontSize: '80%' }}
-                        >
-                          ×
-                        </span>
+                          className="rounded-full w-full h-full"
+                          style={{ background: '#000000', border: `1px solid ${h.color}` }}
+                        />
                       ) : (
                         <span
                           className="rounded-full w-full h-full"

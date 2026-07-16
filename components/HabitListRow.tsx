@@ -1,13 +1,17 @@
 'use client';
 import { useRef, useState } from 'react';
-import { Habit, HabitLog, HabitFrequencyType } from '@/types';
+import { SkipForward } from 'lucide-react';
+import { Habit, HabitLog, HabitFrequencyType, HabitColorKey, HABIT_COLORS } from '@/types';
 import { todayLocalISO } from '@/lib/utils';
 import { periodProgress } from '@/lib/habitStats';
 import { FrequencyFields, PencilIcon } from '@/components/HabitTabBox';
 
+interface CategoryOption { key: string; label: string; emoji: string }
+
 interface Props {
   habit: Habit;
   logs: HabitLog[];
+  categories: CategoryOption[];
   onIncrement: () => void;
   onDecrement: () => void;
   onUpdateHabit: (patch: Partial<Habit>) => void;
@@ -17,6 +21,8 @@ interface Props {
   onArchive: () => void;
   onDelete: () => void;
 }
+
+type RevealSection = 'name' | 'colour' | 'category' | null;
 
 function hexToRgba(hex: string, alpha: number): string {
   const m = hex.replace('#', '');
@@ -31,7 +37,7 @@ function hexToRgba(hex: string, alpha: number): string {
  *  window. Tapping anywhere on the row (other than the +/- stepper or pencil) opens/closes the
  *  quick editor; press-and-hold anywhere else drags the row to reorder it within the full
  *  habit list (across every category). */
-export default function HabitListRow({ habit, logs, onIncrement, onDecrement, onMarkFailed, onSkip, onUpdateHabit, onReorder, onArchive, onDelete }: Props) {
+export default function HabitListRow({ habit, logs, categories, onIncrement, onDecrement, onMarkFailed, onSkip, onUpdateHabit, onReorder, onArchive, onDelete }: Props) {
   const [editing, setEditing] = useState(false);
   const [dragging, setDragging] = useState(false);
   const dragMovedRef = useRef(false);
@@ -40,6 +46,8 @@ export default function HabitListRow({ habit, logs, onIncrement, onDecrement, on
   const [days, setDays] = useState<string[]>(habit.frequency_days ? habit.frequency_days.split(',') : []);
   const [intervalDays, setIntervalDays] = useState(String(habit.frequency_interval_days || 2));
   const [target, setTarget] = useState(String(habit.target_per_period));
+  const [revealed, setRevealed] = useState<RevealSection>(null);
+  const [nameValue, setNameValue] = useState(habit.name);
 
   const todayISO = todayLocalISO();
   const { pct, sum, target: periodTarget, periodLabel } = periodProgress(habit, logs, todayISO);
@@ -50,13 +58,20 @@ export default function HabitListRow({ habit, logs, onIncrement, onDecrement, on
 
   // A tap toggles the editor open/closed (like the Cancel button); opening also refreshes
   // the form fields to the habit's current values.
-  const toggleEditor = () => {
-    if (editing) { setEditing(false); return; }
+const toggleEditor = () => {
+    if (editing) { setEditing(false); setRevealed(null); return; }
     setFrequency(habit.frequency_type);
     setDays(habit.frequency_days ? habit.frequency_days.split(',') : []);
     setIntervalDays(String(habit.frequency_interval_days || 2));
     setTarget(String(habit.target_per_period));
+    setNameValue(habit.name);
+    setRevealed(null);
     setEditing(true);
+  };
+
+  const saveName = () => {
+    if (nameValue.trim() && nameValue.trim() !== habit.name) onUpdateHabit({ name: nameValue.trim() });
+    setRevealed(null);
   };
 
   const save = () => {
@@ -110,7 +125,7 @@ export default function HabitListRow({ habit, logs, onIncrement, onDecrement, on
     >
       <div
         onPointerDown={handlePointerDown}
-        className="relative h-12 select-none cursor-pointer"
+        className="relative h-9 select-none cursor-pointer"
         style={{ background: '#1E293B', touchAction: 'none' }}
       >
         <div
@@ -135,6 +150,7 @@ export default function HabitListRow({ habit, logs, onIncrement, onDecrement, on
               onClick={e => { e.stopPropagation(); onDecrement(); }}
               onPointerDown={e => e.stopPropagation()}
               disabled={todayCount <= 0}
+              title="Reduce"
               aria-label="Remove one for today"
               className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold bg-black/25 text-white hover:bg-black/40 disabled:opacity-30"
             >
@@ -144,6 +160,7 @@ export default function HabitListRow({ habit, logs, onIncrement, onDecrement, on
             <button
               onClick={e => { e.stopPropagation(); onIncrement(); }}
               onPointerDown={e => e.stopPropagation()}
+              title="Add"
               aria-label="Add one for today"
               className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold bg-black/25 text-white hover:bg-black/40"
             >
@@ -163,9 +180,9 @@ export default function HabitListRow({ habit, logs, onIncrement, onDecrement, on
               onPointerDown={e => e.stopPropagation()}
               title="Skip for today"
               aria-label="Skip for today"
-              className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${isSkippedToday ? 'bg-slate-400/80 text-white' : 'bg-black/25 text-white/70 hover:bg-black/40'}`}
+              className={`w-5 h-5 rounded-full flex items-center justify-center ${isSkippedToday ? 'bg-slate-400/80 text-white' : 'bg-black/25 text-white/70 hover:bg-black/40'}`}
             >
-              –
+              <SkipForward size={11} fill="currentColor" />
             </button>
             <button
               onClick={e => { e.stopPropagation(); toggleEditor(); }}
@@ -187,6 +204,53 @@ export default function HabitListRow({ habit, logs, onIncrement, onDecrement, on
 
       {editing && (
         <div className="p-3 border-t border-[#334155] flex flex-col gap-3">
+          <div className="flex flex-wrap gap-1.5">
+            {(['name', 'colour', 'category'] as const).map(section => (
+              <button
+                key={section}
+                onClick={() => setRevealed(prev => prev === section ? null : section)}
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all ${revealed === section ? 'border-blue-500 bg-blue-500/20 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}
+              >
+                {section === 'name' ? 'Edit name' : section === 'colour' ? 'Change colour' : 'Swap category'}
+              </button>
+            ))}
+          </div>
+
+          {revealed === 'name' && (
+            <div className="flex gap-2">
+              <input className="input flex-1" value={nameValue} onChange={e => setNameValue(e.target.value)} />
+              <button onClick={saveName} className="btn-primary px-3 text-sm">Save</button>
+            </div>
+          )}
+
+          {revealed === 'colour' && (
+            <div className="grid grid-cols-10 gap-2">
+              {(Object.keys(HABIT_COLORS) as HabitColorKey[]).map(key => (
+                <button
+                  key={key}
+                  onClick={() => { onUpdateHabit({ color: HABIT_COLORS[key] }); setRevealed(null); }}
+                  aria-label={key}
+                  className={`w-6 h-6 rounded-full border-2 ${habit.color === HABIT_COLORS[key] ? 'border-white' : 'border-transparent hover:border-[#475569]'}`}
+                  style={{ background: HABIT_COLORS[key] }}
+                />
+              ))}
+            </div>
+          )}
+
+          {revealed === 'category' && (
+            <div className="flex flex-wrap gap-1.5">
+              {categories.map(c => (
+                <button
+                  key={c.key}
+                  onClick={() => { onUpdateHabit({ category: c.key }); setRevealed(null); }}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all ${habit.category === c.key ? 'border-blue-500 bg-blue-500/20 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}
+                >
+                  {c.emoji} {c.label}
+                </button>
+              ))}
+            </div>
+          )}
+
           <FrequencyFields
             frequency={frequency} setFrequency={setFrequency}
             days={days} setDays={setDays}

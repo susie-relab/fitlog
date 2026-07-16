@@ -280,7 +280,7 @@ export default function YearTotalsCard({ activities, config, onSave }: Props) {
           {/* Tab strip — one doodle icon per configured sport/subtype, browser-tab style: the
               active tab is bracketed by highlighted vertical divider lines on either side.
               Scrolls if it overflows. */}
-          <div className="flex overflow-x-auto pb-1 mb-4 -mx-1 px-1">
+          <div className="custom-scroll flex overflow-x-auto pb-1 mb-4 -mx-1 px-1">
             {tiles.map((tile, i) => {
               const item = registry.get(tile.key);
               const active = tile.key === activeTile.key;

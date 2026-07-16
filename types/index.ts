@@ -539,7 +539,7 @@ export interface HabitCategoryRow {
 
 export const HABIT_COLORS = {
   lightblue: '#93C5FD', blue: '#60A5FA', azure: '#0000FF', navy: '#1E3A8A',
-  aqua: '#00F5FF', darkturquoise: '#00CED1', forest: '#15803D', green: '#4ADE80', lime: '#A3E635',
+  aqua: '#2FA8C4', darkturquoise: '#155E63', forest: '#15803D', green: '#4ADE80', lime: '#A3E635',
   yellow: '#FACC15', cream: '#F5E6C8', orange: '#FB923C', rust: '#C2410C',
   brown: '#92400E', hotpink: '#EC4899', pink: '#F472B6',
   plum: '#7E22CE', purple: '#C084FC', slate: '#94A3B8', bluegrey: '#5B7B99',

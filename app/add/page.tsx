@@ -17,6 +17,9 @@ import {
 import TagToggleGrid from '@/components/TagToggleGrid';
 import { COMPANION_ICON_OVERRIDES } from '@/lib/companionIcons';
 import { CONDITION_ICON_OVERRIDES } from '@/lib/conditionIcons';
+import { SUBTYPE_ICON_OVERRIDES } from '@/lib/subtypeIcons';
+import { RUN_STYLE_ICON_OVERRIDES } from '@/lib/runStyleIcons';
+import type { LucideIcon } from 'lucide-react';
 import DistancePicker from '@/components/DistancePicker';
 import ScrollFieldPicker from '@/components/ScrollFieldPicker';
 import ImageUploader from '@/components/ImageUploader';
@@ -30,6 +33,41 @@ import { todayLocalISO, openDatePicker, calcAge, formatDuration, formatDistance 
 
 function ColorDot({ color }: { color: string }) {
   return <span className="inline-block w-2.5 h-2.5 rounded-full mr-2" style={{ background: color }} />;
+}
+
+/** Sub-type button with an icon (reused from the "This Year" tile set) and no visible box
+ *  until selected — keeps a dense grid from looking like a wall of identical outlined boxes. */
+function IconSubtypeButton({ label, subtypeKey, active, onClick, activeClass }: {
+  label: string; subtypeKey: string; active: boolean; onClick: () => void; activeClass: string;
+}) {
+  const Icon = SUBTYPE_ICON_OVERRIDES[subtypeKey] as LucideIcon | undefined;
+  return (
+    <button
+      onClick={onClick}
+      className={`flex items-center gap-1.5 px-2 py-2 rounded-lg text-xs font-medium border transition-all text-left ${
+        active ? activeClass : 'border-transparent text-[#94A3B8] hover:text-white'
+      }`}
+    >
+      {Icon && <Icon size={15} className="flex-shrink-0" />}
+      <span className="truncate">{label}</span>
+    </button>
+  );
+}
+
+/** Style option shown as a plain bullet list (no box) — for groups where a full button grid
+ *  reads as too heavy; the bullet fills in solid when selected. */
+function BulletStyleOption({ label, active, onClick, dotClass }: {
+  label: string; active: boolean; onClick: () => void; dotClass: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex items-center gap-2 px-1 py-1.5 text-xs text-left transition-colors ${active ? 'text-white font-semibold' : 'text-[#94A3B8] hover:text-white'}`}
+    >
+      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${active ? dotClass : 'bg-[#475569]'}`} />
+      {label}
+    </button>
+  );
 }
 
 export default function AddPage() {
@@ -380,15 +418,15 @@ export default function AddPage() {
         {exerciseType === 'run' && (
           <div>
             <label className="label">Run Type <span className="text-[#64748B]">(optional)</span></label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-1">
               {RUN_TYPE_WORKOUT.map(type => (
                 <button
                   key={type}
                   onClick={() => setRunType(runType === type ? '' : type)}
-                  className={`flex items-center px-3 py-2.5 rounded-lg text-sm font-medium border transition-all text-left ${
+                  className={`flex items-center px-2 py-1.5 rounded-lg text-sm font-medium border transition-all text-left ${
                     runType === type
                       ? 'border-2 text-white'
-                      : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'
+                      : 'border-transparent text-[#94A3B8] hover:text-white'
                   }`}
                   style={runType === type ? {
                     borderColor: RUN_TYPE_COLORS[type],
@@ -402,7 +440,9 @@ export default function AddPage() {
             </div>
             <label className="label mt-3">Run Style <span className="text-[#64748B]">(optional)</span></label>
             <div className="grid grid-cols-2 gap-2">
-              {RUN_TYPE_TERRAIN.map(type => (
+              {RUN_TYPE_TERRAIN.map(type => {
+                const RunStyleIcon = RUN_STYLE_ICON_OVERRIDES[type];
+                return (
                 <button
                   key={type}
                   onClick={() => setRunTypeModifier(runTypeModifier === type ? '' : type)}
@@ -416,10 +456,11 @@ export default function AddPage() {
                     background: RUN_TYPE_COLORS[type] + '33',
                   } : {}}
                 >
-                  <ColorDot color={RUN_TYPE_COLORS[type]} />
+                  {RunStyleIcon && <RunStyleIcon size={16} className="flex-shrink-0 mr-2" style={{ color: RUN_TYPE_COLORS[type] }} />}
                   {RUN_TYPE_LABELS[type]}
                 </button>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
@@ -430,10 +471,8 @@ export default function AddPage() {
             <label className="label">Sport Type <span className="text-[#64748B]">(optional)</span></label>
             <div className="grid grid-cols-3 gap-1.5">
               {(Object.keys(SPORT_SUB_LABELS) as SportSubType[]).map(t => (
-                <button key={t} onClick={() => setSubType(subType === t ? '' : t)}
-                  className={`px-2 py-2 rounded-lg text-xs font-medium border transition-all text-center ${subType === t ? 'border-orange-500 bg-orange-500/20 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>
-                  {SPORT_SUB_LABELS[t]}
-                </button>
+                <IconSubtypeButton key={t} label={SPORT_SUB_LABELS[t]} subtypeKey={t} active={subType === t}
+                  onClick={() => setSubType(subType === t ? '' : t)} activeClass="border-orange-500 bg-orange-500/20 text-white" />
               ))}
             </div>
             <label className="label mt-3">Sport Focus <span className="text-[#64748B]">(optional)</span></label>
@@ -446,12 +485,10 @@ export default function AddPage() {
               ))}
             </div>
             <label className="label mt-3">Sport Style <span className="text-[#64748B]">(optional)</span></label>
-            <div className="grid grid-cols-3 gap-1.5">
+            <div className="grid grid-cols-2 gap-1">
               {(Object.keys(SPORT_STYLE_LABELS) as SportStyle[]).map(t => (
-                <button key={t} onClick={() => setSportStyle(sportStyle === t ? '' : t)}
-                  className={`px-2 py-2 rounded-lg text-xs font-medium border transition-all text-center ${sportStyle === t ? 'border-orange-500 bg-orange-500/20 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>
-                  {SPORT_STYLE_LABELS[t]}
-                </button>
+                <BulletStyleOption key={t} label={SPORT_STYLE_LABELS[t]} active={sportStyle === t}
+                  onClick={() => setSportStyle(sportStyle === t ? '' : t)} dotClass="bg-orange-500" />
               ))}
             </div>
           </div>
@@ -464,10 +501,8 @@ export default function AddPage() {
               {(Object.keys(GYM_SUB_LABELS) as GymSubType[]).map(t => {
                 const active = gymTypes.includes(t);
                 return (
-                  <button key={t} onClick={() => setGymTypes(active ? gymTypes.filter(x => x !== t) : [...gymTypes, t])}
-                    className={`px-2 py-2 rounded-lg text-xs font-medium border transition-all text-center ${active ? 'border-red-500 bg-red-500/20 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>
-                    {GYM_SUB_LABELS[t]}
-                  </button>
+                  <IconSubtypeButton key={t} label={GYM_SUB_LABELS[t]} subtypeKey={t} active={active}
+                    onClick={() => setGymTypes(active ? gymTypes.filter(x => x !== t) : [...gymTypes, t])} activeClass="border-red-500 bg-red-500/20 text-white" />
                 );
               })}
             </div>
@@ -478,10 +513,8 @@ export default function AddPage() {
             <label className="label">Activity <span className="text-[#64748B]">(optional)</span></label>
             <div className="grid grid-cols-3 gap-1.5">
               {(Object.keys(WATER_SUB_LABELS) as WaterSubType[]).map(t => (
-                <button key={t} onClick={() => setSubType(subType === t ? '' : t)}
-                  className={`px-2 py-2 rounded-lg text-xs font-medium border transition-all text-center ${subType === t ? 'border-sky-500 bg-sky-500/20 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>
-                  {WATER_SUB_LABELS[t]}
-                </button>
+                <IconSubtypeButton key={t} label={WATER_SUB_LABELS[t]} subtypeKey={t} active={subType === t}
+                  onClick={() => setSubType(subType === t ? '' : t)} activeClass="border-sky-500 bg-sky-500/20 text-white" />
               ))}
             </div>
             <label className="label mt-3">Water Style <span className="text-[#64748B]">(optional + multi-select)</span></label>
@@ -503,10 +536,8 @@ export default function AddPage() {
             <label className="label">Activity <span className="text-[#64748B]">(optional)</span></label>
             <div className="grid grid-cols-3 gap-1.5">
               {(Object.keys(SNOW_SUB_LABELS) as SnowSubType[]).map(t => (
-                <button key={t} onClick={() => setSubType(subType === t ? '' : t)}
-                  className={`px-2 py-2 rounded-lg text-xs font-medium border transition-all text-center ${subType === t ? 'border-sky-500 bg-sky-500/20 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>
-                  {SNOW_SUB_LABELS[t]}
-                </button>
+                <IconSubtypeButton key={t} label={SNOW_SUB_LABELS[t]} subtypeKey={t} active={subType === t}
+                  onClick={() => setSubType(subType === t ? '' : t)} activeClass="border-sky-500 bg-sky-500/20 text-white" />
               ))}
             </div>
             <label className="label mt-3">Snow Style <span className="text-[#64748B]">(optional + multi-select)</span></label>
@@ -528,10 +559,8 @@ export default function AddPage() {
             <label className="label">Swim Type <span className="text-[#64748B]">(optional)</span></label>
             <div className="grid grid-cols-2 gap-1.5">
               {(Object.keys(SWIM_SUB_LABELS) as SwimSubType[]).map(t => (
-                <button key={t} onClick={() => setSubType(subType === t ? '' : t)}
-                  className={`px-2 py-2 rounded-lg text-xs font-medium border transition-all text-center ${subType === t ? 'border-cyan-500 bg-cyan-500/20 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>
-                  {SWIM_SUB_LABELS[t]}
-                </button>
+                <IconSubtypeButton key={t} label={SWIM_SUB_LABELS[t]} subtypeKey={t} active={subType === t}
+                  onClick={() => setSubType(subType === t ? '' : t)} activeClass="border-cyan-500 bg-cyan-500/20 text-white" />
               ))}
             </div>
             <label className="label mt-3">Swim Focus <span className="text-[#64748B]">(optional)</span></label>
@@ -544,14 +573,12 @@ export default function AddPage() {
               ))}
             </div>
             <label className="label mt-3">Swim Style <span className="text-[#64748B]">(optional + multi-select)</span></label>
-            <div className="grid grid-cols-3 gap-1.5">
+            <div className="grid grid-cols-2 gap-1">
               {(Object.keys(SWIM_STYLE_LABELS) as SwimStyle[]).map(t => {
                 const active = swimStyles.includes(t);
                 return (
-                  <button key={t} onClick={() => setSwimStyles(active ? swimStyles.filter(x => x !== t) : [...swimStyles, t])}
-                    className={`px-2 py-2 rounded-lg text-xs font-medium border transition-all text-center ${active ? 'border-cyan-500 bg-cyan-500/20 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>
-                    {SWIM_STYLE_LABELS[t]}
-                  </button>
+                  <BulletStyleOption key={t} label={SWIM_STYLE_LABELS[t]} active={active}
+                    onClick={() => setSwimStyles(active ? swimStyles.filter(x => x !== t) : [...swimStyles, t])} dotClass="bg-cyan-500" />
                 );
               })}
             </div>
@@ -562,10 +589,8 @@ export default function AddPage() {
             <label className="label">Activity Type <span className="text-[#64748B]">(optional)</span></label>
             <div className="grid grid-cols-3 gap-1.5">
               {(Object.keys(FITNESS_SUB_LABELS) as FitnessSubType[]).map(t => (
-                <button key={t} onClick={() => setSubType(subType === t ? '' : t)}
-                  className={`px-2 py-2 rounded-lg text-xs font-medium border transition-all text-center ${subType === t ? 'border-purple-500 bg-purple-500/20 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>
-                  {FITNESS_SUB_LABELS[t]}
-                </button>
+                <IconSubtypeButton key={t} label={FITNESS_SUB_LABELS[t]} subtypeKey={t} active={subType === t}
+                  onClick={() => setSubType(subType === t ? '' : t)} activeClass="border-purple-500 bg-purple-500/20 text-white" />
               ))}
             </div>
           </div>
@@ -590,10 +615,8 @@ export default function AddPage() {
               {(Object.keys(WALK_SUB_LABELS) as WalkSubType[]).map(t => {
                 const active = walkTypes.includes(t);
                 return (
-                  <button key={t} onClick={() => setWalkTypes(active ? walkTypes.filter(x => x !== t) : [...walkTypes, t])}
-                    className={`px-2 py-2 rounded-lg text-xs font-medium border transition-all text-center ${active ? 'border-orange-500 bg-orange-500/20 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>
-                    {WALK_SUB_LABELS[t]}
-                  </button>
+                  <IconSubtypeButton key={t} label={WALK_SUB_LABELS[t]} subtypeKey={t} active={active}
+                    onClick={() => setWalkTypes(active ? walkTypes.filter(x => x !== t) : [...walkTypes, t])} activeClass="border-orange-500 bg-orange-500/20 text-white" />
                 );
               })}
             </div>

@@ -11,7 +11,13 @@ function makeIcon(render: (props: IconProps) => React.ReactNode): LucideIcon {
 }
 
 const MuddyIcon = makeIcon(({ size = 24, className }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className}>
+  // Bright brown fill (solid, 100% opacity) with a thin darker-brown outline so it reads
+  // clearly as "mud" next to the emoji condition icons rather than blending into black text.
+  <svg
+    width={size} height={size} viewBox="0 0 24 24"
+    fill="#A0522D" stroke="#5C3317" strokeWidth={0.6} strokeLinejoin="round"
+    className={className}
+  >
     {/* Main splat body — an irregular blob, not a clean circle. */}
     <path d="M12 6.2c2.6-.3 4.3 1 4.9 2.6.9-.6 2.4-.3 2.8 1 .4 1.2-.4 2.1-1.4 2.4.9.9.8 2.4-.3 3.1-1.2.8-2.6.2-3.2-.7-.5 1.5-2 2.6-3.8 2.6-1.9 0-3.4-1.2-3.8-2.8-.8 1-2.3 1.2-3.3.3-1-.9-.9-2.3.1-3.1-1-.4-1.6-1.5-1.2-2.6.5-1.3 2-1.5 2.9-.8.3-1.8 2-3.3 4.3-2Z" />
     {/* Flung droplets around the main splat. */}

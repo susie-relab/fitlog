@@ -9,9 +9,25 @@ import {
 } from '@/types';
 import { HABIT_PRESETS } from '@/lib/habitPresets';
 import { todayLocalISO } from '@/lib/utils';
+import { currentStreak, totalCompletions, periodProgress } from '@/lib/habitStats';
 import HabitListRow from '@/components/HabitListRow';
 import HabitMonthCalendar from '@/components/HabitMonthCalendar';
 import HabitTabBox, { FrequencyFields, StartDateFields, StartOption, resolveStartDate } from '@/components/HabitTabBox';
+
+type SortKey = 'name' | 'category' | 'colour' | 'frequency' | 'amount' | 'streak' | 'most_done' | 'completion';
+
+const SORT_KEY_LABELS: Record<SortKey, string> = {
+  name: 'Alphabetical',
+  category: 'Category',
+  colour: 'Colour',
+  frequency: 'Frequency',
+  amount: 'Amount (goal)',
+  streak: 'Current Streak',
+  most_done: 'Most Often Done',
+  completion: 'Completion % (this period)',
+};
+const SORT_KEY_ORDER: SortKey[] = ['name', 'category', 'colour', 'frequency', 'amount', 'streak', 'most_done', 'completion'];
+const FREQUENCY_SORT_ORDER: HabitFrequencyType[] = ['daily', 'every_n_days', 'weekly', 'fortnightly', 'monthly', 'custom_days'];
 
 export default function HabitsPage() {
   const { user } = useAuth();
@@ -27,6 +43,13 @@ export default function HabitsPage() {
   const [bulkSelected, setBulkSelected] = useState<Set<string>>(new Set());
   const [bulkColorPicker, setBulkColorPicker] = useState(false);
   const [bulkCategoryPicker, setBulkCategoryPicker] = useState(false);
+  const [bulkFrequencyPicker, setBulkFrequencyPicker] = useState(false);
+  const [bulkFrequency, setBulkFrequency] = useState<HabitFrequencyType>('daily');
+  const [bulkDays, setBulkDays] = useState<string[]>([]);
+  const [bulkInterval, setBulkInterval] = useState('2');
+  const [bulkTarget, setBulkTarget] = useState('1');
+  const [showSort, setShowSort] = useState(false);
+  const [sortCriteria, setSortCriteria] = useState<{ key: SortKey; dir: 'asc' | 'desc' }[]>([]);
 
   const [showAdd, setShowAdd] = useState(false);
   const [addStep, setAddStep] = useState<'presets' | 'custom'>('presets');
@@ -357,6 +380,97 @@ export default function HabitsPage() {
     exitBulkMode();
   };
 
+  const bulkDelete = () => {
+    if (bulkSelected.size === 0) return;
+    if (!confirm(`Delete ${bulkSelected.size} habit(s) and all their history? This can't be undone.`)) return;
+    setHabits(prev => prev.filter(h => !bulkSelected.has(h.id)));
+    bulkSelected.forEach(id => { supabase.from('habits').delete().eq('id', id); });
+    exitBulkMode();
+  };
+
+  const bulkPause = () => {
+    if (bulkSelected.size === 0) return;
+    setHabits(prev => prev.filter(h => !bulkSelected.has(h.id)));
+    bulkSelected.forEach(id => { supabase.from('habits').update({ archived: true }).eq('id', id); });
+    exitBulkMode();
+  };
+
+  const bulkSkipToday = () => {
+    habits.filter(h => bulkSelected.has(h.id)).forEach(h => skipToday(h));
+    exitBulkMode();
+  };
+  const bulkAddToday = () => {
+    habits.filter(h => bulkSelected.has(h.id)).forEach(h => incrementToday(h));
+    exitBulkMode();
+  };
+  const bulkReduceToday = () => {
+    habits.filter(h => bulkSelected.has(h.id)).forEach(h => decrementToday(h));
+    exitBulkMode();
+  };
+
+  const bulkSetFrequency = () => {
+    const patch: Partial<Habit> = {
+      frequency_type: bulkFrequency,
+      frequency_days: bulkFrequency === 'custom_days' ? (bulkDays.join(',') || null) : null,
+      frequency_interval_days: bulkFrequency === 'every_n_days' ? (parseInt(bulkInterval) || 2) : null,
+      target_per_period: parseInt(bulkTarget) || 1,
+    };
+    setHabits(prev => prev.map(h => bulkSelected.has(h.id) ? { ...h, ...patch } : h));
+    bulkSelected.forEach(id => { supabase.from('habits').update(patch).eq('id', id); });
+    setBulkFrequencyPicker(false);
+    exitBulkMode();
+  };
+
+  // Multi-criteria sort: criteria are applied in priority order (first = highest priority),
+  // producing one combined comparator. Applying persists the result via the same sort_order
+  // path manual drag-reorder uses, so dragging afterwards still works normally.
+  const sortMetric = (key: SortKey, h: Habit): number | string => {
+    switch (key) {
+      case 'name': return h.name.toLowerCase();
+      case 'category': return categoryDefByKey.get(h.category)?.label.toLowerCase() || h.category;
+      case 'colour': return h.color;
+      case 'frequency': return FREQUENCY_SORT_ORDER.indexOf(h.frequency_type);
+      case 'amount': return h.target_per_period;
+      case 'streak': return currentStreak(h, logsByHabit.get(h.id) || [], todayLocalISO());
+      case 'most_done': return totalCompletions(logsByHabit.get(h.id) || []);
+      case 'completion': return periodProgress(h, logsByHabit.get(h.id) || [], todayLocalISO()).pct;
+    }
+  };
+
+  const applySort = () => {
+    if (sortCriteria.length === 0) { setShowSort(false); return; }
+    const sorted = [...habits].sort((a, b) => {
+      for (const { key, dir } of sortCriteria) {
+        const va = sortMetric(key, a);
+        const vb = sortMetric(key, b);
+        let cmp = 0;
+        if (typeof va === 'string' && typeof vb === 'string') cmp = va.localeCompare(vb);
+        else cmp = (va as number) - (vb as number);
+        if (dir === 'desc') cmp = -cmp;
+        if (cmp !== 0) return cmp;
+      }
+      return 0;
+    });
+    persistHabitOrder(sorted);
+    setShowSort(false);
+  };
+
+  const addSortCriterion = (key: SortKey) => {
+    setSortCriteria(prev => prev.some(c => c.key === key) ? prev : [...prev, { key, dir: 'asc' }]);
+  };
+  const removeSortCriterion = (key: SortKey) => setSortCriteria(prev => prev.filter(c => c.key !== key));
+  const toggleSortDir = (key: SortKey) => setSortCriteria(prev => prev.map(c => c.key === key ? { ...c, dir: c.dir === 'asc' ? 'desc' : 'asc' } : c));
+  const moveSortCriterion = (key: SortKey, delta: number) => {
+    setSortCriteria(prev => {
+      const i = prev.findIndex(c => c.key === key);
+      const j = i + delta;
+      if (i === -1 || j < 0 || j >= prev.length) return prev;
+      const next = [...prev];
+      [next[i], next[j]] = [next[j], next[i]];
+      return next;
+    });
+  };
+
   const logHabit = async (habit: Habit, date: string, count: number) => {
     if (!user) return;
     const existing = logsByHabit.get(habit.id)?.find(l => l.date === date);
@@ -430,7 +544,6 @@ export default function HabitsPage() {
       <div className="flex items-center justify-between mb-5">
         <h1 className="text-xl font-bold text-white">Habits</h1>
         <div className="flex items-center gap-3">
-          <button onClick={() => (bulkMode ? exitBulkMode() : setBulkMode(true))} className="text-sm text-[#64748B] hover:text-white">{bulkMode ? 'Cancel' : 'Select'}</button>
           <button onClick={() => { setShowArchived(true); loadArchived(); }} className="text-sm text-[#64748B] hover:text-white">Paused</button>
           <button onClick={() => setShowAdd(true)} className="btn-primary text-sm">+ Add Habit</button>
         </div>
@@ -498,12 +611,63 @@ export default function HabitsPage() {
             />
           </div>
 
+          <div className="flex items-center gap-3 mb-3">
+            <button onClick={() => (bulkMode ? exitBulkMode() : setBulkMode(true))} className="text-sm text-[#64748B] hover:text-white">{bulkMode ? 'Cancel' : 'Select'}</button>
+            <button onClick={() => setShowSort(v => !v)} className="text-sm text-[#64748B] hover:text-white">Sort</button>
+          </div>
+
+          {showSort && (
+            <div className="card mb-3 flex flex-col gap-3">
+              <p className="text-xs font-semibold text-[#64748B] uppercase tracking-wide">Sort by (priority order)</p>
+              {sortCriteria.length === 0 ? (
+                <p className="text-xs text-[#64748B]">No criteria added yet — pick one below.</p>
+              ) : (
+                <div className="flex flex-col gap-1.5">
+                  {sortCriteria.map((c, i) => (
+                    <div key={c.key} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-[#334155]">
+                      <span className="text-xs font-semibold text-[#64748B] w-4">{i + 1}.</span>
+                      <span className="text-sm text-white flex-1">{SORT_KEY_LABELS[c.key]}</span>
+                      <button onClick={() => toggleSortDir(c.key)} className="text-xs font-medium text-blue-400 hover:text-blue-300 px-1.5">
+                        {c.dir === 'asc' ? 'Asc ↑' : 'Desc ↓'}
+                      </button>
+                      <button onClick={() => moveSortCriterion(c.key, -1)} disabled={i === 0} className="text-[#94A3B8] hover:text-white disabled:opacity-30 px-1">▲</button>
+                      <button onClick={() => moveSortCriterion(c.key, 1)} disabled={i === sortCriteria.length - 1} className="text-[#94A3B8] hover:text-white disabled:opacity-30 px-1">▼</button>
+                      <button onClick={() => removeSortCriterion(c.key)} className="text-red-400 hover:text-red-300 px-1">✕</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="flex flex-wrap gap-1.5">
+                {SORT_KEY_ORDER.filter(k => !sortCriteria.some(c => c.key === k)).map(k => (
+                  <button
+                    key={k}
+                    onClick={() => addSortCriterion(k)}
+                    className="px-2.5 py-1.5 rounded-lg text-xs font-medium border border-dashed border-[#334155] text-[#94A3B8] hover:border-[#475569] hover:text-white"
+                  >
+                    + {SORT_KEY_LABELS[k]}
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <button onClick={applySort} disabled={sortCriteria.length === 0} className="btn-primary flex-1 disabled:opacity-40">Apply</button>
+                <button onClick={() => setSortCriteria([])} className="text-sm text-[#64748B] hover:text-white px-3">Clear</button>
+              </div>
+              <p className="text-[11px] text-[#64748B]">Applying reorders the list — you can still drag habits to fine-tune afterwards.</p>
+            </div>
+          )}
+
           {bulkMode && (
             <div className="card mb-3 flex flex-col gap-3">
               <p className="text-sm text-white font-medium">{bulkSelected.size} selected</p>
               <div className="flex flex-wrap gap-2">
                 <button onClick={() => setBulkCategoryPicker(v => !v)} disabled={bulkSelected.size === 0} className="btn-secondary text-sm disabled:opacity-40">Change Category</button>
                 <button onClick={() => setBulkColorPicker(v => !v)} disabled={bulkSelected.size === 0} className="btn-secondary text-sm disabled:opacity-40">Change Colour</button>
+                <button onClick={() => setBulkFrequencyPicker(v => !v)} disabled={bulkSelected.size === 0} className="btn-secondary text-sm disabled:opacity-40">Change Frequency</button>
+                <button onClick={bulkAddToday} disabled={bulkSelected.size === 0} className="btn-secondary text-sm disabled:opacity-40">Add (Today)</button>
+                <button onClick={bulkReduceToday} disabled={bulkSelected.size === 0} className="btn-secondary text-sm disabled:opacity-40">Reduce (Today)</button>
+                <button onClick={bulkSkipToday} disabled={bulkSelected.size === 0} className="btn-secondary text-sm disabled:opacity-40">Skip for Today</button>
+                <button onClick={bulkPause} disabled={bulkSelected.size === 0} className="btn-secondary text-sm disabled:opacity-40">Pause</button>
+                <button onClick={bulkDelete} disabled={bulkSelected.size === 0} className="text-sm font-medium text-red-400 hover:text-red-300 disabled:opacity-40 px-2">Delete</button>
               </div>
               {bulkCategoryPicker && (
                 <div className="flex flex-wrap gap-1.5">
@@ -531,12 +695,23 @@ export default function HabitsPage() {
                   ))}
                 </div>
               )}
+              {bulkFrequencyPicker && (
+                <div className="flex flex-col gap-3">
+                  <FrequencyFields
+                    frequency={bulkFrequency} setFrequency={setBulkFrequency}
+                    days={bulkDays} setDays={setBulkDays}
+                    intervalDays={bulkInterval} setIntervalDays={setBulkInterval}
+                    target={bulkTarget} setTarget={setBulkTarget}
+                  />
+                  <button onClick={bulkSetFrequency} className="btn-primary w-full">Apply to {bulkSelected.size} habit(s)</button>
+                </div>
+              )}
             </div>
           )}
 
           {/* All habits across every category — press and hold (not the day-tap/stepper/pencil
               controls) to drag and reorder. The category tabs above only affect the tab box. */}
-          <div className="flex flex-col gap-2 mb-5">
+          <div className="flex flex-col gap-1.5 mb-5">
             {bulkMode ? habits.map(habit => {
               const checked = bulkSelected.has(habit.id);
               return (
@@ -557,6 +732,7 @@ export default function HabitsPage() {
                 key={habit.id}
                 habit={habit}
                 logs={logsByHabit.get(habit.id) || []}
+                categories={manageCategories}
                 onIncrement={() => incrementToday(habit)}
                 onDecrement={() => decrementToday(habit)}
                 onMarkFailed={() => markFailedToday(habit)}
