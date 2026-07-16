@@ -505,7 +505,7 @@ export default function HabitsPage() {
                 </div>
               )}
               {bulkColorPicker && (
-                <div className="flex flex-wrap gap-2">
+                <div className="grid grid-cols-10 gap-2">
                   {(Object.keys(HABIT_COLORS) as HabitColorKey[]).map(key => (
                     <button
                       key={key}
@@ -665,7 +665,7 @@ export default function HabitsPage() {
                   )}
                   <div>
                     <label className="label">Colour</label>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="grid grid-cols-10 gap-2">
                       {(Object.keys(HABIT_COLORS) as HabitColorKey[]).map(key => (
                         <button
                           key={key}

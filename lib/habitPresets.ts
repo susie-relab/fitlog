@@ -13,7 +13,7 @@ export const HABIT_PRESETS: HabitPreset[] = [
   // Health
   { name: 'Cups of Water', category: 'health', color: HABIT_COLORS.blue, target_per_period: 8 },
   { name: 'Vitamins', category: 'health', color: HABIT_COLORS.orange, target_per_period: 1 },
-  { name: 'Meds', category: 'health', color: HABIT_COLORS.red, target_per_period: 1 },
+  { name: 'Meds', category: 'health', color: HABIT_COLORS.crimson, target_per_period: 1 },
   { name: 'Teeth', category: 'health', color: HABIT_COLORS.teal, target_per_period: 2 },
   { name: 'Floss', category: 'health', color: HABIT_COLORS.teal, target_per_period: 1 },
   { name: 'Sunlight Time', category: 'health', color: HABIT_COLORS.yellow, target_per_period: 1 },
@@ -50,11 +50,11 @@ export const HABIT_PRESETS: HabitPreset[] = [
   { name: '8+ Hrs Sleep', category: 'sleep', color: HABIT_COLORS.blue, target_per_period: 1 },
   { name: 'In Bed Before 11pm', category: 'sleep', color: HABIT_COLORS.slate, target_per_period: 1 },
   { name: 'Wake Up Before 7am', category: 'sleep', color: HABIT_COLORS.yellow, target_per_period: 1 },
-  { name: 'No Snooze', category: 'sleep', color: HABIT_COLORS.red, target_per_period: 1 },
+  { name: 'No Snooze', category: 'sleep', color: HABIT_COLORS.crimson, target_per_period: 1 },
   { name: 'No Late Caffeine', category: 'sleep', color: HABIT_COLORS.orange, target_per_period: 1 },
 
   // Phone use
-  { name: 'No Phone Before Bed', category: 'phone_use', color: HABIT_COLORS.red, target_per_period: 1 },
+  { name: 'No Phone Before Bed', category: 'phone_use', color: HABIT_COLORS.crimson, target_per_period: 1 },
   { name: 'No Phone First Hour', category: 'phone_use', color: HABIT_COLORS.orange, target_per_period: 1 },
   { name: 'Screen Time Under Limit', category: 'phone_use', color: HABIT_COLORS.yellow, target_per_period: 1 },
 

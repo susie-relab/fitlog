@@ -535,12 +535,11 @@ export interface HabitCategoryRow {
 }
 
 export const HABIT_COLORS = {
-  blue: '#60A5FA', teal: '#2DD4BF', green: '#4ADE80', lime: '#A3E635',
-  yellow: '#FACC15', orange: '#FB923C', red: '#F87171', pink: '#F472B6',
-  purple: '#C084FC', slate: '#94A3B8',
-  navy: '#1E3A8A', azure: '#2563EB', forest: '#15803D', rust: '#C2410C',
-  hotpink: '#EC4899', crimson: '#DC2626', plum: '#7E22CE', brown: '#92400E',
-  cream: '#F5E6C8', bluegrey: '#5B7B99',
+  lightblue: '#93C5FD', blue: '#60A5FA', azure: '#2563EB', navy: '#1E3A8A',
+  teal: '#2DD4BF', green: '#4ADE80', forest: '#15803D', lime: '#A3E635',
+  yellow: '#FACC15', cream: '#F5E6C8', orange: '#FB923C', rust: '#C2410C',
+  brown: '#92400E', hotpink: '#EC4899', pink: '#F472B6', crimson: '#DC2626',
+  plum: '#7E22CE', purple: '#C084FC', slate: '#94A3B8', bluegrey: '#5B7B99',
 } as const;
 export type HabitColorKey = keyof typeof HABIT_COLORS;
 

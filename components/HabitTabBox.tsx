@@ -478,7 +478,7 @@ export default function HabitTabBox({
                       </div>
                       <div>
                         <label className="label">Colour</label>
-                        <div className="flex flex-wrap gap-2">
+                        <div className="grid grid-cols-10 gap-2">
                           {(Object.keys(HABIT_COLORS) as HabitColorKey[]).map(key => (
                             <button
                               key={key}
@@ -511,7 +511,7 @@ export default function HabitTabBox({
               <input className="input" placeholder="Habit name" value={newName} onChange={e => setNewName(e.target.value)} />
               <div>
                 <label className="label">Colour</label>
-                <div className="flex flex-wrap gap-2">
+                <div className="grid grid-cols-10 gap-2">
                   {(Object.keys(HABIT_COLORS) as HabitColorKey[]).map(key => (
                     <button
                       key={key}
