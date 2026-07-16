@@ -433,12 +433,14 @@ const CleaningIcon = makeIcon(({ size, className }) => (
 
 // A handstand: head/hands near the ground, arms out to the sides for support, legs
 // splayed up and out — per reference, instead of a figure standing on a beam.
+// Arms now reach the floor below the head (hands are the lowest point, head sits just
+// above them), instead of the head being lower than the arms.
 const GymnasticsIcon = makeIcon(({ size, className }) => (
   <Svg size={size} className={className}>
-    <circle cx="12" cy="19" r="1.8" fill="currentColor" stroke="none" />
-    <path d="M12 17V9" />
-    <path d="M12 17 7 16.5" />
-    <path d="M12 17 17 16.5" />
+    <circle cx="12" cy="17.5" r="1.8" fill="currentColor" stroke="none" />
+    <path d="M12 15.5V9" />
+    <path d="M11 17c-1.5 2-3 3-4.5 3.5" />
+    <path d="M13 17c1.5 2 3 3 4.5 3.5" />
     <path d="M12 9 6 2" />
     <path d="M12 9 18 2" />
   </Svg>
@@ -462,6 +464,7 @@ const SandboardingIcon = makeIcon(({ size, className }) => (
     <circle cx="15.5" cy="6" r="1.8" fill="currentColor" stroke="none" />
     <path d="M14.3 7.3 11 10" />
     <path d="M11 10 16 5.5" />
+    <path d="M11 10 5.5 11" />
     <path d="M11 10 8.5 15" />
     <path d="M11 10 13 16" />
     <path d="M4 18 20 14" />
@@ -715,21 +718,23 @@ const PoolIcon = makeIcon(({ size, className }) => (
 
 // A stick figure's head and swinging arms above the waterline, per reference — reads
 // clearly as "jogging in water" rather than two bare vertical lines.
+// Both arms raised above the waterline (not just one), a clearer "jogging" silhouette.
 const WaterJoggingIcon = makeIcon(({ size, className }) => (
   <Svg size={size} className={className}>
     <circle cx="12" cy="5" r="2" fill="currentColor" stroke="none" />
-    <path d="M12 7v5" />
-    <path d="M12 9 8 7" />
-    <path d="M12 9l4 6" />
+    <path d="M12 8v4" />
+    <path d="M12 8 9 5" />
+    <path d="M12 8l3-3" />
     <path d="M2 17c3-2 6-2 9 0s6 2 9 0" />
   </Svg>
 ));
 
-// A curling breaking-wave crest above a choppy waterline, for open-water/ocean swims.
+// A simpler two-line swell, for open-water/ocean swims — the earlier curling-crest
+// version was more elaborate than this icon set's other water glyphs.
 const OceanIcon = makeIcon(({ size, className }) => (
   <Svg size={size} className={className}>
-    <path d="M4 15c0-3 2.5-5 5.5-5s4.5 2 3.5 4c-.6 1.3-2.5 1.2-2.5 2.5 0 1.5 2 2 4 2h6" />
-    <path d="M2 20c2.5-1.3 4.5-1.3 7 0s4.5 1.3 7 0 4.5-1.3 6-1" />
+    <path d="M2 10c3-2 6-2 9 0s6 2 9 0" />
+    <path d="M2 16c3-2 6-2 9 0s6 2 9 0" />
   </Svg>
 ));
 
@@ -753,12 +758,19 @@ const BeachIcon = makeIcon(({ size, className }) => (
 ));
 
 // A backpack, for multi-day hikes.
+// A hiker with a backpack and a walking pole, cresting a hill — per reference, instead
+// of a plain standalone backpack.
 const MultiDayIcon = makeIcon(({ size, className }) => (
   <Svg size={size} className={className}>
-    <rect x="5" y="8" width="14" height="13" rx="3" />
-    <path d="M8 8V6a4 4 0 0 1 8 0v2" />
-    <path d="M9 12h6" />
-    <path d="M9 16h6" />
+    <circle cx="14" cy="4" r="1.8" fill="currentColor" stroke="none" />
+    <rect x="8" y="6.5" width="3.5" height="6" rx="1.2" transform="rotate(-8 9.8 9.5)" />
+    <path d="M13 5.5 10.8 8" />
+    <path d="M10.8 8c1 1.5 2 2 3.2 2.2" />
+    <path d="M14 10.2 11.5 15" />
+    <path d="M14 10.2 17 15.5" />
+    <path d="M14 10.2 18.5 6.5" />
+    <path d="M18.5 6.5 19.5 9" />
+    <path d="M2 20 8 13l3 4 4-5 7 8Z" fill="currentColor" stroke="none" />
   </Svg>
 ));
 
@@ -813,11 +825,12 @@ const WalkMountainIcon = makeIcon(({ size, className }) => (
 ));
 
 // A barn, for farm walks.
+// Two overlapping rolling hills, per reference — a filled silhouette rather than a barn,
+// which read too similarly to other building-shaped icons in this set.
 const FarmIcon = makeIcon(({ size, className }) => (
   <Svg size={size} className={className}>
-    <path d="M4 11 12 4l8 7" />
-    <path d="M4 11v10h16V11" />
-    <path d="M10 21v-6h4v6" />
+    <path d="M2 17c0-5 3.5-9 6.5-9 1.8 0 3 1 4 2.3-2.5 1.2-4.5 3.8-4.5 6.7Z" fill="currentColor" stroke="none" />
+    <path d="M7.5 17c0-5 3.5-9 6.5-9s6.5 4 6.5 9Z" fill="currentColor" stroke="none" />
   </Svg>
 ));
 
