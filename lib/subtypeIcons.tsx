@@ -393,11 +393,16 @@ const TrampolineIcon = makeIcon(({ size, className }) => (
   </Svg>
 ));
 
+// A high side-kick pose (head, guard arm raised, support leg down, kicking leg extended
+// out to the side), per reference — instead of an abstract three-bar shape.
 const MartialArtsIcon = makeIcon(({ size, className }) => (
   <Svg size={size} className={className}>
-    <path d="M4 12h16" />
-    <path d="M8 8v8" />
-    <path d="M16 8v8" />
+    <circle cx="6" cy="4" r="2" fill="currentColor" stroke="none" />
+    <path d="M6.5 6 9 9" />
+    <path d="M9 9 15 4.5" />
+    <path d="M9 9 8 15" />
+    <path d="M8 15 9 20" />
+    <path d="M9 9 18 11" />
   </Svg>
 ));
 
@@ -432,10 +437,17 @@ const CalisthenicsIcon = makeIcon(({ size, className }) => (
   </Svg>
 ));
 
+// A rider crouched on the board (head, torso, raised balance arm, bent front leg, back
+// leg) with the board's upturned tip, per reference — instead of a bare dune-line arc.
 const SandboardingIcon = makeIcon(({ size, className }) => (
   <Svg size={size} className={className}>
-    <path d="M2 18c4-8 16-8 20 0" />
-    <path d="M7 14 17 10" />
+    <circle cx="15.5" cy="6" r="1.8" fill="currentColor" stroke="none" />
+    <path d="M14.3 7.3 11 10" />
+    <path d="M11 10 16 5.5" />
+    <path d="M11 10 8.5 15" />
+    <path d="M11 10 13 16" />
+    <path d="M4 18 20 14" />
+    <path d="M3 18.5 5 17.5" />
   </Svg>
 ));
 
@@ -465,12 +477,15 @@ const SlackLiningIcon = makeIcon(({ size, className }) => (
   </Svg>
 ));
 
+// A boot with laces and a sole, wheels beneath — per reference, instead of a flat wedge
+// with three wheels in a row (which read more like a skateboard truck than a skate boot).
 const RollerskateIcon = makeIcon(({ size, className }) => (
   <Svg size={size} className={className}>
-    <path d="M4 17h10l4-3h2v3H4Z" />
-    <circle cx="7" cy="19" r="1.5" fill="currentColor" stroke="none" />
-    <circle cx="12" cy="19" r="1.5" fill="currentColor" stroke="none" />
-    <circle cx="17" cy="19" r="1.5" fill="currentColor" stroke="none" />
+    <path d="M8 4v8h8c1.5 0 2.5 1 2.5 2.5H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z" />
+    <path d="M8 7h4M8 9.5h4" />
+    <path d="M4 14.5h14.5" />
+    <circle cx="7" cy="17.5" r="1.6" fill="currentColor" stroke="none" />
+    <circle cx="15" cy="17.5" r="1.6" fill="currentColor" stroke="none" />
   </Svg>
 ));
 
