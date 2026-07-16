@@ -668,7 +668,7 @@ export default function HabitsPage() {
                 <button onClick={() => setBulkColorPicker(v => !v)} disabled={bulkSelected.size === 0} className="btn-secondary text-sm disabled:opacity-40">Change Colour</button>
                 <button onClick={() => setBulkFrequencyPicker(v => !v)} disabled={bulkSelected.size === 0} className="btn-secondary text-sm disabled:opacity-40">Change Frequency</button>
                 <button onClick={bulkAddToday} disabled={bulkSelected.size === 0} className="btn-secondary text-sm disabled:opacity-40">Add (Today)</button>
-                <button onClick={bulkReduceToday} disabled={bulkSelected.size === 0} className="btn-secondary text-sm disabled:opacity-40">Reduce (Today)</button>
+                <button onClick={bulkReduceToday} disabled={bulkSelected.size === 0} className="btn-secondary text-sm disabled:opacity-40">Decrease (Today)</button>
                 <button onClick={bulkSkipToday} disabled={bulkSelected.size === 0} className="btn-secondary text-sm disabled:opacity-40">Skip for Today</button>
                 <button onClick={bulkPause} disabled={bulkSelected.size === 0} className="btn-secondary text-sm disabled:opacity-40">Pause</button>
                 <button onClick={bulkDelete} disabled={bulkSelected.size === 0} className="text-sm font-medium text-red-400 hover:text-red-300 disabled:opacity-40 px-2">Delete</button>

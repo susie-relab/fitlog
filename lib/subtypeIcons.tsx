@@ -84,13 +84,14 @@ const NetballIcon = makeIcon(({ size, className }) => (
 // ball, plus a short seam curling up to the top — matches the classic volleyball glyph.
 // The classic 3-panel pinwheel seam pattern (a top "cone" plus one long diagonal sweep),
 // matching the reference more closely than the earlier converging-fan version.
+// Three curved seams, each running from one side of the ball to the other without
+// touching the other two — a cleaner read than the earlier converging pattern.
 const VolleyballIcon = makeIcon(({ size, className }) => (
   <Svg size={size} className={className}>
     <circle cx="12" cy="12" r="9" />
-    <path d="M12 3c2 2.5 2.5 5.5 1 8-1.2 2-3.5 2.3-3.5 4.5 0 1.8 1.5 3 3.5 3.5" />
-    <path d="M4.5 8c2 1 3 3 2.5 5.5" />
-    <path d="M19.5 8c-2 1-3 3-2.5 5.5" />
-    <path d="M7 18.5c2-1 3.5-1 5.5 0" />
+    <path d="M4.5 7Q12 4 19.5 7" />
+    <path d="M3 12Q12 16 21 12" />
+    <path d="M4.5 17Q12 20 19.5 17" />
   </Svg>
 ));
 
@@ -110,17 +111,14 @@ const TurboTouchIcon = makeIcon(({ size, className }) => (
 // rather than handles that pass through the centre toward the opposite racquet.
 // A wider crossing angle separates the two heads more clearly than a near-overlap, and a
 // small ball at the centre reads as the third reference element without adding clutter.
+// A single solid-filled paddle instead of two crossed outlines — simpler and reads more
+// clearly as "padel" (its solid paddle is what sets it apart from a strung racquet sport).
 const PadelIcon = makeIcon(({ size, className }) => (
   <Svg size={size} className={className}>
-    <g transform="rotate(-40 12 12)">
-      <rect x="8.5" y="3.5" width="7" height="10" rx="3.5" />
-      <path d="M12 13.5v7.5" />
+    <g transform="rotate(-15 12 12)">
+      <rect x="7.5" y="2.5" width="9" height="12" rx="4.5" fill="currentColor" stroke="none" />
+      <path d="M12 14.5v7" />
     </g>
-    <g transform="rotate(40 12 12)">
-      <rect x="8.5" y="3.5" width="7" height="10" rx="3.5" />
-      <path d="M12 13.5v7.5" />
-    </g>
-    <circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none" />
   </Svg>
 ));
 
@@ -524,11 +522,16 @@ const AbseilingIcon = makeIcon(({ size, className }) => (
   </Svg>
 ));
 
+// A pull-up/gymnastics rig — two posts on square feet with two horizontal bars near the
+// top — per reference, instead of three stacked wavy lines.
 const AthleticsIcon = makeIcon(({ size, className }) => (
   <Svg size={size} className={className}>
-    <path d="M3 6c6-3 12-3 18 0" />
-    <path d="M3 12c6-3 12-3 18 0" />
-    <path d="M3 18c6-3 12-3 18 0" />
+    <path d="M5 4v16" />
+    <path d="M19 4v16" />
+    <path d="M5 5h14" />
+    <path d="M5 8h14" />
+    <rect x="3.5" y="20" width="3" height="2.5" />
+    <rect x="17.5" y="20" width="3" height="2.5" />
   </Svg>
 ));
 
@@ -758,19 +761,10 @@ const BeachIcon = makeIcon(({ size, className }) => (
 ));
 
 // A backpack, for multi-day hikes.
-// A hiker with a backpack and a walking pole, cresting a hill — per reference, instead
-// of a plain standalone backpack.
+// A simple crescent moon, for multi-day trips that stretch overnight.
 const MultiDayIcon = makeIcon(({ size, className }) => (
   <Svg size={size} className={className}>
-    <circle cx="14" cy="4" r="1.8" fill="currentColor" stroke="none" />
-    <rect x="8" y="6.5" width="3.5" height="6" rx="1.2" transform="rotate(-8 9.8 9.5)" />
-    <path d="M13 5.5 10.8 8" />
-    <path d="M10.8 8c1 1.5 2 2 3.2 2.2" />
-    <path d="M14 10.2 11.5 15" />
-    <path d="M14 10.2 17 15.5" />
-    <path d="M14 10.2 18.5 6.5" />
-    <path d="M18.5 6.5 19.5 9" />
-    <path d="M2 20 8 13l3 4 4-5 7 8Z" fill="currentColor" stroke="none" />
+    <path d="M15 3a9 9 0 1 0 6 15.8A9 9 0 0 1 15 3Z" />
   </Svg>
 ));
 

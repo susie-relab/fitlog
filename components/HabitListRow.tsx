@@ -149,7 +149,7 @@ const toggleEditor = () => {
           <span className="text-sm font-semibold text-white truncate min-w-0 flex-1">{habit.name}</span>
           <div className="flex items-center gap-1.5 flex-shrink-0">
             <span className="text-[10px] text-[#94A3B8] hidden sm:inline">{sum}/{periodTarget} · {periodLabel}</span>
-            <Tip label="Reduce">
+            <Tip label="Decrease">
               <button
                 onClick={e => { e.stopPropagation(); onDecrement(); }}
                 onPointerDown={e => e.stopPropagation()}

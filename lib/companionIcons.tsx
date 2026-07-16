@@ -25,18 +25,20 @@ function makeIcon(render: (props: IconProps) => ReactNode): LucideIcon {
 
 // Just a (larger) head with a thin line running inward to the centre — rotated by 360/7
 // increments below to form a ring of 7 heads all connecting to a shared middle point.
+// 5 (not 7) heads, larger and hollow (stroke-only, no fill) so each reads as a clear ring
+// outline rather than a small solid dot.
 const TEAM_PERSON = (
   <>
-    <circle cx="12" cy="4" r="2.6" fill="currentColor" stroke="none" />
-    <path d="M12 6.7V12" />
+    <circle cx="12" cy="3.6" r="3" />
+    <path d="M12 6.6V12" />
   </>
 );
 
 const TeamIcon = makeIcon(({ size, className }) => (
-  // A ring of 7 heads meeting at the centre — reads as "team"/group huddle.
+  // A ring of 5 hollow heads meeting at the centre — reads as "team"/group huddle.
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.3} strokeLinecap="round" strokeLinejoin="round" className={className}>
-    {[0, 1, 2, 3, 4, 5, 6].map(i => (
-      <g key={i} transform={`rotate(${(i * 360) / 7} 12 12)`}>{TEAM_PERSON}</g>
+    {[0, 1, 2, 3, 4].map(i => (
+      <g key={i} transform={`rotate(${(i * 360) / 5} 12 12)`}>{TEAM_PERSON}</g>
     ))}
   </svg>
 ));
