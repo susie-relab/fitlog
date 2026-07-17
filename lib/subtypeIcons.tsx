@@ -380,6 +380,7 @@ const BoxingIcon = makeIcon(({ size, className }) => (
       <rect x="6" y="17" width="10" height="4" rx="1.3" fill="#94A3B8" stroke="currentColor" />
       <path d="M7.3 9c.3 2.5 1 5.5 1 8" strokeWidth={1} fill="none" />
       <path d="M6.3 18.6h9.4" strokeWidth={1} fill="none" />
+      <path d="M8 10c3 2 6.5 2 8.5 0" strokeWidth={1} fill="none" />
     </g>
   </Svg>
 ));
