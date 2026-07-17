@@ -64,16 +64,22 @@ const TennisIcon = makeIcon(({ size, className }) => (
     <ellipse cx="9" cy="8" rx="5" ry="6.5" />
     <path d="M9 14.5V21" />
     <circle cx="18" cy="18" r="2" fill="currentColor" stroke="none" />
+    <path d="M6.3 2.3v11.4M9 1.7v12.6M11.7 2.3v11.4" strokeWidth={0.6} />
+    <path d="M4.7 4.7h8.6M4.2 8h9.6M4.7 11.3h8.6" strokeWidth={0.6} />
   </Svg>
 ));
 
 // A netball hoop (open ring on a net, no backboard) with the ball arriving from above —
 // distinguishes it from Basketball's backboard+hoop and Volleyball's seamed ball.
+// A diamond-mesh net (thin zigzag rows, not the earlier single-direction "fringe" lines
+// that just fanned toward one point) hanging from the hoop.
 const NetballIcon = makeIcon(({ size, className }) => (
   <Svg size={size} className={className}>
     <ellipse cx="9" cy="9" rx="6" ry="2" />
     <path d="M3.5 9c0 3 1 7 2.5 10M14.5 9c0 3-1 7-2.5 10" />
-    <path d="M5 11.5l2.5 6.5M7 10.5l2 7.5M9 10l1 8M11 10.5l-1 7.5M13 11.5l-2.5 6.5" />
+    <path d="M4.3 11.3 5.7 12.7 7.1 11.3 8.5 12.7 9.9 11.3 11.3 12.7 12.7 11.3" strokeWidth={0.5} />
+    <path d="M5 14.6 6.3 15.9 7.6 14.6 8.9 15.9 10.2 14.6 11.5 15.9 12.8 14.6" strokeWidth={0.5} />
+    <path d="M5.9 17.7 7 18.8 8.1 17.7 9.2 18.8 10.3 17.7 11.4 18.8" strokeWidth={0.5} />
     <circle cx="17" cy="5" r="4" />
   </Svg>
 ));
@@ -186,17 +192,23 @@ const CricketIcon = makeIcon(({ size, className }) => (
 // suggesting the feather's blade width/overlap — closer to the reference than plain rays.
 // Each feather spine now ends in a small angled point (a tiny "V" cap) instead of a plain
 // round stroke-end, which read as a flat/cut-off tip rather than a tapered feather.
+// The cork is now a filled ellipse (the previous stroked arc rendered too faintly to read
+// as a rounded base), and the whole shuttlecock is scaled down slightly so all four feather
+// tips and the cork clear the viewBox with margin instead of crowding its edges.
+// A simple cone/skirt shape (flaring wide at the feather rim, narrowing to a point at the
+// cork) with a couple of seam lines and a solid cork tip — a much more recognisable
+// A fan of individually-rounded feather petals (per reference), tilted diagonally, with a
+// hollow cork at the base — all thin strokes.
+const FEATHER_PETAL = "M12 5c-1.4 0-2.4 1.3-2.1 3l1.4 9.5c.1.9.6 1.3 1.1 1.3s1-.4 1.1-1.3l1.1-9.5c.3-1.7-.7-3-2.1-3Z";
+
 const BadmintonIcon = makeIcon(({ size, className }) => (
   <Svg size={size} className={className}>
-    <path d="M8.5 18a3.5 3.5 0 1 1 7 0" />
-    <path d="M8.5 18 5 5" />
-    <path d="M10.5 18 9 3.5" />
-    <path d="M13.5 18 15 3.5" />
-    <path d="M15.5 18 19 5" />
-    <path d="M3.8 6.4 5 5l1.4 1.2" />
-    <path d="M7.7 4.6 9 3.5l1.4 1" />
-    <path d="M13.6 4.5 15 3.5l1.3 1.1" />
-    <path d="M17.6 6.2 19 5l1.2 1.4" />
+    <g transform="rotate(35 12 12)" strokeWidth={1.2}>
+      {[-21, -7, 7, 21].map(a => (
+        <path key={a} d={FEATHER_PETAL} transform={`rotate(${a} 12 19)`} />
+      ))}
+      <circle cx="12" cy="19.3" r="2.1" />
+    </g>
   </Svg>
 ));
 
