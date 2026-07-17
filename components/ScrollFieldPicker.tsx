@@ -87,6 +87,13 @@ export default function ScrollFieldPicker({ label, unit, value, onChange, max, m
   };
 
   const commitAndClose = () => {
+    // Backspacing the whole-number field down to empty (it can't reach below `min` any other
+    // way, e.g. HR's min=28) is how you clear the field back to "no value" entirely.
+    if (wholeText.trim() === '') {
+      onChange('');
+      setOpen(false);
+      return;
+    }
     // A single fraction digit left at commit time (e.g. typed "2.5" and stopped) reads as
     // tenths, not hundredths — "5" means .50, matching how people actually write decimals.
     // A second typed digit ("2.05" or "2.50") always wins since fracText is then 2 chars.
@@ -167,6 +174,15 @@ export default function ScrollFieldPicker({ label, unit, value, onChange, max, m
                 </>
               )}
               {unit && <span className="text-transparent text-sm ml-1 select-none">{unit}</span>}
+            </div>
+            <div className="flex justify-center mt-2">
+              <button
+                type="button"
+                onClick={() => { onChange(''); setOpen(false); }}
+                className="text-xs text-[#64748B] hover:text-[#94A3B8] underline"
+              >
+                Clear
+              </button>
             </div>
           </div>
         </div>
