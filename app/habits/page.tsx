@@ -9,7 +9,7 @@ import {
 } from '@/types';
 import { HABIT_PRESETS } from '@/lib/habitPresets';
 import { todayLocalISO } from '@/lib/utils';
-import { currentStreak, totalCompletions, periodProgress, addDaysISO, isPeriodBasedType } from '@/lib/habitStats';
+import { currentStreak, totalCompletions, periodProgress, addDaysISO, isPeriodBasedType, todayAndWeekProgress } from '@/lib/habitStats';
 import HabitListRow from '@/components/HabitListRow';
 import HabitMonthCalendar from '@/components/HabitMonthCalendar';
 import AccountSwitcher from '@/components/AccountSwitcher';
@@ -207,6 +207,11 @@ export default function HabitsPage() {
     }
     return map;
   }, [logs]);
+
+  const progressStats = useMemo(
+    () => todayAndWeekProgress(habits, logsByHabit, frequencyHistory, todayLocalISO()),
+    [habits, logsByHabit, frequencyHistory]
+  );
 
   const resetAddForm = () => {
     setAddStep('presets');
@@ -711,6 +716,19 @@ export default function HabitsPage() {
         <div className="card text-[#64748B] text-sm">No habits yet — tap "+ Add Habit" to get started.</div>
       ) : (
         <>
+          <div className="grid grid-cols-2 gap-3 mb-3">
+            <div className="card text-center">
+              <p className="text-2xl font-bold text-white">{progressStats.todayPct}%</p>
+              <p className="text-xs text-[#64748B] mt-0.5">Today</p>
+            </div>
+            <div className="card text-center">
+              <p className="text-2xl font-bold text-white">{progressStats.weekPct}%</p>
+              <p className="text-xs text-[#64748B] mt-0.5">
+                This Week{progressStats.pastTotal > 0 ? ` · ${progressStats.pastDone}/${progressStats.pastTotal} so far` : ''}
+              </p>
+            </div>
+          </div>
+
           <HabitMonthCalendar habits={habits} logs={logs} frequencyHistory={frequencyHistory} onCycle={cycleHabitLog} />
 
           <div className="mb-5">

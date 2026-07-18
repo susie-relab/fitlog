@@ -431,3 +431,45 @@ export function habitDayStats(habit: Habit, logs: HabitLog[], todayISO: string, 
     daysAchieved, daysPartial, daysIncomplete, daysSkipped, daysStacked,
   };
 }
+
+/** Today's live completion % across every habit scheduled today, plus this calendar week's
+ *  (Monday-start) progress — split into a running percentage that folds in today's
+ *  in-progress count, and a plain "habits done/scheduled" tally for days strictly before
+ *  today. The tally only firms up at each day's end (a Tuesday morning shows Sun+Mon's
+ *  tally, never Tuesday's), while the percentage always reflects today's live progress. */
+export function todayAndWeekProgress(
+  habits: Habit[],
+  logsByHabit: Map<string, HabitLog[]>,
+  frequencyHistory: HabitFrequencyChange[],
+  todayISO: string,
+): { todayPct: number; weekPct: number; pastDone: number; pastTotal: number } {
+  const weekDays = getWeekDays(todayISO).filter(d => d <= todayISO);
+
+  let todayDone = 0, todayTotal = 0;
+  let weekDone = 0, weekTotal = 0;
+  let pastDone = 0, pastTotal = 0;
+
+  for (const h of habits) {
+    const logs = logsByHabit.get(h.id) || [];
+    const logsByDate = new Map(logs.map(l => [l.date, l]));
+    for (const d of weekDays) {
+      const cfg = resolveFrequencyAt(h, frequencyHistory, d);
+      if (!isHabitScheduledOn(cfg, d)) continue;
+      const log = logsByDate.get(d);
+      if (isSkippedLog(log)) continue;
+      const ratio = Math.min(1, completionRatio(h, log, cfg.target_per_period));
+      weekDone += ratio; weekTotal += 1;
+      if (d === todayISO) { todayDone += ratio; todayTotal += 1; }
+      if (d < todayISO) {
+        pastTotal += 1;
+        if (ratio >= 1) pastDone += 1;
+      }
+    }
+  }
+
+  return {
+    todayPct: todayTotal > 0 ? Math.round((todayDone / todayTotal) * 100) : 0,
+    weekPct: weekTotal > 0 ? Math.round((weekDone / weekTotal) * 100) : 0,
+    pastDone, pastTotal,
+  };
+}
