@@ -815,12 +815,12 @@ const SleddingIcon = makeIcon(({ size, className }) => (
 // A simple shoe-outline silhouette sitting on the skate base (two mount tabs + blade line).
 const SkatingIcon = makeIcon(({ size, className }) => (
   <Svg size={size} className={className} strokeWidth={1}>
-    <path d="M6 7 8 6c1.8.2 3 1.3 3.3 2.7.3 1.4-.2 2.4.9 3.2 1.3.9 3 .9 3.8 2 .5.7.7 1.4.7 2.1H6Z" />
-    <path d="M9 8.7h2.3" strokeWidth={0.7} />
-    <path d="M9.3 11h2.7" strokeWidth={0.7} />
-    <path d="M8 15.6v1.7" />
-    <path d="M15 15.6v1.7" />
-    <path d="M4.5 17.8h14" strokeWidth={0.8} />
+    <path d="M6 5 8 4c1.8.2 3 1.3 3.3 2.7.3 1.4-.2 2.4.9 3.2 1.3.9 3 .9 3.8 2 .5.7.7 1.4.7 2.1H6Z" />
+    <path d="M8.5 6.7h2.3" strokeWidth={0.7} />
+    <path d="M8.8 9h2.7" strokeWidth={0.7} />
+    <path d="M8 14.6v1.7" />
+    <path d="M15 14.6v1.7" />
+    <path d="M4.5 16.8h14" strokeWidth={0.8} />
   </Svg>
 ));
 
@@ -831,10 +831,10 @@ const SnowshoeingIcon = makeIcon(({ size, className }) => (
     <path d="M12 6v5" />
     <path d="M12 8 9 10" />
     <path d="M12 8 15 10" />
-    <path d="M12 11 9 15" />
-    <path d="M12 11 15 15" />
-    <ellipse cx="9" cy="17.3" rx="3" ry="1.8" />
-    <ellipse cx="15" cy="17.3" rx="3" ry="1.8" />
+    <path d="M12 11 8.2 15" />
+    <path d="M12 11 15.8 15" />
+    <ellipse cx="7.5" cy="17.3" rx="3" ry="1.8" />
+    <ellipse cx="16.5" cy="17.3" rx="3" ry="1.8" />
   </Svg>
 ));
 
