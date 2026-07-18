@@ -39,6 +39,15 @@ function sessionEmoji(s: Session): string {
   return activityEmoji((s.exerciseType as ExerciseType) || 'run', s.subType);
 }
 
+/** Emoji size shrinks as the day gets busier so 1 activity reads big and clear while
+ *  4-6 still all fit inside the cell instead of overflowing it. */
+function emojiSizeClass(count: number): string {
+  if (count <= 1) return 'text-xl sm:text-2xl';
+  if (count <= 2) return 'text-base sm:text-xl';
+  if (count <= 4) return 'text-xs sm:text-base';
+  return 'text-[9px] sm:text-sm';
+}
+
 /** Combined training month calendar — past days show a small icon per activity actually
  *  logged that day, upcoming days (up to 3 months out) show icons for whatever the active
  *  plan(s) have scheduled. Tapping a day opens a detail popover; navigation is unlimited
@@ -130,12 +139,12 @@ export default function TrainingMonthCalendar({ activities, plans, todayISO }: P
             <button
               key={date}
               onClick={() => setSelectedDate(date)}
-              className={`aspect-square rounded-lg border p-1 flex flex-col items-center gap-0.5 overflow-hidden ${
+              className={`relative aspect-square rounded-lg border overflow-hidden ${
                 isToday ? 'border-blue-500 bg-[#1E293B]' : 'border-[#334155] bg-[#0F172A]/40 hover:border-[#475569]'
               }`}
             >
-              <span className="text-[9px] text-[#64748B] flex-shrink-0">{dayNum}</span>
-              <div className="flex-1 flex flex-wrap items-center justify-center content-center gap-0.5 overflow-hidden text-[10px] leading-none sm:text-base">
+              <span className="absolute top-0.5 left-1 text-[9px] text-[#64748B]/70 leading-none z-10">{dayNum}</span>
+              <div className={`absolute inset-0 flex flex-wrap items-center justify-center content-center gap-0.5 overflow-hidden p-1 leading-none ${emojiSizeClass(icons.length)}`}>
                 {icons.slice(0, 6).map((icon, idx) => <span key={idx}>{icon.emoji}</span>)}
               </div>
             </button>
