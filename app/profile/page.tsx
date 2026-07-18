@@ -150,7 +150,7 @@ export default function ProfilePage() {
     if (!file || !user) return;
     setUploading(true);
     try {
-      const [url] = await uploadImages(user.id, [file]);
+      const { urls: [url] } = await uploadImages(user.id, [file]);
       const prev = avatarUrl;
       const { error } = await supabase.auth.updateUser({ data: { ...user.user_metadata, avatar_url: url } });
       if (error) throw error;

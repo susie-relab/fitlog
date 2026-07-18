@@ -5,12 +5,14 @@ import { uploadImages, deleteImage } from '@/lib/images';
 interface Props {
   userId: string;
   value: string[];
-  onChange: (urls: string[]) => void;
+  thumbValue?: string[]; // parallel to value (same order); falls back to the full-size url per-slot when missing
+  onChange: (urls: string[], thumbUrls: string[]) => void;
   label?: string;
 }
 
-/** Add/remove multiple photos. Compresses + uploads on pick, returns public URLs via onChange. */
-export default function ImageUploader({ userId, value, onChange, label = 'Photos (optional)' }: Props) {
+/** Add/remove multiple photos. Compresses + uploads on pick, returns both full-size and
+ *  thumbnail public URLs via onChange. */
+export default function ImageUploader({ userId, value, thumbValue, onChange, label = 'Photos (optional)' }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -21,8 +23,11 @@ export default function ImageUploader({ userId, value, onChange, label = 'Photos
     setBusy(true);
     setError('');
     try {
-      const urls = await uploadImages(userId, files);
-      onChange([...value, ...urls]);
+      const { urls, thumbUrls } = await uploadImages(userId, files);
+      // Pad any pre-existing slot that never got a thumbnail (photos added before this
+      // feature shipped) with its own full-size url, so the two arrays stay index-aligned.
+      const paddedThumbs = value.map((u, i) => thumbValue?.[i] ?? u);
+      onChange([...value, ...urls], [...paddedThumbs, ...thumbUrls]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed');
     } finally {
@@ -32,7 +37,8 @@ export default function ImageUploader({ userId, value, onChange, label = 'Photos
   };
 
   const remove = (url: string) => {
-    onChange(value.filter(u => u !== url));
+    const idx = value.indexOf(url);
+    onChange(value.filter(u => u !== url), (thumbValue ?? value).filter((_, i) => i !== idx));
     deleteImage(url); // best-effort; don't block UI
   };
 
@@ -40,10 +46,10 @@ export default function ImageUploader({ userId, value, onChange, label = 'Photos
     <div>
       <label className="label">{label}</label>
       <div className="flex flex-wrap gap-2">
-        {value.map(url => (
+        {value.map((url, i) => (
           <div key={url} className="relative w-20 h-20 rounded-lg overflow-hidden border border-[#334155]">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={url} alt="" className="w-full h-full object-cover" />
+            <img src={thumbValue?.[i] ?? url} alt="" className="w-full h-full object-cover" />
             <button
               type="button"
               onClick={() => remove(url)}

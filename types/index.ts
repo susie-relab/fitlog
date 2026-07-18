@@ -517,6 +517,7 @@ export interface Activity {
   pb_description?: string;
   note_hidden?: boolean;
   image_urls?: string[] | null;
+  thumbnail_urls?: string[] | null; // small (~240px) variant of image_urls, same order — falls back to image_urls for older rows
   date: string;
   created_at: string;
 }

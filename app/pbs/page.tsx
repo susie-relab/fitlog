@@ -179,9 +179,11 @@ export default function PBsPage() {
   }).filter(Boolean);
 
   // By run type PBs — "Best Pace" is omitted entirely for interval-style run types, since
-  // every activity in that bucket has the same rest-break-diluted-pace problem.
+  // every activity in that bucket has the same rest-break-diluted-pace problem. Checks both
+  // run_type (Tempo/Easy/Fartlek...) and run_type_modifier (Trail/Beach/Urban...) since a
+  // given RunType value can live in either field depending on which "slot" it was saved in.
   const runTypePBs = RUN_TYPES.map(type => {
-    const typeActs = activities.filter(a => a.run_type === type);
+    const typeActs = activities.filter(a => a.run_type === type || a.run_type_modifier === type);
     if (typeActs.length === 0) return null;
     return {
       type,

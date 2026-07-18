@@ -1,5 +1,5 @@
 import type { Activity, ExerciseType, RunType } from '@/types';
-import { EXERCISE_TYPE_LABELS, REST_BREAK_RUN_TYPES } from '@/types';
+import { EXERCISE_TYPE_LABELS, RUN_TYPE_LABELS, REST_BREAK_RUN_TYPES, subTypeLabel } from '@/types';
 
 export const DISTANCE_PB_KM = [0.1, 0.2, 0.4, 0.8, 1, 1.6, 2, 3, 5, 10, 15, 20, 21.1, 25, 30, 40, 42.2, 50];
 export const DISTANCE_LABELS: Record<number, string> = {
@@ -9,8 +9,8 @@ export const DISTANCE_LABELS: Record<number, string> = {
   30: '30km', 40: '40km', 42.2: 'Marathon', 50: '50km',
 };
 
-type PriorFields = Pick<Activity, 'exercise_type' | 'distance_km' | 'pace_min_km' | 'duration_minutes' | 'run_type'>;
-type NewFields = Pick<Activity, 'exercise_type' | 'distance_km' | 'pace_min_km' | 'duration_minutes' | 'run_type'>;
+type PriorFields = Pick<Activity, 'exercise_type' | 'distance_km' | 'pace_min_km' | 'duration_minutes' | 'run_type' | 'run_type_modifier' | 'sub_type'>;
+type NewFields = Pick<Activity, 'exercise_type' | 'distance_km' | 'pace_min_km' | 'duration_minutes' | 'run_type' | 'run_type_modifier' | 'sub_type'>;
 
 const hasRestBreaks = (a: { run_type?: RunType }) => !!a.run_type && REST_BREAK_RUN_TYPES.includes(a.run_type);
 
@@ -66,6 +66,83 @@ export function detectAutoPBs(activity: NewFields, prior: PriorFields[]): string
     const priorPaces = sameType.filter(a => a.pace_min_km && !hasRestBreaks(a)).map(a => a.pace_min_km!);
     if (priorPaces.length > 0 && activity.pace_min_km < Math.min(...priorPaces)) {
       reasons.push(`Best ${typeLabel} pace`);
+    }
+  }
+
+  // Same three categories again, but scoped to each individual subtype (e.g. "Longest
+  // Football distance" vs. the broader "Longest Sport distance" above) — mirrors the
+  // "By Subtype" breakdown on the PBs page. sub_type can be comma-joined for multi-select
+  // subtypes (gym, walk), so each key is checked independently. The very first time a
+  // subtype is logged at all, there's nothing to compare against, so it's a PB on its own.
+  const subtypeKeys = (activity.sub_type ?? '').split(',').map(s => s.trim()).filter(Boolean);
+  for (const key of subtypeKeys) {
+    const label = subTypeLabel(key);
+    const sameSubtype = prior.filter(a => a.sub_type?.split(',').map(s => s.trim()).includes(key));
+
+    if (sameSubtype.length === 0) {
+      reasons.push(`First ${label}!`);
+      continue;
+    }
+
+    if (activity.distance_km) {
+      const priorDists = sameSubtype.filter(a => a.distance_km).map(a => a.distance_km!);
+      if (priorDists.length > 0 && activity.distance_km > Math.max(...priorDists)) {
+        reasons.push(`Longest ${label} distance`);
+      }
+    }
+
+    if (activity.duration_minutes) {
+      const priorDurs = sameSubtype.map(a => a.duration_minutes).filter((d): d is number => d != null);
+      if (priorDurs.length > 0 && activity.duration_minutes > Math.max(...priorDurs)) {
+        reasons.push(`Longest ${label} session`);
+      }
+    }
+
+    if (activity.pace_min_km && !activityHasRestBreaks) {
+      const priorPaces = sameSubtype.filter(a => a.pace_min_km && !hasRestBreaks(a)).map(a => a.pace_min_km!);
+      if (priorPaces.length > 0 && activity.pace_min_km < Math.min(...priorPaces)) {
+        reasons.push(`Best ${label} pace`);
+      }
+    }
+  }
+
+  // Runs don't use sub_type at all — their category lives in two independent fields
+  // instead (run_type: Tempo/Easy/Fartlek..., run_type_modifier: Trail/Beach/Urban...).
+  // Same three per-category checks as above, run against whichever of the two are set.
+  // Checked against BOTH prior fields (not just the matching one) since either field can
+  // hold a given RunType value depending on which "slot" it was saved in.
+  if (activity.exercise_type === 'run') {
+    const runCategories = [activity.run_type, activity.run_type_modifier].filter((t): t is RunType => !!t);
+    for (const type of runCategories) {
+      const label = `${RUN_TYPE_LABELS[type]} Run`;
+      const sameRunType = prior.filter(a => a.run_type === type || a.run_type_modifier === type);
+      const categoryHasRestBreaks = REST_BREAK_RUN_TYPES.includes(type);
+
+      if (sameRunType.length === 0) {
+        reasons.push(`First ${label}!`);
+        continue;
+      }
+
+      if (activity.distance_km) {
+        const priorDists = sameRunType.filter(a => a.distance_km).map(a => a.distance_km!);
+        if (priorDists.length > 0 && activity.distance_km > Math.max(...priorDists)) {
+          reasons.push(`Longest ${label} distance`);
+        }
+      }
+
+      if (activity.duration_minutes) {
+        const priorDurs = sameRunType.map(a => a.duration_minutes).filter((d): d is number => d != null);
+        if (priorDurs.length > 0 && activity.duration_minutes > Math.max(...priorDurs)) {
+          reasons.push(`Longest ${label} session`);
+        }
+      }
+
+      if (activity.pace_min_km && !categoryHasRestBreaks) {
+        const priorPaces = sameRunType.filter(a => a.pace_min_km && !hasRestBreaks(a)).map(a => a.pace_min_km!);
+        if (priorPaces.length > 0 && activity.pace_min_km < Math.min(...priorPaces)) {
+          reasons.push(`Best ${label} pace`);
+        }
+      }
     }
   }
 

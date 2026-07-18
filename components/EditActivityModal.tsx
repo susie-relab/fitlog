@@ -71,6 +71,7 @@ export default function EditActivityModal({ activity, onClose, onSaved, onDelete
   const [isPb, setIsPb] = useState(activity.is_pb);
   const [pbDesc, setPbDesc] = useState(activity.pb_description || '');
   const [images, setImages] = useState<string[]>(activity.image_urls ?? []);
+  const [imageThumbs, setImageThumbs] = useState<string[]>(activity.thumbnail_urls ?? []);
   const [date, setDate] = useState(activity.date);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -137,6 +138,7 @@ export default function EditActivityModal({ activity, onClose, onSaved, onDelete
         is_pb: isPb,
         pb_description: isPb ? pbDesc : null,
         image_urls: images.length ? images : null,
+        thumbnail_urls: imageThumbs.length ? imageThumbs : null,
         date,
       })
       .eq('id', activity.id)
@@ -568,7 +570,12 @@ export default function EditActivityModal({ activity, onClose, onSaved, onDelete
           </div>
 
           {/* Photos */}
-          <ImageUploader userId={activity.user_id} value={images} onChange={setImages} />
+          <ImageUploader
+            userId={activity.user_id}
+            value={images}
+            thumbValue={imageThumbs}
+            onChange={(urls, thumbs) => { setImages(urls); setImageThumbs(thumbs); }}
+          />
 
           {/* PB */}
           <div>

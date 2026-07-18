@@ -20,6 +20,8 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianG
 
 type ChartWindow = '30d' | '90d' | '6m' | '1y' | 'all';
 
+const PAGE_SIZE = 20;
+
 export default function ActivityLogPage() {
   const { user } = useAuth();
   const [activities, setActivities] = useState<Activity[]>([]);
@@ -28,6 +30,8 @@ export default function ActivityLogPage() {
   const [editing, setEditing] = useState<Activity | null>(null);
   const [sharing, setSharing] = useState<Activity | null>(null);
   const [filterType, setFilterType] = useState<ExerciseType | ''>('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [expanded, setExpanded] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [chartWindow, setChartWindow] = useState<ChartWindow>('30d');
@@ -35,6 +39,7 @@ export default function ActivityLogPage() {
   const [reordering, setReordering] = useState<string | null>(null);
   const [staged, setStaged] = useState<Activity[] | null>(null);
   const [savingOrder, setSavingOrder] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   useEffect(() => {
     if (!user) return;
@@ -65,13 +70,28 @@ export default function ActivityLogPage() {
   const mostActiveType30 = (Object.entries(byType) as [ExerciseType, number][]).sort((a, b) => b[1] - a[1])[0];
   const longestDist30 = Math.max(0, ...past30.map(a => a.distance_km || 0));
 
+  // Subtype/run-type text for an activity, in the same human-readable form shown on the card
+  // itself — lets search match e.g. "trail" or "football" even though that text lives in a
+  // separate sub_type/run_type field, not the activity name.
+  const searchableSubtype = (a: Activity): string => {
+    if (a.exercise_type === 'run') return combinedRunTypeLabel(a.run_type, a.run_type_modifier) || '';
+    if (a.exercise_type === 'sport') {
+      const { base, style } = sportLabelParts(a.sub_type, a.sport_focus, a.sport_style);
+      return [base, style].filter(Boolean).join(' ');
+    }
+    return subTypeLabel(a.sub_type) || '';
+  };
+
   const list = reordering && staged ? staged : activities;
   const filtered = list.filter(a => {
-    const matchSearch = !search || a.name.toLowerCase().includes(search.toLowerCase());
+    const q = search.trim().toLowerCase();
+    const matchSearch = !q || [a.name, a.notes, searchableSubtype(a)].some(t => t?.toLowerCase().includes(q));
     const matchType = !filterType || a.exercise_type === filterType;
-    return matchSearch && matchType;
+    const matchDate = (!dateFrom || a.date >= dateFrom) && (!dateTo || a.date <= dateTo);
+    return matchSearch && matchType && matchDate;
   });
   const dateCounts = activities.reduce<Record<string, number>>((m, a) => { m[a.date] = (m[a.date] || 0) + 1; return m; }, {});
+  const visible = filtered.slice(0, visibleCount);
 
   const startReordering = (date: string) => { setStaged([...activities]); setReordering(date); };
   const cancelReordering = () => { setStaged(null); setReordering(null); };
@@ -222,29 +242,60 @@ export default function ActivityLogPage() {
         </div>
       )}
 
-      {/* Filters */}
-      <div className="flex gap-2 mb-4 flex-wrap">
+      {/* Filters — disabled while reordering, since the reorder logic finds each activity's
+          same-day neighbour by position within this filtered list; changing the filters
+          mid-reorder would shift what "neighbour" means out from under it. */}
+      <div className="flex gap-2 mb-2 flex-wrap">
         <input
-          className="input flex-1 min-w-[120px]"
-          placeholder="Search activities..."
+          className="input flex-1 min-w-[120px] disabled:opacity-50 disabled:cursor-not-allowed"
+          placeholder="Search activities, notes, subtype..."
           value={search}
-          onChange={e => setSearch(e.target.value)}
+          onChange={e => { setSearch(e.target.value); setVisibleCount(PAGE_SIZE); }}
+          disabled={!!reordering}
         />
         <select
-          className="input w-auto"
+          className="input w-auto disabled:opacity-50 disabled:cursor-not-allowed"
           value={filterType}
-          onChange={e => setFilterType(e.target.value as ExerciseType | '')}
+          onChange={e => { setFilterType(e.target.value as ExerciseType | ''); setVisibleCount(PAGE_SIZE); }}
+          disabled={!!reordering}
         >
           <option value="">All types</option>
           {TYPES.map(t => <option key={t} value={t}>{EXERCISE_TYPE_LABELS[t]}</option>)}
         </select>
+      </div>
+      <div className="flex gap-2 mb-4 items-center flex-wrap">
+        <span className="text-xs text-[#64748B]">Date range</span>
+        <input
+          type="date"
+          className="input w-auto text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          value={dateFrom}
+          onChange={e => { setDateFrom(e.target.value); setVisibleCount(PAGE_SIZE); }}
+          disabled={!!reordering}
+        />
+        <span className="text-xs text-[#64748B]">to</span>
+        <input
+          type="date"
+          className="input w-auto text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          value={dateTo}
+          onChange={e => { setDateTo(e.target.value); setVisibleCount(PAGE_SIZE); }}
+          disabled={!!reordering}
+        />
+        {(dateFrom || dateTo) && (
+          <button
+            onClick={() => { setDateFrom(''); setDateTo(''); setVisibleCount(PAGE_SIZE); }}
+            disabled={!!reordering}
+            className="text-xs text-[#64748B] hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Clear
+          </button>
+        )}
       </div>
 
       {/* Activity list */}
       <div className="flex flex-col gap-2">
         {filtered.length === 0 ? (
           <div className="card text-[#64748B] text-sm">No activities found.</div>
-        ) : filtered.map((a, i) => {
+        ) : visible.map((a, i) => {
           const color = EXERCISE_TYPE_COLORS[a.exercise_type];
           const isOpen = expanded === a.id;
           const canMoveUp = reordering === a.date && i > 0 && filtered[i - 1].date === a.date;
@@ -295,7 +346,7 @@ export default function ActivityLogPage() {
                 </div>
                 {a.image_urls && a.image_urls.length > 0 && (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={a.image_urls[0]} alt="" className="w-10 h-10 rounded-lg object-cover flex-shrink-0 border border-[#334155]" />
+                  <img src={a.thumbnail_urls?.[0] ?? a.image_urls[0]} alt="" className="w-10 h-10 rounded-lg object-cover flex-shrink-0 border border-[#334155]" />
                 )}
                 {(a.companions || a.conditions) && (
                   <span className="text-sm flex-shrink-0" title="With / Conditions">
@@ -400,6 +451,15 @@ export default function ActivityLogPage() {
           );
         })}
       </div>
+
+      {filtered.length > visibleCount && (
+        <button
+          onClick={() => setVisibleCount(c => c + PAGE_SIZE)}
+          className="btn-secondary w-full mt-3"
+        >
+          Load 20 more ({filtered.length - visibleCount} remaining)
+        </button>
+      )}
 
       {editing && (
         <EditActivityModal

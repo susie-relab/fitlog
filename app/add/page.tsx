@@ -95,6 +95,7 @@ export default function AddPage() {
   const [distance, setDistance] = useState('');
   const [notes, setNotes] = useState('');
   const [images, setImages] = useState<string[]>([]);
+  const [imageThumbs, setImageThumbs] = useState<string[]>([]);
   const [intensityMins, setIntensityMins] = useState('');
   const [paceMin, setPaceMin] = useState('');
   const [paceSec, setPaceSec] = useState('');
@@ -247,6 +248,7 @@ export default function AddPage() {
     // since distance_km (and pace_min_km) are shared across every exercise type.
     const distanceKm = distance ? (exerciseType === 'swim' ? parseFloat(distance) / 1000 : parseFloat(distance)) : null;
     const paceMinKm = paceToDecimal(paceMin, paceSec) ?? calcAutoPace(String(distanceKm ?? ''), durationSeconds) ?? null;
+    const subTypeValue = exerciseType === 'hiit' ? gymTypes.join(',') || null : exerciseType === 'walk' ? walkTypes.join(',') || null : subType || null;
 
     const { data: inserted, error: dbErr } = await supabase.from('activities').insert({
       user_id: user!.id,
@@ -254,7 +256,7 @@ export default function AddPage() {
       exercise_type: exerciseType,
       run_type: exerciseType === 'run' ? runType || null : null,
       run_type_modifier: exerciseType === 'run' ? runTypeModifier || null : null,
-      sub_type: exerciseType === 'hiit' ? gymTypes.join(',') || null : exerciseType === 'walk' ? walkTypes.join(',') || null : subType || null,
+      sub_type: subTypeValue,
       sport_focus: exerciseType === 'sport' ? sportFocus || null : null,
       sport_style: exerciseType === 'sport' ? sportStyle || null : null,
       swim_focus: exerciseType === 'swim' ? swimFocus || null : null,
@@ -277,19 +279,25 @@ export default function AddPage() {
       is_pb: isPb,
       pb_description: isPb ? pbDesc : null,
       image_urls: images.length ? images : null,
+      thumbnail_urls: imageThumbs.length ? imageThumbs : null,
       date,
     }).select('id').single();
 
-    // Check for an auto-detected PB (fastest distance, longest session, best pace for the
-    // type) against every prior activity, and/or the user's manual "Personal Best" flag.
+    // Check for an auto-detected PB (fastest distance, longest session, best pace — both for
+    // the overall exercise type and for each subtype) against prior activity, and/or the
+    // user's manual "Personal Best" flag. Narrowed to rows that could actually match a
+    // category: same exercise type (covers type- and subtype-level comparisons), or any row
+    // with a distance (needed for the cross-type "fastest at this race distance" check) —
+    // this avoids pulling the user's entire multi-year history on every save.
     let autoReasons: string[] = [];
     if (!dbErr && inserted?.id) {
       const { data: prior } = await supabase.from('activities')
-        .select('exercise_type,distance_km,pace_min_km,duration_minutes,run_type')
+        .select('exercise_type,distance_km,pace_min_km,duration_minutes,run_type,run_type_modifier,sub_type')
         .eq('user_id', user!.id)
-        .neq('id', inserted.id);
+        .neq('id', inserted.id)
+        .or(`exercise_type.eq.${exerciseType},distance_km.not.is.null`);
       autoReasons = detectAutoPBs(
-        { exercise_type: exerciseType as ExerciseType, distance_km: distanceKm ?? undefined, pace_min_km: paceMinKm ?? undefined, duration_minutes: durationMinutes, run_type: exerciseType === 'run' ? (runType as RunType || undefined) : undefined },
+        { exercise_type: exerciseType as ExerciseType, distance_km: distanceKm ?? undefined, pace_min_km: paceMinKm ?? undefined, duration_minutes: durationMinutes, run_type: exerciseType === 'run' ? (runType as RunType || undefined) : undefined, run_type_modifier: exerciseType === 'run' ? (runTypeModifier as RunType || undefined) : undefined, sub_type: subTypeValue ?? undefined },
         prior || [],
       );
       // Only auto-star if the user hadn't already manually starred it — a manual star always wins.
@@ -342,7 +350,7 @@ export default function AddPage() {
       setEffort(null); setDistance(''); setNotes(''); setIntensityMins('');
       setPaceMin(''); setPaceSec(''); setMaxPaceMin(''); setMaxPaceSec('');
       setMaxHr(''); setAvgHr(''); setElevationGain(''); setIsPb(false); setPbDesc('');
-      setImages([]);
+      setImages([]); setImageThumbs([]);
       setDate(todayLocalISO());
       setShowMore(false);
       // form is clean after save
@@ -809,7 +817,14 @@ export default function AddPage() {
         </div>
 
         {/* Photos */}
-        {user && <ImageUploader userId={user.id} value={images} onChange={setImages} />}
+        {user && (
+          <ImageUploader
+            userId={user.id}
+            value={images}
+            thumbValue={imageThumbs}
+            onChange={(urls, thumbs) => { setImages(urls); setImageThumbs(thumbs); }}
+          />
+        )}
 
         {/* PB */}
         <div>
@@ -835,6 +850,15 @@ export default function AddPage() {
             </div>
           )}
         </div>
+
+        {/* Repeats the top error banner here — validation failures are often for a field
+            above this point, and the user is usually scrolled down to this button when
+            Save fails, so the top banner alone can go unnoticed. */}
+        {error && (
+          <div className="p-3 rounded-lg bg-red-900/40 border border-red-700 text-red-300 text-sm">
+            {error}
+          </div>
+        )}
 
         {/* Save */}
         <button
