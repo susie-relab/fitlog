@@ -256,6 +256,15 @@ const HiitWorkoutIcon = makeIcon(({ size, className }) => (
   </Svg>
 ));
 
+// Generic gym dumbbell — a plain single-hand weight, distinct from Strength's loaded barbell.
+const GymIcon = makeIcon(({ size, className }) => (
+  <Svg size={size} className={className}>
+    <path d="M6 12h12" />
+    <rect x="3" y="9" width="3" height="6" rx="1" />
+    <rect x="18" y="9" width="3" height="6" rx="1" />
+  </Svg>
+));
+
 const StrengthIcon = makeIcon(({ size, className }) => (
   <Svg size={size} className={className}>
     <path d="M2 12h20" />
@@ -1028,6 +1037,7 @@ export const SUBTYPE_ICON_OVERRIDES: Record<string, LucideIcon> = {
   hockey: HockeyIcon,
   frisbee: FrisbeeIcon,
   table_tennis: TableTennisIcon,
+  gym: GymIcon,
   hiit_workout: HiitWorkoutIcon,
   strength: StrengthIcon,
   conditioning: ConditioningIcon,

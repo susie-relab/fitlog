@@ -16,7 +16,7 @@ export const EXERCISE_TYPE_ORDER: ExerciseType[] = ['run', 'sport', 'hiit', 'sol
 export const EXERCISE_TYPE_LABELS: Record<ExerciseType, string> = {
   run: 'Run',
   sport: 'Sport',
-  hiit: 'Gym Workout',
+  hiit: 'Workout',
   solo_fitness: 'Fitness Training',
   bike: 'Bike',
   swim: 'Swim',
@@ -54,6 +54,7 @@ const SUBTYPE_EMOJI_OVERRIDES: Record<string, string> = {
   frisbee: '🥏',
   table_tennis: '🏓',
   // Gym Workout subtypes
+  gym: '💪',
   hiit_workout: '🔥',
   strength: '🏋️',
   conditioning: '⚡',
@@ -201,7 +202,7 @@ export function combinedRunTypeLabel(runType?: RunType | null, runTypeModifier?:
 export type SportSubType = 'football' | 'tennis' | 'netball' | 'volleyball' | 'golf' | 'turbo_touch' | 'padel' | 'touch_rugby' | 'basketball' | 'cricket' | 'badminton' | 'rugby' | 'hockey' | 'frisbee' | 'table_tennis';
 export type SportFocus = 'game' | 'training' | 'skills' | 'conditioning' | 'recovery' | 'competition' | 'casual' | 'warm_up';
 export type SportStyle = 'indoor' | 'outdoor' | 'grass' | 'turf' | 'clay_dirt' | 'rooftop' | 'water' | 'beach' | 'mountain';
-export type GymSubType = 'hiit_workout' | 'strength' | 'conditioning' | 'crossfit' | 'hyrox' | 'arms' | 'legs' | 'back_shoulders' | 'core' | 'row_indoor' | 'stair_climber' | 'ski_erg';
+export type GymSubType = 'gym' | 'hiit_workout' | 'strength' | 'conditioning' | 'crossfit' | 'hyrox' | 'arms' | 'legs' | 'back_shoulders' | 'core' | 'row_indoor' | 'stair_climber' | 'ski_erg';
 export type WaterSubType = 'kayak' | 'sailing' | 'surf' | 'rowing' | 'waka_ama' | 'sup' | 'body_boarding' | 'bodysurfing' | 'windsurfing' | 'kitesurfing' | 'wakeboarding' | 'waterskiing' | 'diving' | 'spear_fishing' | 'fishing' | 'rafting' | 'canyoning' | 'coasteering';
 export type WaterStyle = 'recreational' | 'training' | 'competition' | 'whitewater' | 'hydrofoil' | 'park';
 export type SnowSubType = 'snowboard' | 'skiing' | 'sledding' | 'skating' | 'snowshoeing' | 'alpine_climbing';
@@ -259,7 +260,7 @@ export const SPORT_STYLE_COLORS: Record<SportStyle, string> = {
   rooftop: '#38BDF8', water: '#0EA5E9', beach: '#FBBF24', mountain: '#78716C',
 };
 export const GYM_SUB_LABELS: Record<GymSubType, string> = {
-  hiit_workout: 'HIIT', strength: 'Strength', conditioning: 'Conditioning',
+  gym: 'Gym', hiit_workout: 'HIIT', strength: 'Strength', conditioning: 'Conditioning',
   crossfit: 'CrossFit', hyrox: 'Hyrox', arms: 'Arms', legs: 'Legs',
   back_shoulders: 'Back & Shoulders', core: 'Core', row_indoor: 'Row Indoor',
   stair_climber: 'Stair Climber', ski_erg: 'Ski Erg',
