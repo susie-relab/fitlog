@@ -2,7 +2,7 @@
 import { useRef, useState, type ReactNode } from 'react';
 import { X, SkipForward } from 'lucide-react';
 import {
-  Habit, HabitLog, HabitFrequencyType, HabitFrequencyChange, HabitColorKey,
+  Habit, HabitLog, HabitFrequencyType, HabitFrequencyChange, HabitColorKey, HabitTrackingStyle,
   HABIT_COLORS, HABIT_FREQUENCY_LABELS, isHabitScheduledOn,
 } from '@/types';
 import { todayLocalISO } from '@/lib/utils';
@@ -29,7 +29,7 @@ interface Props {
   onCreateHabit: (fields: {
     name: string; color: string; frequency_type: HabitFrequencyType;
     frequency_days: string | null; frequency_interval_days: number | null; target_per_period: number;
-    start_date: string; time_of_day: string | null;
+    tracking_style?: HabitTrackingStyle; start_date: string; time_of_day: string | null;
   }) => void;
   onReorderHabit: (fromId: string, toId: string) => void;
   onUpdateHabit: (id: string, patch: Partial<Habit>) => void;
@@ -43,6 +43,7 @@ interface Props {
   onDecrementToday: (habit: Habit) => void;
   onMarkFailedToday: (habit: Habit) => void;
   onSkipToday: (habit: Habit) => void;
+  onTickToday: (habit: Habit) => void;
 }
 
 const WEEKDAY_OPTIONS = [
@@ -144,13 +145,21 @@ export function TimeOfDayField({ value, setValue }: { value: string; setValue: (
 }
 
 /** Frequency + goal-amount picker shared by the "add a habit" and per-habit "edit" forms. */
+const TRACKING_STYLE_OPTIONS: { key: HabitTrackingStyle; label: string; hint: string }[] = [
+  { key: 'count', label: 'Count', hint: 'Tap +/- any number of times, e.g. Cups of Water' },
+  { key: 'tick', label: 'Tick', hint: 'One tap marks it done, e.g. Wake before 7am' },
+  { key: 'both', label: 'Both', hint: 'Tick for one, or tap +/- for more, e.g. Church' },
+];
+
 export function FrequencyFields({
   frequency, setFrequency, days, setDays, intervalDays, setIntervalDays, target, setTarget,
+  trackingStyle, setTrackingStyle,
 }: {
   frequency: HabitFrequencyType; setFrequency: (f: HabitFrequencyType) => void;
   days: string[]; setDays: (updater: (prev: string[]) => string[]) => void;
   intervalDays: string; setIntervalDays: (v: string) => void;
   target: string; setTarget: (v: string) => void;
+  trackingStyle?: HabitTrackingStyle; setTrackingStyle?: (s: HabitTrackingStyle) => void;
 }) {
   return (
     <>
@@ -197,6 +206,23 @@ export function FrequencyFields({
         <label className="label">Goal amount (per {targetUnitLabel(frequency, intervalDays)})</label>
         <input type="number" className="input" min="1" value={target} onChange={e => setTarget(e.target.value)} />
       </div>
+      {setTrackingStyle && (
+        <div>
+          <label className="label">Track by</label>
+          <div className="flex flex-col gap-1.5">
+            {TRACKING_STYLE_OPTIONS.map(o => (
+              <button
+                key={o.key}
+                onClick={() => setTrackingStyle(o.key)}
+                className={`text-left px-2.5 py-1.5 rounded-lg border transition-all ${(trackingStyle || 'count') === o.key ? 'border-blue-500 bg-blue-500/20' : 'border-[#334155] hover:border-[#475569]'}`}
+              >
+                <span className={`text-xs font-medium ${(trackingStyle || 'count') === o.key ? 'text-white' : 'text-[#94A3B8]'}`}>{o.label}</span>
+                <span className="block text-[10px] text-[#64748B]">{o.hint}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </>
   );
 }
@@ -285,7 +311,7 @@ export function FrequencyApplyPicker({
  *  reorder). */
 export default function HabitTabBox({
   categories, activeCategory, onSelectCategory, onReorderCategory, onRenameCategory, onRemoveCategory, onCreateCategory,
-  categoryLabel, habits, logsByHabit, frequencyHistory, selectedHabitId, onSelectHabit, onCreateHabit, onReorderHabit, onUpdateHabit, onChangeFrequency, onArchiveHabit, onDeleteHabit, onIncrementToday, onDecrementToday, onMarkFailedToday, onSkipToday,
+  categoryLabel, habits, logsByHabit, frequencyHistory, selectedHabitId, onSelectHabit, onCreateHabit, onReorderHabit, onUpdateHabit, onChangeFrequency, onArchiveHabit, onDeleteHabit, onIncrementToday, onDecrementToday, onMarkFailedToday, onSkipToday, onTickToday,
 }: Props) {
   const [showEdit, setShowEdit] = useState(false);
   const [showManageCategories, setShowManageCategories] = useState(false);
@@ -299,6 +325,7 @@ export default function HabitTabBox({
   const [newDays, setNewDays] = useState<string[]>([]);
   const [newInterval, setNewInterval] = useState('2');
   const [newTarget, setNewTarget] = useState('1');
+  const [newTrackingStyle, setNewTrackingStyle] = useState<HabitTrackingStyle>('count');
   const [newStartOption, setNewStartOption] = useState<StartOption>('today');
   const [newStartDate, setNewStartDate] = useState('');
   const [newTimeOfDay, setNewTimeOfDay] = useState('');
@@ -309,6 +336,7 @@ export default function HabitTabBox({
   const [editDays, setEditDays] = useState<string[]>([]);
   const [editInterval, setEditInterval] = useState('2');
   const [editTarget, setEditTarget] = useState('1');
+  const [editTrackingStyle, setEditTrackingStyle] = useState<HabitTrackingStyle>('count');
   const [editTimeOfDay, setEditTimeOfDay] = useState('');
   const [pendingFreq, setPendingFreq] = useState<{ habit: Habit; fields: {
     frequency_type: HabitFrequencyType; frequency_days: string | null;
@@ -337,7 +365,7 @@ export default function HabitTabBox({
   const dayStats = selected ? habitDayStats(selected, logs, todayISO, frequencyHistory) : null;
 
   const resetNewForm = () => {
-    setNewName(''); setNewColor('blue'); setNewFrequency('daily'); setNewDays([]); setNewInterval('2'); setNewTarget('1');
+    setNewName(''); setNewColor('blue'); setNewFrequency('daily'); setNewDays([]); setNewInterval('2'); setNewTarget('1'); setNewTrackingStyle('count');
     setNewStartOption('today'); setNewStartDate(''); setNewTimeOfDay('');
   };
 
@@ -350,6 +378,7 @@ export default function HabitTabBox({
       frequency_days: newFrequency === 'custom_days' ? (newDays.join(',') || null) : null,
       frequency_interval_days: newFrequency === 'every_n_days' ? (parseInt(newInterval) || 2) : null,
       target_per_period: parseInt(newTarget) || 1,
+      tracking_style: newTrackingStyle,
       start_date: resolveStartDate(newStartOption, newStartDate, todayISO),
       time_of_day: newTimeOfDay || null,
     });
@@ -365,6 +394,7 @@ export default function HabitTabBox({
     setEditDays(h.frequency_days ? h.frequency_days.split(',') : []);
     setEditInterval(String(h.frequency_interval_days || 2));
     setEditTarget(String(h.target_per_period));
+    setEditTrackingStyle(h.tracking_style || 'count');
     setEditTimeOfDay(h.time_of_day || '');
   };
 
@@ -457,6 +487,7 @@ export default function HabitTabBox({
     onUpdateHabit(habitId, {
       name: editName.trim(),
       color: HABIT_COLORS[editColor],
+      tracking_style: editTrackingStyle,
       time_of_day: editTimeOfDay || null,
     });
 
@@ -556,26 +587,42 @@ export default function HabitTabBox({
       <div className="flex flex-col items-center gap-2 mb-5 px-3 py-2 rounded-lg bg-black/20">
         <span className="text-xs font-medium text-[#94A3B8]">Today</span>
         <div className="flex items-center gap-3">
-          <Tip label="Decrease">
-            <button
-              onClick={() => onDecrementToday(selected)}
-              disabled={(logsByDate.get(todayISO)?.count || 0) <= 0}
-              aria-label="Remove one for today"
-              className="w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold bg-[#334155] text-white hover:bg-[#475569] disabled:opacity-30"
-            >
-              −
-            </button>
-          </Tip>
-          <span className="text-sm font-semibold text-white w-4 text-center">{Math.max(0, logsByDate.get(todayISO)?.count || 0)}</span>
-          <Tip label="Add">
-            <button
-              onClick={() => onIncrementToday(selected)}
-              aria-label="Add one for today"
-              className="w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold bg-[#334155] text-white hover:bg-[#475569]"
-            >
-              +
-            </button>
-          </Tip>
+          {(selected.tracking_style || 'count') !== 'tick' && (
+            <>
+              <Tip label="Decrease">
+                <button
+                  onClick={() => onDecrementToday(selected)}
+                  disabled={!!logsByDate.get(todayISO)?.locked || (logsByDate.get(todayISO)?.count || 0) <= 0}
+                  aria-label="Remove one for today"
+                  className="w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold bg-[#334155] text-white hover:bg-[#475569] disabled:opacity-30"
+                >
+                  −
+                </button>
+              </Tip>
+              <span className="text-sm font-semibold text-white w-4 text-center">{Math.max(0, logsByDate.get(todayISO)?.count || 0)}</span>
+              <Tip label="Add">
+                <button
+                  onClick={() => onIncrementToday(selected)}
+                  disabled={!!logsByDate.get(todayISO)?.locked}
+                  aria-label="Add one for today"
+                  className="w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold bg-[#334155] text-white hover:bg-[#475569] disabled:opacity-30"
+                >
+                  +
+                </button>
+              </Tip>
+            </>
+          )}
+          {(selected.tracking_style === 'tick' || selected.tracking_style === 'both') && (
+            <Tip label="Done">
+              <button
+                onClick={() => onTickToday(selected)}
+                aria-label="Mark done"
+                className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold ${logsByDate.get(todayISO)?.locked && (logsByDate.get(todayISO)?.count || 0) > 0 ? 'bg-green-500/80 text-white' : 'bg-[#334155] text-white hover:bg-[#475569]'}`}
+              >
+                ✓
+              </button>
+            </Tip>
+          )}
           <Tip label="Didn't happen">
             <button
               onClick={() => onMarkFailedToday(selected)}
@@ -723,6 +770,7 @@ export default function HabitTabBox({
                         days={editDays} setDays={setEditDays}
                         intervalDays={editInterval} setIntervalDays={setEditInterval}
                         target={editTarget} setTarget={setEditTarget}
+                        trackingStyle={editTrackingStyle} setTrackingStyle={setEditTrackingStyle}
                       />
                       <TimeOfDayField value={editTimeOfDay} setValue={setEditTimeOfDay} />
                       {pendingFreq?.habit.id === h.id ? (
@@ -766,6 +814,7 @@ export default function HabitTabBox({
                 days={newDays} setDays={setNewDays}
                 intervalDays={newInterval} setIntervalDays={setNewInterval}
                 target={newTarget} setTarget={setNewTarget}
+                trackingStyle={newTrackingStyle} setTrackingStyle={setNewTrackingStyle}
               />
               <TimeOfDayField value={newTimeOfDay} setValue={setNewTimeOfDay} />
               <StartDateFields option={newStartOption} setOption={setNewStartOption} dateValue={newStartDate} setDateValue={setNewStartDate} />

@@ -1,7 +1,7 @@
 'use client';
 import { useRef, useState } from 'react';
 import { SkipForward } from 'lucide-react';
-import { Habit, HabitLog, HabitFrequencyType, HabitColorKey, HABIT_COLORS } from '@/types';
+import { Habit, HabitLog, HabitFrequencyType, HabitColorKey, HabitTrackingStyle, HABIT_COLORS } from '@/types';
 import { todayLocalISO } from '@/lib/utils';
 import { periodProgress, isSkippableFrequency, periodBoundsFor } from '@/lib/habitStats';
 import { ApplyOption, FrequencyApplyPicker, FrequencyFields, PencilIcon, TimeOfDayField, Tip } from '@/components/HabitTabBox';
@@ -22,6 +22,7 @@ interface Props {
   onReorder: (toHabitId: string) => void;
   onMarkFailed: () => void;
   onSkip: () => void;
+  onTick: () => void;
   onArchive: () => void;
   onDelete: () => void;
 }
@@ -41,7 +42,7 @@ function hexToRgba(hex: string, alpha: number): string {
  *  window. Tapping anywhere on the row (other than the +/- stepper or pencil) opens/closes the
  *  quick editor; press-and-hold anywhere else drags the row to reorder it within the full
  *  habit list (across every category). */
-export default function HabitListRow({ habit, logs, categories, onIncrement, onDecrement, onMarkFailed, onSkip, onUpdateHabit, onChangeFrequency, onReorder, onArchive, onDelete }: Props) {
+export default function HabitListRow({ habit, logs, categories, onIncrement, onDecrement, onMarkFailed, onSkip, onTick, onUpdateHabit, onChangeFrequency, onReorder, onArchive, onDelete }: Props) {
   const [editing, setEditing] = useState(false);
   const [dragging, setDragging] = useState(false);
   const dragMovedRef = useRef(false);
@@ -50,6 +51,7 @@ export default function HabitListRow({ habit, logs, categories, onIncrement, onD
   const [days, setDays] = useState<string[]>(habit.frequency_days ? habit.frequency_days.split(',') : []);
   const [intervalDays, setIntervalDays] = useState(String(habit.frequency_interval_days || 2));
   const [target, setTarget] = useState(String(habit.target_per_period));
+  const [trackingStyle, setTrackingStyle] = useState<HabitTrackingStyle>(habit.tracking_style || 'count');
   const [timeOfDay, setTimeOfDay] = useState(habit.time_of_day || '');
   const [revealed, setRevealed] = useState<RevealSection>(null);
   const [nameValue, setNameValue] = useState(habit.name);
@@ -59,10 +61,14 @@ export default function HabitListRow({ habit, logs, categories, onIncrement, onD
 
   const todayISO = todayLocalISO();
   const { pct, sum, target: periodTarget, periodLabel } = periodProgress(habit, logs, todayISO);
-  const rawTodayCount = logs.find(l => l.date === todayISO)?.count || 0;
+  const todayLog = logs.find(l => l.date === todayISO);
+  const rawTodayCount = todayLog?.count || 0;
   const isFailedToday = rawTodayCount === -1;
   const isSkippedToday = rawTodayCount === -2;
   const todayCount = (isFailedToday || isSkippedToday) ? 0 : rawTodayCount;
+  const isLockedToday = !!todayLog?.locked;
+  const isTickedToday = isLockedToday && todayCount > 0;
+  const trackingStyleActive = habit.tracking_style || 'count';
   const canSkip = isSkippableFrequency(habit.frequency_type);
   const isLastDayOfPeriod = canSkip && periodBoundsFor(habit, todayISO)[1] === todayISO;
   const [showLastDayNotice, setShowLastDayNotice] = useState(false);
@@ -75,6 +81,7 @@ const toggleEditor = () => {
     setDays(habit.frequency_days ? habit.frequency_days.split(',') : []);
     setIntervalDays(String(habit.frequency_interval_days || 2));
     setTarget(String(habit.target_per_period));
+    setTrackingStyle(habit.tracking_style || 'count');
     setTimeOfDay(habit.time_of_day || '');
     setNameValue(habit.name);
     setRevealed(null);
@@ -99,7 +106,7 @@ const toggleEditor = () => {
       || (habit.frequency_interval_days || null) !== newFreq.frequency_interval_days
       || habit.target_per_period !== newFreq.target_per_period;
 
-    onUpdateHabit({ time_of_day: timeOfDay || null });
+    onUpdateHabit({ time_of_day: timeOfDay || null, tracking_style: trackingStyle });
 
     if (freqChanged) {
       setApplyOption('today');
@@ -184,28 +191,45 @@ const toggleEditor = () => {
           <span className="text-sm font-semibold text-white truncate min-w-0 flex-1">{habit.name}</span>
           <div className="flex items-center gap-1.5 flex-shrink-0">
             <span className="text-[10px] text-[#94A3B8] hidden sm:inline">{sum}/{periodTarget} · {periodLabel}</span>
-            <Tip label="Decrease">
-              <button
-                onClick={e => { e.stopPropagation(); onDecrement(); }}
-                onPointerDown={e => e.stopPropagation()}
-                disabled={todayCount <= 0}
-                aria-label="Remove one for today"
-                className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold bg-black/25 text-white hover:bg-black/40 disabled:opacity-30"
-              >
-                −
-              </button>
-            </Tip>
-            <span className="text-xs font-semibold text-white w-3 text-center">{todayCount}</span>
-            <Tip label="Add">
-              <button
-                onClick={e => { e.stopPropagation(); onIncrement(); }}
-                onPointerDown={e => e.stopPropagation()}
-                aria-label="Add one for today"
-                className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold bg-black/25 text-white hover:bg-black/40"
-              >
-                +
-              </button>
-            </Tip>
+            {trackingStyleActive !== 'tick' && (
+              <>
+                <Tip label="Decrease">
+                  <button
+                    onClick={e => { e.stopPropagation(); onDecrement(); }}
+                    onPointerDown={e => e.stopPropagation()}
+                    disabled={isLockedToday || todayCount <= 0}
+                    aria-label="Remove one for today"
+                    className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold bg-black/25 text-white hover:bg-black/40 disabled:opacity-30"
+                  >
+                    −
+                  </button>
+                </Tip>
+                <span className="text-xs font-semibold text-white w-3 text-center">{todayCount}</span>
+                <Tip label="Add">
+                  <button
+                    onClick={e => { e.stopPropagation(); onIncrement(); }}
+                    onPointerDown={e => e.stopPropagation()}
+                    disabled={isLockedToday}
+                    aria-label="Add one for today"
+                    className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold bg-black/25 text-white hover:bg-black/40 disabled:opacity-30"
+                  >
+                    +
+                  </button>
+                </Tip>
+              </>
+            )}
+            {(trackingStyleActive === 'tick' || trackingStyleActive === 'both') && (
+              <Tip label="Done">
+                <button
+                  onClick={e => { e.stopPropagation(); onTick(); }}
+                  onPointerDown={e => e.stopPropagation()}
+                  aria-label="Mark done"
+                  className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${isTickedToday ? 'bg-green-500/80 text-white' : 'bg-black/25 text-white/70 hover:bg-black/40'}`}
+                >
+                  ✓
+                </button>
+              </Tip>
+            )}
             <Tip label="Didn't happen">
               <button
                 onClick={e => { e.stopPropagation(); onMarkFailed(); }}
@@ -314,6 +338,7 @@ const toggleEditor = () => {
             days={days} setDays={setDays}
             intervalDays={intervalDays} setIntervalDays={setIntervalDays}
             target={target} setTarget={setTarget}
+            trackingStyle={trackingStyle} setTrackingStyle={setTrackingStyle}
           />
           <TimeOfDayField value={timeOfDay} setValue={setTimeOfDay} />
           {showApplyPicker ? (

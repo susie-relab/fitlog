@@ -564,6 +564,12 @@ export const HABIT_FREQUENCY_LABELS: Record<HabitFrequencyType, string> = {
   monthly: 'Monthly', custom_days: 'Specific Days',
 };
 
+// How a habit is logged day-to-day: 'count' = tap a +/- stepper any number of times (e.g.
+// Cups of Water); 'tick' = one tap marks it done, no stepper (e.g. Wake before 7am); 'both' =
+// a tick for the common "did it once" case, but the stepper is still there for extra reps in
+// the same day (e.g. Church — tick for one service, or tap the stepper twice for two).
+export type HabitTrackingStyle = 'count' | 'tick' | 'both';
+
 export interface Habit {
   id: string;
   user_id: string;
@@ -574,6 +580,7 @@ export interface Habit {
   frequency_days?: string | null; // comma-joined weekday keys ('mon,wed,fri'), only used for 'custom_days'
   frequency_interval_days?: number | null; // e.g. 2 for "every 2 days" — only used for 'every_n_days'
   target_per_period: number; // the goal amount for whichever period frequency_type defines
+  tracking_style?: HabitTrackingStyle | null; // null/undefined on older rows == 'count'
   sort_order: number;
   archived: boolean;
   start_date?: string | null; // YYYY-MM-DD — habit doesn't apply/show before this date; null = always applied
@@ -587,6 +594,9 @@ export interface HabitLog {
   user_id: string;
   date: string; // YYYY-MM-DD
   count: number;
+  // True right after a tick/✕ tap — locks the +/- stepper until the same button is tapped
+  // again to undo it. Manual stepper taps never set this.
+  locked?: boolean;
 }
 
 // A dated frequency/target that was (or will be) in effect for a habit, e.g. "5/7 days from

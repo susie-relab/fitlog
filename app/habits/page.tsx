@@ -4,12 +4,12 @@ import { X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
 import {
-  Habit, HabitLog, HabitCategoryRow, HabitFrequencyType, HabitFrequencyChange,
+  Habit, HabitLog, HabitCategoryRow, HabitFrequencyType, HabitFrequencyChange, HabitTrackingStyle,
   HABIT_CATEGORY_LABELS, HABIT_CATEGORY_EMOJI, HABIT_CATEGORY_ORDER, HABIT_COLORS, HabitColorKey,
 } from '@/types';
 import { HABIT_PRESETS } from '@/lib/habitPresets';
 import { todayLocalISO } from '@/lib/utils';
-import { currentStreak, totalCompletions, periodProgress, addDaysISO } from '@/lib/habitStats';
+import { currentStreak, totalCompletions, periodProgress, addDaysISO, isPeriodBasedType } from '@/lib/habitStats';
 import HabitListRow from '@/components/HabitListRow';
 import HabitMonthCalendar from '@/components/HabitMonthCalendar';
 import AccountSwitcher from '@/components/AccountSwitcher';
@@ -67,6 +67,7 @@ export default function HabitsPage() {
   const [customDays, setCustomDays] = useState<string[]>([]);
   const [customInterval, setCustomInterval] = useState('2');
   const [customTarget, setCustomTarget] = useState('1');
+  const [customTrackingStyle, setCustomTrackingStyle] = useState<HabitTrackingStyle>('count');
   const [customStartOption, setCustomStartOption] = useState<StartOption>('today');
   const [customStartDate, setCustomStartDate] = useState('');
   const [presetsStartOption, setPresetsStartOption] = useState<StartOption>('today');
@@ -178,7 +179,7 @@ export default function HabitsPage() {
     setAddStep('presets');
     setSelectedPresetNames(new Set());
     setCustomName(''); setCustomCategory('health'); setCustomColor('blue');
-    setCustomFrequency('daily'); setCustomDays([]); setCustomInterval('2'); setCustomTarget('1');
+    setCustomFrequency('daily'); setCustomDays([]); setCustomInterval('2'); setCustomTarget('1'); setCustomTrackingStyle('count');
     setCustomStartOption('today'); setCustomStartDate('');
     setPresetsStartOption('today'); setPresetsStartDate('');
     setShowAddCategory(false); setNewCategoryName(''); setNewCategoryEmoji('⭐');
@@ -218,7 +219,7 @@ export default function HabitsPage() {
   const createHabit = async (fields: {
     name: string; category: string; color: string; frequency_type: HabitFrequencyType;
     frequency_days: string | null; frequency_interval_days: number | null; target_per_period: number;
-    start_date?: string; time_of_day?: string | null;
+    tracking_style?: HabitTrackingStyle; start_date?: string; time_of_day?: string | null;
   }) => {
     if (!user) return;
     setSaving(true);
@@ -232,6 +233,7 @@ export default function HabitsPage() {
       frequency_days: fields.frequency_days,
       frequency_interval_days: fields.frequency_interval_days,
       target_per_period: fields.target_per_period,
+      tracking_style: fields.tracking_style || 'count',
       start_date: fields.start_date || todayLocalISO(),
       time_of_day: fields.time_of_day || null,
       sort_order: habits.length,
@@ -296,6 +298,7 @@ export default function HabitsPage() {
       frequency_days: customFrequency === 'custom_days' ? (customDays.join(',') || null) : null,
       frequency_interval_days: customFrequency === 'every_n_days' ? (parseInt(customInterval) || 2) : null,
       target_per_period: target,
+      tracking_style: customTrackingStyle,
       start_date: resolveStartDate(customStartOption, customStartDate, todayLocalISO()),
     });
   };
@@ -578,7 +581,8 @@ export default function HabitsPage() {
 
   // Shared by "Didn't happen" (-1) and "Skip for today" (-2) — both are sentinel counts
   // distinguishing an explicit mark from a day that's simply not logged yet. Tapping the same
-  // sentinel again clears it back to unlogged.
+  // sentinel again clears it back to unlogged. Setting either sentinel also locks the day's
+  // +/- stepper (cleared when the sentinel itself is cleared).
   const setSentinelToday = async (habit: Habit, sentinel: -1 | -2) => {
     if (!user) return;
     const todayISO = todayLocalISO();
@@ -589,17 +593,43 @@ export default function HabitsPage() {
       return;
     }
     if (existing) {
-      setLogs(prev => prev.map(l => l.id === existing.id ? { ...l, count: sentinel } : l));
-      await supabase.from('habit_logs').update({ count: sentinel }).eq('id', existing.id);
+      setLogs(prev => prev.map(l => l.id === existing.id ? { ...l, count: sentinel, locked: true } : l));
+      await supabase.from('habit_logs').update({ count: sentinel, locked: true }).eq('id', existing.id);
     } else {
       const { data } = await supabase.from('habit_logs').insert({
-        habit_id: habit.id, user_id: user.id, date: todayISO, count: sentinel,
+        habit_id: habit.id, user_id: user.id, date: todayISO, count: sentinel, locked: true,
       }).select().single();
       if (data) setLogs(prev => [...prev, data as HabitLog]);
     }
   };
   const markFailedToday = (habit: Habit) => setSentinelToday(habit, -1);
   const skipToday = (habit: Habit) => setSentinelToday(habit, -2);
+
+  /** Tick (✓ done): sets today's count to the day's target (daily/custom-day habits) or just
+   *  1 (week/month/every-N-days habits — a single day's contribution toward the period total,
+   *  not the whole period target) and locks the stepper. Tapping tick again while it's the
+   *  active lock just undoes the lock — the logged count is left as-is so the user can still
+   *  fine-tune it with the stepper afterwards. */
+  const tickHabitToday = async (habit: Habit) => {
+    if (!user) return;
+    const todayISO = todayLocalISO();
+    const existing = logsByHabit.get(habit.id)?.find(l => l.date === todayISO);
+    const tickCount = isPeriodBasedType(habit.frequency_type) ? 1 : habit.target_per_period;
+    if (existing?.locked && existing.count === tickCount) {
+      setLogs(prev => prev.map(l => l.id === existing.id ? { ...l, locked: false } : l));
+      await supabase.from('habit_logs').update({ locked: false }).eq('id', existing.id);
+      return;
+    }
+    if (existing) {
+      setLogs(prev => prev.map(l => l.id === existing.id ? { ...l, count: tickCount, locked: true } : l));
+      await supabase.from('habit_logs').update({ count: tickCount, locked: true }).eq('id', existing.id);
+    } else {
+      const { data } = await supabase.from('habit_logs').insert({
+        habit_id: habit.id, user_id: user.id, date: todayISO, count: tickCount, locked: true,
+      }).select().single();
+      if (data) setLogs(prev => [...prev, data as HabitLog]);
+    }
+  };
 
   if (loading) return <div className="text-[#64748B] text-sm">Loading...</div>;
 
@@ -675,6 +705,7 @@ export default function HabitsPage() {
               onDecrementToday={decrementToday}
               onMarkFailedToday={markFailedToday}
               onSkipToday={skipToday}
+              onTickToday={tickHabitToday}
             />
           </div>
 
@@ -804,6 +835,7 @@ export default function HabitsPage() {
                 onDecrement={() => decrementToday(habit)}
                 onMarkFailed={() => markFailedToday(habit)}
                 onSkip={() => skipToday(habit)}
+                onTick={() => tickHabitToday(habit)}
                 onUpdateHabit={patch => updateHabit(habit.id, patch)}
                 onChangeFrequency={(fields, applyOption, customDate) => changeHabitFrequency(habit, fields, applyOption, customDate)}
                 onReorder={toId => reorderAllHabits(habit.id, toId)}
@@ -943,6 +975,7 @@ export default function HabitsPage() {
                     days={customDays} setDays={setCustomDays}
                     intervalDays={customInterval} setIntervalDays={setCustomInterval}
                     target={customTarget} setTarget={setCustomTarget}
+                    trackingStyle={customTrackingStyle} setTrackingStyle={setCustomTrackingStyle}
                   />
                   <StartDateFields option={customStartOption} setOption={setCustomStartOption} dateValue={customStartDate} setDateValue={setCustomStartDate} />
                   {error && <p className="text-red-400 text-sm">{error}</p>}

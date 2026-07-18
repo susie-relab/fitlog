@@ -357,3 +357,15 @@ create index if not exists training_plans_user on training_plans(user_id, create
 --   using (auth.uid() = user_id)
 --   with check (auth.uid() = user_id);
 -- create index if not exists habit_frequency_changes_habit on habit_frequency_changes(habit_id, effective_date);
+
+-- Migration: habit tracking style — 'count' (tap a +/- stepper any number of times, e.g.
+-- Cups of Water), 'tick' (one tap marks it done, no stepper, e.g. Wake before 7am), or 'both'
+-- (a tick for the common one-off case, stepper still there for extra reps, e.g. Church).
+-- Null/unset on existing rows behaves as 'count' (today's default), so nothing changes for
+-- habits already tracked before this migration ran.
+-- alter table habits add column if not exists tracking_style text;
+
+-- Migration: habit log lock — set true right after a tick/✕ tap on a day, to freeze that
+-- day's +/- stepper until the same button is tapped again to undo it. Manual stepper taps
+-- never set this; defaults false so existing logs are unaffected.
+-- alter table habit_logs add column if not exists locked boolean not null default false;
