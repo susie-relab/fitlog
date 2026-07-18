@@ -4,11 +4,12 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import {
   PlanRecord, Session, Weekday, WEEKDAYS, WEEKDAY_LABELS, runPlanDisplayName,
-  isRunSession, PlanConfig, planSessionHref, todaysSession, planEndDateISO, movePlanSession, addSessionToDay,
+  isRunSession, PlanConfig, planSessionHref, todaysSession, planEndDateISO, movePlanSession, addSessionToDay, missedStreak,
 } from '@/lib/runPlanGenerator';
 import PlanWeekTable, { sessionTarget } from './PlanWeekTable';
 import PlanPrintTable from './PlanPrintTable';
 import PlanDaySheet from './PlanDaySheet';
+import PlanRecommendationSheet from './PlanRecommendationSheet';
 import RunTypeGlossary from './RunTypeGlossary';
 import ShareCard, { ShareStat } from './ShareCard';
 import PlanShareBook, { OverviewStat } from './PlanShareBook';
@@ -84,6 +85,8 @@ export default function PlanView({ plan, onChange, onEdit, onDelete, onBack, onS
   const maxWeekNo = data.weeks[data.weeks.length - 1]?.weekNumber ?? plan.weeks;
   const week1No = data.weeks.find(w => w.weekNumber === 1)?.weekNumber ?? minWeekNo;
   const [viewedWeek, setViewedWeek] = useState(isActive ? currentWeekNo : week1No);
+  const [showRecommend, setShowRecommend] = useState(false);
+  const missed = isRun && isActive ? missedStreak(plan, today) : 0;
 
   // Print/share summary info
   const runsPerWeekText = plan.days_per_week_min && plan.days_per_week_min !== plan.days_per_week
@@ -270,6 +273,11 @@ export default function PlanView({ plan, onChange, onEdit, onDelete, onBack, onS
           {viewAll ? 'Full Plan' : (isActive ? (viewedWeek === currentWeekNo ? `This Week (Week ${viewedWeek})` : `Week ${viewedWeek}`) : `Week ${viewedWeek}`)}
         </h2>
         <div className="flex gap-1.5 items-center">
+          {missed >= 2 && (
+            <button onClick={() => setShowRecommend(true)} className="text-xs text-amber-400 hover:text-amber-300 font-semibold px-2">
+              ⚡ See recommendation
+            </button>
+          )}
           {!viewAll && isActive && (
             <>
               <button
@@ -299,6 +307,16 @@ export default function PlanView({ plan, onChange, onEdit, onDelete, onBack, onS
           onAdd={(fromWeek, from, toWeek, to) => persist(addSessionToDay(data, { week: fromWeek, day: from }, { week: toWeek, day: to }))}
         />
       </div>
+
+      {showRecommend && (
+        <PlanRecommendationSheet
+          data={data}
+          weekNumber={currentWeekNo}
+          cfg={cfg}
+          onApply={newData => persist(newData)}
+          onClose={() => setShowRecommend(false)}
+        />
+      )}
 
       {isRun && <RunTypeGlossary />}
 

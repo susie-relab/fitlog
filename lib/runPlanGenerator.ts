@@ -1183,6 +1183,42 @@ export function nextSession(
   return null;
 }
 
+/** Count of consecutive missed (past, not completed) run sessions walking backward from
+ *  yesterday. Rest/crosstrain days don't break the streak; a completed run session does.
+ *  Powers the "see recommendation" nudge after 2+ misses in a row. */
+export function missedStreak(plan: PlanLike, todayISO: string): number {
+  let count = 0;
+  let d = addDaysISO(todayISO, -1);
+  while (d >= plan.start_date) {
+    const found = todaysSession(plan, d);
+    if (!found) break;
+    if (isRunSession(found.session)) {
+      if (found.session.completed) break;
+      count++;
+    }
+    d = addDaysISO(d, -1);
+  }
+  return count;
+}
+
+/** Applies an "easier" scaling (via switchDifficulty) to every not-yet-completed run
+ *  session in `days` for the given week. Pure — used to bulk-lower the load after a
+ *  missed-session streak, either for a single upcoming session or the whole rest of
+ *  the week. */
+export function applyEasierToWeek(data: PlanData, weekNumber: number, days: Weekday[], cfg: PlanConfig): PlanData {
+  const weeks = data.weeks.map(w => w.weekNumber === weekNumber ? { ...w, days: { ...w.days } } : w);
+  const week = weeks.find(w => w.weekNumber === weekNumber);
+  if (!week) return data;
+  for (const d of days) {
+    const s = week.days[d];
+    if (isRunSession(s) && !s.completed) {
+      week.days[d] = switchDifficulty(s, 'easier', cfg);
+    }
+  }
+  week.totalKm = round(sumKm(week.days), 0.5);
+  return { ...data, weeks };
+}
+
 /** Swap two scheduled sessions — can be within the same week or across different weeks. Pure. */
 export function movePlanSession(data: PlanData, from: { week: number; day: Weekday }, to: { week: number; day: Weekday }): PlanData {
   if (from.week === to.week && from.day === to.day) return data;

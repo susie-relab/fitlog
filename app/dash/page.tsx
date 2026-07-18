@@ -6,9 +6,10 @@ import { useAuth } from '@/components/AuthProvider';
 import { Activity, ExerciseType, EXERCISE_TYPE_LABELS, EXERCISE_TYPE_COLORS, subTypeLabel, combinedRunTypeLabel, YearTotalTile, Habit, HabitLog } from '@/types';
 import { formatDuration, daysAgo, calcDayStreak, calcWeekStreak, todayLocalISO } from '@/lib/utils';
 import { completionPctInRange, addDaysISO } from '@/lib/habitStats';
-import { PlanRecord, PlanData, PlanConfig, Session, Weekday, runPlanDisplayName, todaysSession, nextSession, isRunSession, planSessionHref, WEEKDAYS, movePlanSession, addSessionToDay, sessionParts } from '@/lib/runPlanGenerator';
+import { PlanRecord, PlanData, PlanConfig, Session, Weekday, runPlanDisplayName, todaysSession, nextSession, isRunSession, planSessionHref, WEEKDAYS, movePlanSession, addSessionToDay, sessionParts, missedStreak } from '@/lib/runPlanGenerator';
 import PlanWeekTable, { sessionColor, sessionTarget, exerciseTypeTag } from '@/components/PlanWeekTable';
 import PlanDaySheet from '@/components/PlanDaySheet';
+import PlanRecommendationSheet from '@/components/PlanRecommendationSheet';
 import Link from 'next/link';
 import Avatar from '@/components/Avatar';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
@@ -83,6 +84,19 @@ function fmtNice(dateISO: string): string {
 const planLabel = (p: PlanRecord) => p.plan_kind === 'run' ? runPlanDisplayName(p.distance, p.custom_distance_km) : (p.name || 'Custom Plan');
 type DetailSel = { planId: string; week: number; day: Weekday };
 
+/** Builds the PlanConfig needed for Easier/Harder/Reset and load recommendations — only
+ *  meaningful for auto-generated run plans, which is what those features scale. */
+function planConfigFor(plan: PlanRecord): PlanConfig | undefined {
+  if (plan.plan_kind !== 'run') return undefined;
+  return {
+    distance: plan.distance, customDistanceKm: plan.custom_distance_km || undefined,
+    level: plan.level, weeks: plan.weeks, daysPerWeek: plan.days_per_week,
+    daysPerWeekMin: plan.days_per_week_min || plan.days_per_week,
+    trainDays: plan.train_days, goalTimeSeconds: plan.goal_time_seconds, startDistanceKm: plan.start_distance_km,
+    startDate: plan.start_date,
+  };
+}
+
 interface Goal {
   period: string;
   target_runs?: number;
@@ -122,6 +136,7 @@ export default function DashPage() {
   const [habitLogs, setHabitLogs] = useState<HabitLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [detail, setDetail] = useState<DetailSel | null>(null);
+  const [recommendFor, setRecommendFor] = useState<{ planId: string; week: number } | null>(null);
   const [showWeek, setShowWeek] = useState(false);
   const [showTrainingMonth, setShowTrainingMonth] = useState(false);
   const [streakModal, setStreakModal] = useState<'day' | 'week' | null>(null);
@@ -458,9 +473,21 @@ export default function DashPage() {
               {todayPlanItems.map(({ plan, today }) => {
                 const week = plan.plan_data.weeks.find(w => w.weekNumber === today.week);
                 if (!week) return null;
+                const cfg = planConfigFor(plan);
+                const missed = cfg ? missedStreak(plan, todayISO) : 0;
                 return (
                   <div key={plan.id}>
-                    <p className="text-xs font-semibold text-white mb-1.5">{planLabel(plan)}</p>
+                    <div className="flex items-center justify-between mb-1.5 gap-2">
+                      <p className="text-xs font-semibold text-white">{planLabel(plan)}</p>
+                      {missed >= 2 && (
+                        <button
+                          onClick={() => setRecommendFor({ planId: plan.id, week: today.week })}
+                          className="text-xs text-amber-400 hover:text-amber-300 font-semibold"
+                        >
+                          ⚡ See recommendation
+                        </button>
+                      )}
+                    </div>
                     <PlanWeekTable
                       plan={{ weeks: [week] }}
                       currentWeek={today.week}
@@ -468,6 +495,15 @@ export default function DashPage() {
                       onMove={(fromWeek, from, toWeek, to) => persistPlanData(plan.id, movePlanSession(plan.plan_data, { week: fromWeek, day: from }, { week: toWeek, day: to }))}
                       onAdd={(fromWeek, from, toWeek, to) => persistPlanData(plan.id, addSessionToDay(plan.plan_data, { week: fromWeek, day: from }, { week: toWeek, day: to }))}
                     />
+                    {recommendFor?.planId === plan.id && cfg && (
+                      <PlanRecommendationSheet
+                        data={plan.plan_data}
+                        weekNumber={recommendFor.week}
+                        cfg={cfg}
+                        onApply={newData => persistPlanData(plan.id, newData)}
+                        onClose={() => setRecommendFor(null)}
+                      />
+                    )}
                   </div>
                 );
               })}
@@ -697,13 +733,7 @@ export default function DashPage() {
           onClose={() => setDetail(null)}
           onLogAndComplete={(s, partIndex) => router.push(planSessionHref(s, detailPlan.id, detail.week, detail.day, partIndex, true))}
           showGoalLabel
-          cfg={detailPlan.plan_kind === 'run' ? ({
-            distance: detailPlan.distance, customDistanceKm: detailPlan.custom_distance_km || undefined,
-            level: detailPlan.level, weeks: detailPlan.weeks, daysPerWeek: detailPlan.days_per_week,
-            daysPerWeekMin: detailPlan.days_per_week_min || detailPlan.days_per_week,
-            trainDays: detailPlan.train_days, goalTimeSeconds: detailPlan.goal_time_seconds, startDistanceKm: detailPlan.start_distance_km,
-            startDate: detailPlan.start_date,
-          } as PlanConfig) : undefined}
+          cfg={planConfigFor(detailPlan)}
         />
       )}
 
