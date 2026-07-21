@@ -40,7 +40,7 @@ export default function AccountSwitcher({ direction = 'down', compact = false }:
           : 'flex items-center gap-2 w-full text-left px-2 py-1.5 rounded-lg hover:bg-[#0F172A] transition-colors'}
       >
         <Avatar url={user?.user_metadata?.avatar_url} color={user?.user_metadata?.avatar_color} size={compact ? 20 : 28} bare={compact} />
-        <span className={compact ? 'text-[11px] text-[#94A3B8] truncate max-w-[80px]' : 'text-xs text-[#94A3B8] truncate flex-1'}>{compact ? displayName : user?.email}</span>
+        <span className={compact ? 'text-[11px] text-[#94A3B8] truncate max-w-[52px] sm:max-w-[80px]' : 'text-xs text-[#94A3B8] truncate flex-1'}>{compact ? displayName : user?.email}</span>
         {!compact && <span className="text-[#475569] text-xs">{open ? '▲' : '▼'}</span>}
       </button>
 

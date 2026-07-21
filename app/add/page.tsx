@@ -385,7 +385,7 @@ export default function AddPage() {
       <div className="absolute top-0 right-0 z-10">
         <AccountSwitcher compact />
       </div>
-      <div className="flex items-center justify-between mb-5 gap-2 flex-wrap pr-16 sm:pr-0">
+      <div className="flex items-center justify-between mb-5 gap-2 flex-wrap pr-24 sm:pr-32">
         <h1 className="text-xl font-bold text-white">Add Exercise</h1>
         <button type="button" onClick={openRepeatPicker} className="text-sm text-blue-400 hover:text-blue-300">
           ↻ Repeat a recent activity
