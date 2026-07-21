@@ -498,6 +498,7 @@ export interface Activity {
   sub_type?: string;
   sport_focus?: SportFocus;
   sport_style?: SportStyle;
+  sport_home_away?: 'home' | 'away';
   swim_focus?: SwimFocus;
   swim_styles?: string; // comma-joined SwimStyle keys — multi-select, like sub_type for hiit
   snow_styles?: string; // comma-joined SnowStyle keys — multi-select, like swim_styles

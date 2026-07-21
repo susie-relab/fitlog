@@ -369,3 +369,6 @@ create index if not exists training_plans_user on training_plans(user_id, create
 -- day's +/- stepper until the same button is tapped again to undo it. Manual stepper taps
 -- never set this; defaults false so existing logs are unaffected.
 -- alter table habit_logs add column if not exists locked boolean not null default false;
+
+-- Migration: sport home/away — optional tag for Sport activities with Game/Match focus.
+-- alter table activities add column if not exists sport_home_away text;

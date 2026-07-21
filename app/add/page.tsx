@@ -82,6 +82,7 @@ export default function AddPage() {
   const [walkTypes, setWalkTypes] = useState<string[]>([]);
   const [sportFocus, setSportFocus] = useState<SportFocus | ''>('');
   const [sportStyle, setSportStyle] = useState<SportStyle | ''>('');
+  const [sportHomeAway, setSportHomeAway] = useState<'home' | 'away' | ''>('');
   const [swimFocus, setSwimFocus] = useState<SwimFocus | ''>('');
   const [swimStyles, setSwimStyles] = useState<string[]>([]);
   const [snowStyles, setSnowStyles] = useState<string[]>([]);
@@ -119,6 +120,7 @@ export default function AddPage() {
   const [fromDash, setFromDash] = useState(false);
   const [planCompleted, setPlanCompleted] = useState<{ planId: string; totalRuns: number; totalKm: number; totalMin: number } | null>(null);
   const [planMatchPrompt, setPlanMatchPrompt] = useState<{ planId: string; week: number; day: string; sessionTitle: string; activityId: string; distanceKm: number | null; durationMinutes: number; effort: number | null } | null>(null);
+  const [duplicatePrompt, setDuplicatePrompt] = useState<{ existing: Activity; newId: string } | null>(null);
   // Holds the pending "auto-return to Dash/Plan" timeout so an explicit nav choice
   // in the saved/PB celebration modal (e.g. "View in Activity Log") can cancel it —
   // otherwise it fires ~1.8s later and yanks the user back regardless of their pick.
@@ -221,6 +223,7 @@ export default function AddPage() {
     else { setSubType(a.sub_type || ''); setGymTypes([]); setWalkTypes([]); }
     setSportFocus(a.sport_focus || '');
     setSportStyle(a.sport_style || '');
+    setSportHomeAway((a.sport_home_away as 'home' | 'away') || '');
     setSwimFocus(a.swim_focus || '');
     setSwimStyles(a.swim_styles ? a.swim_styles.split(',') : []);
     setSnowStyles(a.snow_styles ? a.snow_styles.split(',') : []);
@@ -278,6 +281,7 @@ export default function AddPage() {
       sub_type: subTypeValue,
       sport_focus: exerciseType === 'sport' ? sportFocus || null : null,
       sport_style: exerciseType === 'sport' ? sportStyle || null : null,
+      sport_home_away: exerciseType === 'sport' && sportFocus === 'game' ? sportHomeAway || null : null,
       swim_focus: exerciseType === 'swim' ? swimFocus || null : null,
       swim_styles: exerciseType === 'swim' ? swimStyles.join(',') || null : null,
       snow_styles: exerciseType === 'snow' ? snowStyles.join(',') || null : null,
@@ -382,6 +386,21 @@ export default function AddPage() {
       }
     }
 
+    // Check for a duplicate — same exercise type already logged on this date.
+    if (!dbErr && inserted?.id) {
+      const { data: sameDay } = await supabase
+        .from('activities')
+        .select('id, name, exercise_type, duration_minutes, distance_km, sub_type')
+        .eq('user_id', user!.id)
+        .eq('date', date)
+        .eq('exercise_type', exerciseType)
+        .neq('id', inserted.id)
+        .limit(1);
+      if (sameDay && sameDay.length > 0) {
+        setDuplicatePrompt({ existing: sameDay[0] as Activity, newId: inserted.id });
+      }
+    }
+
     setSaving(false);
 
     if (dbErr) {
@@ -392,7 +411,7 @@ export default function AddPage() {
       if (isPb || pbReasons.length > 0) setPbCelebration(pbReasons);
       else setSavedTitle(randomEncouragement());
       // Reset form
-      setName(''); setExerciseType(''); setRunType(''); setRunTypeModifier(''); setSubType(''); setGymTypes([]); setWalkTypes([]); setSportFocus(''); setSportStyle(''); setSwimFocus(''); setSwimStyles([]); setSnowStyles([]); setWaterStyles([]); setCompanions([]); setConditions([]); setHours(''); setMins(''); setSecs('');
+      setName(''); setExerciseType(''); setRunType(''); setRunTypeModifier(''); setSubType(''); setGymTypes([]); setWalkTypes([]); setSportFocus(''); setSportStyle(''); setSportHomeAway(''); setSwimFocus(''); setSwimStyles([]); setSnowStyles([]); setWaterStyles([]); setCompanions([]); setConditions([]); setHours(''); setMins(''); setSecs('');
       setEffort(null); setDistance(''); setNotes(''); setIntensityMins('');
       setPaceMin(''); setPaceSec(''); setMaxPaceMin(''); setMaxPaceSec('');
       setMaxHr(''); setAvgHr(''); setElevationGain(''); setIsPb(false); setPbDesc('');
@@ -408,6 +427,11 @@ export default function AddPage() {
         autoNavTimeoutRef.current = setTimeout(() => router.push('/dash'), 1800);
       }
     }
+  };
+
+  const dismissDuplicate = async (deleteId: string) => {
+    await supabase.from('activities').delete().eq('id', deleteId);
+    setDuplicatePrompt(null);
   };
 
   const applyPlanMatch = async () => {
@@ -563,6 +587,19 @@ export default function AddPage() {
                 </button>
               ))}
             </div>
+            {sportFocus === 'game' && (
+              <>
+                <label className="label mt-3">Home or Away? <span className="text-[#64748B]">(optional)</span></label>
+                <div className="flex gap-2">
+                  {(['home', 'away'] as const).map(v => (
+                    <button key={v} onClick={() => setSportHomeAway(sportHomeAway === v ? '' : v)}
+                      className={`flex-1 py-2 rounded-lg text-xs font-medium border transition-all capitalize ${sportHomeAway === v ? 'border-orange-500 bg-orange-500/20 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>
+                      {v === 'home' ? '🏠 Home' : '✈️ Away'}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
             <label className="label mt-3">Sport Style <span className="text-[#64748B]">(optional)</span></label>
             <div className="grid grid-cols-2 gap-1">
               {(Object.keys(SPORT_STYLE_LABELS) as SportStyle[]).map(t => (
@@ -1000,6 +1037,29 @@ export default function AddPage() {
       )}
       {savedTitle && (
         <ActivitySavedModal title={savedTitle} onClose={() => setSavedTitle(null)} onNavigate={navigateFromModal} />
+      )}
+      {duplicatePrompt && (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-black/70" onClick={() => setDuplicatePrompt(null)}>
+          <div className="w-full max-w-sm bg-[#1E293B] border border-yellow-500/40 rounded-2xl p-6" onClick={e => e.stopPropagation()}>
+            <div className="text-3xl mb-3 text-center">⚠️</div>
+            <h2 className="text-white font-bold text-lg text-center mb-1">Possible duplicate?</h2>
+            <p className="text-[#94A3B8] text-sm text-center mb-4">
+              You already have a <span className="text-white font-medium">{EXERCISE_TYPE_LABELS[duplicatePrompt.existing.exercise_type as keyof typeof EXERCISE_TYPE_LABELS] ?? duplicatePrompt.existing.exercise_type}</span> logged today:
+            </p>
+            <div className="bg-[#0F172A] rounded-xl p-3 mb-5 text-sm">
+              <p className="text-white font-medium">{duplicatePrompt.existing.name}</p>
+              <p className="text-[#94A3B8] text-xs mt-0.5">
+                {formatDuration(duplicatePrompt.existing.duration_minutes)}
+                {duplicatePrompt.existing.distance_km ? ` · ${formatDistance(duplicatePrompt.existing.distance_km, 'run')}` : ''}
+              </p>
+            </div>
+            <div className="flex flex-col gap-2">
+              <button onClick={() => setDuplicatePrompt(null)} className="btn-primary w-full">Keep both — different session</button>
+              <button onClick={() => dismissDuplicate(duplicatePrompt.newId)} className="btn-secondary w-full text-red-400">Oops — delete the new one</button>
+              <button onClick={() => dismissDuplicate(duplicatePrompt.existing.id)} className="btn-secondary w-full text-red-400">Oops — delete the old one</button>
+            </div>
+          </div>
+        </div>
       )}
       {planMatchPrompt && (
         <div className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-black/70" onClick={() => setPlanMatchPrompt(null)}>
