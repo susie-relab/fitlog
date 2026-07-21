@@ -15,11 +15,14 @@ export function randomEncouragement(): string {
 interface Props {
   title: string; // pass a value from randomEncouragement(), chosen once by the caller on save
   onClose: () => void;
+  // Lets the caller cancel any pending auto-navigation (e.g. the Dash-initiated
+  // auto-return timeout) before sending the user somewhere else themselves.
+  onNavigate?: (path: string) => void;
 }
 
 /** Congrats popup shown after logging any activity — dismiss via Yay!, "View in Activity
  *  Log", or by clicking outside the card. */
-export default function ActivitySavedModal({ title, onClose }: Props) {
+export default function ActivitySavedModal({ title, onClose, onNavigate }: Props) {
   const router = useRouter();
 
   return (
@@ -29,7 +32,7 @@ export default function ActivitySavedModal({ title, onClose }: Props) {
         <h2 className="text-xl font-bold text-white" style={{ fontFamily: 'var(--font-display)' }}>{title}!</h2>
         <div className="flex flex-col gap-2 mt-5">
           <button onClick={onClose} className="btn-primary w-full">YAY! 🎊</button>
-          <button onClick={() => { onClose(); router.push('/activity-log'); }} className="btn-secondary w-full">View in Activity Log</button>
+          <button onClick={() => { onClose(); onNavigate ? onNavigate('/activity-log') : router.push('/activity-log'); }} className="btn-secondary w-full">View in Activity Log</button>
         </div>
       </div>
     </div>

@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef } from 'react';
+import { useEffect, useImperativeHandle, useRef, forwardRef } from 'react';
 
 interface Props {
   values: number[];
@@ -11,9 +11,16 @@ interface Props {
   width?: number;
 }
 
+export interface NumberWheelColumnHandle {
+  /** Nudges the wheel by a wheel-event deltaY, in lieu of scrolling the column
+   *  directly — used when a transparent overlay (the typeable input) is sitting
+   *  on top and would otherwise swallow the scroll gesture entirely. */
+  scrollByDelta: (deltaY: number) => void;
+}
+
 /** One scrollable "spin wheel" column of numbers, snapping to the centered row.
  *  Scrolling and tapping a row are both valid ways to select a value. */
-export default function NumberWheelColumn({ values, value, onChange, format, itemHeight = 40, height = 200, width }: Props) {
+const NumberWheelColumn = forwardRef<NumberWheelColumnHandle, Props>(function NumberWheelColumn({ values, value, onChange, format, itemHeight = 40, height = 200, width }, forwardedRef) {
   const ref = useRef<HTMLDivElement>(null);
   const scrollTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastEmitted = useRef(value);
@@ -61,6 +68,12 @@ export default function NumberWheelColumn({ values, value, onChange, format, ite
     onChange(values[i]);
   };
 
+  useImperativeHandle(forwardedRef, () => ({
+    scrollByDelta: (deltaY: number) => {
+      ref.current?.scrollBy({ top: deltaY });
+    },
+  }));
+
   return (
     <div
       ref={ref}
@@ -82,4 +95,6 @@ export default function NumberWheelColumn({ values, value, onChange, format, ite
       <div style={{ height: padding }} />
     </div>
   );
-}
+});
+
+export default NumberWheelColumn;

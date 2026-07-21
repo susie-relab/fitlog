@@ -8,7 +8,7 @@ import {
   EXERCISE_TYPE_ORDER, subTypeLabel,
   Companion, COMPANION_EMOJI, WeatherCondition, CONDITION_EMOJI,
 } from '@/types';
-import { formatDuration, formatDate, formatShortDate, formatPaceMinKm, formatPaceMinMile, formatSpeedKmh, formatDistance, daysAgo } from '@/lib/utils';
+import { formatDuration, formatDate, formatShortDate, formatPaceMinKm, formatPaceMinMile, formatSpeedKmh, formatDistance, daysAgo, openDatePicker } from '@/lib/utils';
 import EditActivityModal from '@/components/EditActivityModal';
 import ImageGallery from '@/components/ImageGallery';
 import ShareCard, { ShareStat } from '@/components/ShareCard';
@@ -270,6 +270,7 @@ export default function ActivityLogPage() {
           type="date"
           className="input input-auto text-sm disabled:opacity-50 disabled:cursor-not-allowed"
           value={dateFrom}
+          onClick={openDatePicker}
           onChange={e => { setDateFrom(e.target.value); setVisibleCount(PAGE_SIZE); }}
           disabled={!!reordering}
         />
@@ -278,6 +279,7 @@ export default function ActivityLogPage() {
           type="date"
           className="input input-auto text-sm disabled:opacity-50 disabled:cursor-not-allowed"
           value={dateTo}
+          onClick={openDatePicker}
           onChange={e => { setDateTo(e.target.value); setVisibleCount(PAGE_SIZE); }}
           disabled={!!reordering}
         />

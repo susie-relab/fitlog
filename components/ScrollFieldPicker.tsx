@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import NumberWheelColumn from './NumberWheelColumn';
+import NumberWheelColumn, { NumberWheelColumnHandle } from './NumberWheelColumn';
 
 interface Props {
   label: string;
@@ -37,6 +37,8 @@ export default function ScrollFieldPicker({ label, unit, value, onChange, max, m
   const [fracText, setFracText] = useState('');
   const wholeInputRef = useRef<HTMLInputElement>(null);
   const fracInputRef = useRef<HTMLInputElement>(null);
+  const wholeColumnRef = useRef<NumberWheelColumnHandle>(null);
+  const fracColumnRef = useRef<NumberWheelColumnHandle>(null);
 
   useEffect(() => {
     if (!focused) {
@@ -126,12 +128,13 @@ export default function ScrollFieldPicker({ label, unit, value, onChange, max, m
           onClick={commitAndClose}
         >
           <div className="relative bg-[#1E293B] border border-[#334155] rounded-xl p-4 overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="relative">
             <div className="flex items-center justify-center gap-1">
-              <NumberWheelColumn values={wholeValues} value={whole} onChange={setWhole} width={wholeWidth} />
+              <NumberWheelColumn ref={wholeColumnRef} values={wholeValues} value={whole} onChange={setWhole} width={wholeWidth} />
               {decimals === 2 && (
                 <>
                   <span className="text-white text-lg pb-1">.</span>
-                  <NumberWheelColumn values={fracValues} value={frac} onChange={setFrac} format={v => String(v).padStart(2, '0')} width={fracWidth} />
+                  <NumberWheelColumn ref={fracColumnRef} values={fracValues} value={frac} onChange={setFrac} format={v => String(v).padStart(2, '0')} width={fracWidth} />
                 </>
               )}
               {unit && <span className="text-[#64748B] text-sm ml-1">{unit}</span>}
@@ -153,7 +156,8 @@ export default function ScrollFieldPicker({ label, unit, value, onChange, max, m
                     commitAndClose();
                   }
                 }}
-                style={{ width: wholeWidth, height: 40, lineHeight: '40px', padding: 0 }}
+                onWheel={e => { e.preventDefault(); wholeColumnRef.current?.scrollByDelta(e.deltaY); }}
+                style={{ width: wholeWidth }}
                 className="wheel-input pointer-events-auto bg-transparent text-white text-lg font-bold text-center outline-none"
               />
               {decimals === 2 && (
@@ -168,12 +172,14 @@ export default function ScrollFieldPicker({ label, unit, value, onChange, max, m
                     onBlur={() => setFocused(false)}
                     onChange={e => handleFracText(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter') commitAndClose(); }}
-                    style={{ width: fracWidth, height: 40, lineHeight: '40px', padding: 0 }}
+                    onWheel={e => { e.preventDefault(); fracColumnRef.current?.scrollByDelta(e.deltaY); }}
+                    style={{ width: fracWidth }}
                     className="wheel-input pointer-events-auto bg-transparent text-white text-lg font-bold text-center outline-none"
                   />
                 </>
               )}
               {unit && <span className="text-transparent text-sm ml-1 select-none">{unit}</span>}
+            </div>
             </div>
             <div className="flex justify-center mt-2">
               <button

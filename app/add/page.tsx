@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
@@ -118,6 +118,14 @@ export default function AddPage() {
   const [planLink, setPlanLink] = useState<{ planId: string; week: number; day: string; part?: number } | null>(null);
   const [fromDash, setFromDash] = useState(false);
   const [planCompleted, setPlanCompleted] = useState<{ planId: string; totalRuns: number; totalKm: number; totalMin: number } | null>(null);
+  // Holds the pending "auto-return to Dash/Plan" timeout so an explicit nav choice
+  // in the saved/PB celebration modal (e.g. "View in Activity Log") can cancel it —
+  // otherwise it fires ~1.8s later and yanks the user back regardless of their pick.
+  const autoNavTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const navigateFromModal = (path: string) => {
+    if (autoNavTimeoutRef.current) clearTimeout(autoNavTimeoutRef.current);
+    router.push(path);
+  };
   const [showRepeatPicker, setShowRepeatPicker] = useState(false);
   const [recentActivities, setRecentActivities] = useState<Activity[] | null>(null);
   const [loadingRecent, setLoadingRecent] = useState(false);
@@ -367,9 +375,9 @@ export default function AddPage() {
 
       // Give the confetti/PB-celebration a moment to play before navigating away.
       if (planCompleted) {
-        setTimeout(() => router.push(`/training-plan?plan=${planCompleted.planId}&celebrate=1`), 1800);
+        autoNavTimeoutRef.current = setTimeout(() => router.push(`/training-plan?plan=${planCompleted.planId}&celebrate=1`), 1800);
       } else if (fromDash) {
-        setTimeout(() => router.push('/dash'), 1800);
+        autoNavTimeoutRef.current = setTimeout(() => router.push('/dash'), 1800);
       }
     }
   };
@@ -940,10 +948,10 @@ export default function AddPage() {
         </div>
       )}
       {pbCelebration && (
-        <PbCelebrationModal reasons={pbCelebration} onClose={() => setPbCelebration(null)} />
+        <PbCelebrationModal reasons={pbCelebration} onClose={() => setPbCelebration(null)} onNavigate={navigateFromModal} />
       )}
       {savedTitle && (
-        <ActivitySavedModal title={savedTitle} onClose={() => setSavedTitle(null)} />
+        <ActivitySavedModal title={savedTitle} onClose={() => setSavedTitle(null)} onNavigate={navigateFromModal} />
       )}
     </div>
   );
