@@ -210,7 +210,7 @@ export type SnowStyle = 'downhill' | 'cross_country' | 'half_pipe' | 'freestyle'
 export type SwimSubType = 'ocean' | 'pool' | 'water_jogging' | 'aqua_aerobics';
 export type SwimFocus = 'endurance' | 'sprint' | 'technique' | 'power' | 'recovery' | 'distance' | 'interval_set' | 'time_trial';
 export type SwimStyle = 'mixed' | 'freestyle' | 'backstroke' | 'breaststroke' | 'butterfly' | 'im' | 'kick_only' | 'pull_only';
-export type FitnessSubType = 'dance' | 'skateboard' | 'jump_rope' | 'boxing' | 'trampoline' | 'athletics' | 'gymnastics' | 'calisthenics' | 'acrobats' | 'aerial_silks' | 'slack_lining' | 'obstacle_course' | 'rock_climbing' | 'abseiling' | 'martial_arts' | 'kapa_haka' | 'juggling_act' | 'rollerskate' | 'unicycling' | 'sandboarding' | 'extreme_air_sport' | 'archery' | 'axe_throwing' | 'cleaning' | 'gardening';
+export type FitnessSubType = 'dance' | 'skateboard' | 'jump_rope' | 'boxing' | 'trampoline' | 'athletics' | 'gymnastics' | 'calisthenics' | 'acrobats' | 'slack_lining' | 'obstacle_course' | 'rock_climbing' | 'abseiling' | 'martial_arts' | 'kapa_haka' | 'juggling_act' | 'unicycling' | 'rollerskate' | 'sandboarding' | 'extreme_air_sport' | 'archery' | 'axe_throwing' | 'cleaning' | 'gardening';
 export type BikeSubType = 'mtb' | 'road' | 'mixed_terrain' | 'commute' | 'electric' | 'indoor_spin' | 'bmx' | 'track' | 'bikepacking';
 export type StretchSubType = 'pilates' | 'flexibility' | 'physio';
 export type WalkSubType = 'multi_day' | 'stroll' | 'speed' | 'urban' | 'bush' | 'mountain' | 'farm' | 'road' | 'track_oval' | 'treadmill' | 'beach' | 'push_buggy';
@@ -301,9 +301,9 @@ export const SWIM_STYLE_COLORS: Record<SwimStyle, string> = {
 export const FITNESS_SUB_LABELS: Record<FitnessSubType, string> = {
   dance: 'Dance', skateboard: 'Skateboard', jump_rope: 'Jump Rope', boxing: 'Boxing', trampoline: 'Trampoline',
   athletics: 'Athletics', gymnastics: 'Gymnastics', calisthenics: 'Calisthenics', acrobats: 'Acrobats',
-  aerial_silks: 'Aerial Silks', slack_lining: 'Slacklining', obstacle_course: 'Obstacle Course',
+  slack_lining: 'Slacklining', obstacle_course: 'Obstacle Course',
   rock_climbing: 'Rock Climbing', abseiling: 'Abseiling', martial_arts: 'Martial Arts', kapa_haka: 'Kapa Haka',
-  juggling_act: 'Juggling Act', rollerskate: 'Rollerskate', unicycling: 'Unicycling', sandboarding: 'Sandboarding',
+  juggling_act: 'Juggling Act', unicycling: 'Unicycling', rollerskate: 'Rollerskate', sandboarding: 'Sandboarding',
   extreme_air_sport: 'Extreme Air Sport', archery: 'Archery', axe_throwing: 'Axe Throwing', cleaning: 'Cleaning',
   gardening: 'Gardening',
 };
