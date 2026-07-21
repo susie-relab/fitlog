@@ -155,6 +155,11 @@ h1, h2, h3, h4, h5, h6,
 
 .input::placeholder { color: #475569; }
 
+/* The wheel-picker's invisible overlay inputs (ScrollFieldPicker) auto-select their text on
+   open — without this, the browser's native selection swaps the digit to black-on-blue,
+   which reads as a second, misaligned digit sitting on top of the wheel's own number. */
+.wheel-input::selection { color: #F1F5F9; background: rgba(59, 130, 246, 0.5); }
+
 .label {
   font-size: 0.85rem;
   font-weight: 500;

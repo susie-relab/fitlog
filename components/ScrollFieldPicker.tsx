@@ -153,8 +153,8 @@ export default function ScrollFieldPicker({ label, unit, value, onChange, max, m
                     commitAndClose();
                   }
                 }}
-                style={{ width: wholeWidth }}
-                className="pointer-events-auto bg-transparent text-white text-lg font-bold text-center outline-none"
+                style={{ width: wholeWidth, height: 40, lineHeight: '40px', padding: 0 }}
+                className="wheel-input pointer-events-auto bg-transparent text-white text-lg font-bold text-center outline-none"
               />
               {decimals === 2 && (
                 <>
@@ -168,8 +168,8 @@ export default function ScrollFieldPicker({ label, unit, value, onChange, max, m
                     onBlur={() => setFocused(false)}
                     onChange={e => handleFracText(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter') commitAndClose(); }}
-                    style={{ width: fracWidth }}
-                    className="pointer-events-auto bg-transparent text-white text-lg font-bold text-center outline-none"
+                    style={{ width: fracWidth, height: 40, lineHeight: '40px', padding: 0 }}
+                    className="wheel-input pointer-events-auto bg-transparent text-white text-lg font-bold text-center outline-none"
                   />
                 </>
               )}
