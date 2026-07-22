@@ -592,7 +592,8 @@ export interface Habit {
   sort_order: number;
   archived: boolean;
   start_date?: string | null; // YYYY-MM-DD — habit doesn't apply/show before this date; null = always applied
-  time_of_day?: string | null; // 'HH:00' 24hr, hour increments only — a reminder/planning cue, not enforced
+  time_of_day?: string | null; // 'morning' | 'daytime' | 'night' — planning cue only, not enforced
+  description?: string | null; // optional user note shown in the habit detail view
   created_at: string;
 }
 
