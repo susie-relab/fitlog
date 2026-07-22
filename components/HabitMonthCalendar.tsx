@@ -9,9 +9,11 @@ interface Props {
   habits: Habit[];
   logs: HabitLog[];
   frequencyHistory: HabitFrequencyChange[];
+  focusIds?: string[];
   onCycle: (habit: Habit, date: string) => void;
   onMarkFailed: (habit: Habit, date: string) => void;
   onSkipForDate: (habit: Habit, date: string) => void;
+  onSkipAllForDate?: (date: string, exceptFocusIds?: string[]) => void;
 }
 
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -44,7 +46,7 @@ function gridSizeForCount(habitCount: number): number {
 
 /** Combined month calendar — every scheduled habit shows as a small density-filled
  *  circle in its day cell. Tapping a day opens a popover to tap-cycle each habit. */
-export default function HabitMonthCalendar({ habits, logs, frequencyHistory, onCycle, onMarkFailed, onSkipForDate }: Props) {
+export default function HabitMonthCalendar({ habits, logs, frequencyHistory, focusIds = [], onCycle, onMarkFailed, onSkipForDate, onSkipAllForDate }: Props) {
   const todayISO = todayLocalISO();
   const [year, setYear] = useState(Number(todayISO.slice(0, 4)));
   const [month0, setMonth0] = useState(Number(todayISO.slice(5, 7)) - 1);
@@ -161,6 +163,24 @@ export default function HabitMonthCalendar({ habits, logs, frequencyHistory, onC
               <span className="text-sm font-semibold text-white">{selectedDate}</span>
               <button onClick={() => setSelectedDate(null)} className="p-1 rounded-lg hover:bg-[#334155] text-[#94A3B8]"><X size={18} /></button>
             </div>
+            {onSkipAllForDate && selectedDate === todayISO && (
+              <div className="flex gap-2 mb-3">
+                <button
+                  onClick={() => onSkipAllForDate(selectedDate)}
+                  className="flex-1 py-1.5 rounded-lg border border-[#334155] text-xs text-[#94A3B8] hover:border-[#475569] hover:text-white transition-all"
+                >
+                  ⏭ Skip all
+                </button>
+                {focusIds.length > 0 && (
+                  <button
+                    onClick={() => onSkipAllForDate(selectedDate, focusIds)}
+                    className="flex-1 py-1.5 rounded-lg border border-[#334155] text-xs text-[#94A3B8] hover:border-[#475569] hover:text-white transition-all"
+                  >
+                    ⏭ Skip all except focus
+                  </button>
+                )}
+              </div>
+            )}
             {(() => {
               const allScheduled = habitsForDate(selectedDate);
               const active = sortForPopover(allScheduled.filter(h => !isSkippedLog(logsByHabitDate.get(`${h.id}|${selectedDate}`))));

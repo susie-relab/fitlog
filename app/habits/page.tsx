@@ -146,6 +146,12 @@ export default function HabitsPage() {
     supabase.auth.updateUser({ data: { ...user?.user_metadata, habit_skipped_days: next } });
   };
 
+  // Skip all habits for a given date, optionally excluding focus IDs.
+  const skipAllForDate = async (date: string, exceptIds?: string[]) => {
+    const toSkip = habits.filter(h => !exceptIds?.includes(h.id));
+    for (const h of toSkip) await setSentinelForDate(h, date, -2);
+  };
+
   // Skip today for every non-focus habit by writing a -2 sentinel for each.
   const skipAllExceptFocus = async () => {
     if (!user) return;
@@ -926,9 +932,11 @@ export default function HabitsPage() {
             habits={habits}
             logs={logs}
             frequencyHistory={frequencyHistory}
+            focusIds={focusIds}
             onCycle={cycleHabitLog}
             onMarkFailed={(habit, date) => setSentinelForDate(habit, date, -1)}
             onSkipForDate={(habit, date) => setSentinelForDate(habit, date, -2)}
+            onSkipAllForDate={skipAllForDate}
           />
 
           <div className="mb-5">
