@@ -827,48 +827,55 @@ export default function AddPage() {
         </div>
 
         {/* More details toggle */}
-        <button
-          type="button"
-          onClick={() => setShowMore(v => !v)}
-          className="flex items-center gap-1.5 text-sm text-[#64748B] hover:text-[#94A3B8] transition-colors py-1"
-        >
-          {showMore ? (
-            <>
-              <span className="text-xs">▼</span>
-              <span>Hide optional details</span>
-            </>
-          ) : (
-            <>
-              {/* left rays */}
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="flex-shrink-0">
-                {[225,270,315].map(deg => (
-                  <line key={deg}
-                    x1={7 + Math.cos((deg - 90) * Math.PI / 180) * 4}
-                    y1={7 + Math.sin((deg - 90) * Math.PI / 180) * 4}
-                    x2={7 + Math.cos((deg - 90) * Math.PI / 180) * 6.5}
-                    y2={7 + Math.sin((deg - 90) * Math.PI / 180) * 6.5}
-                    stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"
-                  />
+        <div className="relative self-start">
+          <button
+            type="button"
+            onClick={() => setShowMore(v => !v)}
+            className="flex items-center gap-2 text-sm text-[#64748B] hover:text-[#94A3B8] transition-colors px-3 py-1.5 border border-[#334155]/60 rounded-lg"
+          >
+            <span className="text-xs">{showMore ? '▼' : '✦'}</span>
+            {showMore ? 'Hide optional details' : 'More optional details'}
+          </button>
+          {!showMore && (
+            <svg
+              aria-hidden
+              className="absolute inset-0 w-full h-full pointer-events-none"
+              style={{overflow: 'visible'}}
+            >
+              {/* top edge rays */}
+              {[12,28,45,62,78,92].map(p => (
+                <line key={`t${p}`} x1={`${p}%`} y1="0" x2={`${p}%`} y2="-8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" opacity="0.4"/>
+              ))}
+              {/* bottom edge rays — group translated to SVG bottom */}
+              <g style={{transform:'translateY(100%)', transformBox:'view-box' as never, transformOrigin:'0 0'}}>
+                {[12,28,45,62,78,92].map(p => (
+                  <line key={`b${p}`} x1={`${p}%`} y1="0" x2={`${p}%`} y2="8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" opacity="0.4"/>
                 ))}
-                <circle cx="7" cy="7" r="2.5" fill="currentColor" />
-              </svg>
-              <span>More optional details</span>
-              {/* right rays */}
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="flex-shrink-0">
-                {[45,90,135].map(deg => (
-                  <line key={deg}
-                    x1={7 + Math.cos((deg - 90) * Math.PI / 180) * 4}
-                    y1={7 + Math.sin((deg - 90) * Math.PI / 180) * 4}
-                    x2={7 + Math.cos((deg - 90) * Math.PI / 180) * 6.5}
-                    y2={7 + Math.sin((deg - 90) * Math.PI / 180) * 6.5}
-                    stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"
-                  />
+              </g>
+              {/* left edge rays */}
+              {[25,50,75].map(p => (
+                <line key={`l${p}`} x1="0" y1={`${p}%`} x2="-8" y2={`${p}%`} stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" opacity="0.4"/>
+              ))}
+              {/* right edge rays — group translated to SVG right */}
+              <g style={{transform:'translateX(100%)', transformBox:'view-box' as never, transformOrigin:'0 0'}}>
+                {[25,50,75].map(p => (
+                  <line key={`r${p}`} x1="0" y1={`${p}%`} x2="8" y2={`${p}%`} stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" opacity="0.4"/>
                 ))}
-                <circle cx="7" cy="7" r="2.5" fill="currentColor" />
-              </svg>
-            </>
+              </g>
+              {/* corner diagonal rays */}
+              <line x1="0" y1="0" x2="-6" y2="-6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" opacity="0.4"/>
+              <g style={{transform:'translateX(100%)', transformBox:'view-box' as never, transformOrigin:'0 0'}}>
+                <line x1="0" y1="0" x2="6" y2="-6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" opacity="0.4"/>
+              </g>
+              <g style={{transform:'translateY(100%)', transformBox:'view-box' as never, transformOrigin:'0 0'}}>
+                <line x1="0" y1="0" x2="-6" y2="6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" opacity="0.4"/>
+              </g>
+              <g style={{transform:'translate(100%, 100%)', transformBox:'view-box' as never, transformOrigin:'0 0'}}>
+                <line x1="0" y1="0" x2="6" y2="6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" opacity="0.4"/>
+              </g>
+            </svg>
           )}
-        </button>
+        </div>
 
         {showMore && (
           <div className="flex flex-col gap-3 rounded-xl border border-blue-500/30 bg-blue-500/5 p-4">
