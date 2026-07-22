@@ -57,6 +57,9 @@ export default function HabitsPage() {
   const [sortLoaded, setSortLoaded] = useState(false);
   const [skippedDays, setSkippedDays] = useState<string[]>([]);
   const [skippedDaysLoaded, setSkippedDaysLoaded] = useState(false);
+  const [focusIds, setFocusIds] = useState<string[]>([]);
+  const [focusIdsLoaded, setFocusIdsLoaded] = useState(false);
+  const [showSkipChoice, setShowSkipChoice] = useState(false);
 
   const [showAdd, setShowAdd] = useState(false);
   const [addStep, setAddStep] = useState<'presets' | 'custom'>('presets');
@@ -116,15 +119,44 @@ export default function HabitsPage() {
     }
   }, [user, skippedDaysLoaded]);
 
+  useEffect(() => {
+    if (user && !focusIdsLoaded) {
+      const saved = user.user_metadata?.habit_focus_ids;
+      if (Array.isArray(saved)) setFocusIds(saved);
+      setFocusIdsLoaded(true);
+    }
+  }, [user, focusIdsLoaded]);
+
   const todayISO = todayLocalISO();
   const isDaySkipped = skippedDays.includes(todayISO);
 
-  const toggleSkipToday = () => {
-    const next = isDaySkipped
-      ? skippedDays.filter(d => d !== todayISO)
-      : [...skippedDays, todayISO];
+  const applySkipToday = () => {
+    const next = [...skippedDays, todayISO];
     setSkippedDays(next);
     supabase.auth.updateUser({ data: { ...user?.user_metadata, habit_skipped_days: next } });
+    setShowSkipChoice(false);
+  };
+
+  const unskipToday = () => {
+    const next = skippedDays.filter(d => d !== todayISO);
+    setSkippedDays(next);
+    supabase.auth.updateUser({ data: { ...user?.user_metadata, habit_skipped_days: next } });
+  };
+
+  // Skip today for every non-focus habit by writing a -2 sentinel for each.
+  const skipAllExceptFocus = async () => {
+    if (!user) return;
+    setShowSkipChoice(false);
+    const toSkip = habits.filter(h => !focusIds.includes(h.id));
+    for (const h of toSkip) {
+      await setSentinelForDate(h, todayISO, -2);
+    }
+  };
+
+  const toggleSkipToday = () => {
+    if (isDaySkipped) { unskipToday(); return; }
+    const hasFocus = focusIds.some(id => habits.find(h => h.id === id));
+    if (hasFocus) { setShowSkipChoice(true); } else { applySkipToday(); }
   };
 
   // Every selectable category — the fixed built-ins plus any the user has created — reordered
@@ -798,6 +830,7 @@ export default function HabitsPage() {
       ) : (
         <>
           <div className="grid grid-cols-2 gap-3 mb-3">
+            {showSkipChoice && <div className="fixed inset-0 z-10" onClick={() => setShowSkipChoice(false)} />}
             <div className="card text-center relative">
               {isDaySkipped ? (
                 <>
@@ -813,10 +846,27 @@ export default function HabitsPage() {
               <button
                 onClick={toggleSkipToday}
                 className={`absolute top-1.5 right-1.5 text-[10px] font-medium px-1.5 py-0.5 rounded ${isDaySkipped ? 'text-amber-400 bg-amber-400/10 hover:bg-amber-400/20' : 'text-[#475569] hover:text-[#94A3B8]'}`}
-                title={isDaySkipped ? 'Remove day skip' : 'Skip today (no data recorded)'}
+                title={isDaySkipped ? 'Remove day skip' : 'Skip today'}
               >
                 {isDaySkipped ? 'unskip' : 'skip day'}
               </button>
+              {/* Choice sheet: skip all vs skip all except focus */}
+              {showSkipChoice && (
+                <div className="absolute top-full left-0 right-0 mt-1 z-20 bg-[#1E293B] border border-[#334155] rounded-xl p-3 shadow-xl text-left" onClick={e => e.stopPropagation()}>
+                  <p className="text-[10px] font-semibold text-[#64748B] uppercase tracking-wide mb-2">Skip today's habits</p>
+                  <div className="flex flex-col gap-1.5">
+                    <button onClick={applySkipToday} className="text-xs text-left px-2.5 py-2 rounded-lg bg-[#0F172A] text-white hover:bg-[#334155] transition-colors">
+                      Skip entire day
+                      <span className="block text-[#64748B] text-[10px] mt-0.5">No data recorded for any habit</span>
+                    </button>
+                    <button onClick={skipAllExceptFocus} className="text-xs text-left px-2.5 py-2 rounded-lg bg-[#0F172A] text-white hover:bg-[#334155] transition-colors">
+                      Skip all except focus habits
+                      <span className="block text-[#64748B] text-[10px] mt-0.5">{focusIds.filter(id => habits.find(h => h.id === id)).length} focus habit{focusIds.length !== 1 ? 's' : ''} stay active</span>
+                    </button>
+                    <button onClick={() => setShowSkipChoice(false)} className="text-[10px] text-[#64748B] hover:text-white mt-0.5">Cancel</button>
+                  </div>
+                </div>
+              )}
             </div>
             <div className="card text-center">
               <p className="text-2xl font-bold text-white">{progressStats.weekPct}%</p>
@@ -1002,7 +1052,7 @@ export default function HabitsPage() {
                 onArchive={() => archiveHabit(habit.id)}
                 onDelete={() => deleteHabit(habit.id)}
                 onDuplicate={() => duplicateHabit(habit)}
-                daySkipped={isDaySkipped}
+                daySkipped={isDaySkipped && !focusIds.includes(habit.id)}
               />
             ))}
           </div>

@@ -19,6 +19,7 @@ import HabitsLastWeekSummaryCard from '@/components/HabitsLastWeekSummaryCard';
 import FavouritesCard from '@/components/FavouritesCard';
 import YearTotalsCard from '@/components/YearTotalsCard';
 import TrainingMonthCalendar from '@/components/TrainingMonthCalendar';
+import HabitsInFocusBox from '@/components/HabitsInFocusBox';
 
 /** The subtype label for any activity — sub_type for most types, run_type for runs. */
 function activitySubLabel(a: Activity): string | null {
@@ -141,6 +142,7 @@ export default function DashPage() {
   const [showTrainingMonth, setShowTrainingMonth] = useState(false);
   const [streakModal, setStreakModal] = useState<'day' | 'week' | null>(null);
   const [hoverType, setHoverType] = useState<ExerciseType | null>(null);
+  const [focusIds, setFocusIds] = useState<string[]>([]);
 
   const detailPlan = detail ? plans.find(p => p.id === detail.planId) : undefined;
   const persistPlanData = async (planId: string, newData: PlanData) => {
@@ -170,6 +172,8 @@ export default function DashPage() {
       setHabits((h as Habit[]) || []);
       setHabitLogs((hl as HabitLog[]) || []);
       setLoading(false);
+      const saved = user?.user_metadata?.habit_focus_ids;
+      if (Array.isArray(saved)) setFocusIds(saved);
     });
   }, [user]);
 
@@ -200,6 +204,32 @@ export default function DashPage() {
   }, { done: 0, total: 0 });
   const todaysRunnable = todayPlanItems.filter(x => isRunSession(x.today.session));
   const todayAllDone = todaysRunnable.length > 0 && todaysRunnable.every(x => x.today.session.completed);
+
+  const persistFocusIds = (ids: string[]) => {
+    setFocusIds(ids);
+    supabase.auth.updateUser({ data: { ...user?.user_metadata, habit_focus_ids: ids } });
+  };
+
+  const cycleHabitToday = async (habit: Habit) => {
+    if (!user) return;
+    const todayLog = habitLogs.find(l => l.habit_id === habit.id && l.date === todayISO);
+    const current = Math.max(0, todayLog?.count ?? 0);
+    const next = current >= habit.target_per_period ? 0 : current + 1;
+    if (next <= 0) {
+      if (todayLog) {
+        setHabitLogs(prev => prev.filter(l => l.id !== todayLog.id));
+        await supabase.from('habit_logs').delete().eq('id', todayLog.id);
+      }
+      return;
+    }
+    if (todayLog) {
+      setHabitLogs(prev => prev.map(l => l.id === todayLog.id ? { ...l, count: next } : l));
+      await supabase.from('habit_logs').update({ count: next }).eq('id', todayLog.id);
+    } else {
+      const { data } = await supabase.from('habit_logs').insert({ habit_id: habit.id, user_id: user.id, date: todayISO, count: next }).select().single();
+      if (data) setHabitLogs(prev => [...prev, data as HabitLog]);
+    }
+  };
 
   const now14 = daysAgo(14).split('T')[0];
   const last14 = activities.filter(a => a.date >= now14);
@@ -462,6 +492,17 @@ export default function DashPage() {
           )}
 
         </div>
+      )}
+
+      {habits.length > 0 && (
+        <HabitsInFocusBox
+          habits={habits}
+          logs={habitLogs}
+          focusIds={focusIds}
+          onSetFocusIds={persistFocusIds}
+          onCycleToday={cycleHabitToday}
+          todayISO={todayISO}
+        />
       )}
 
       </div>
