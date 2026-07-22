@@ -1,4 +1,12 @@
-import { Habit, HabitLog, HabitFrequencyChange, HabitFrequencyConfig, isHabitScheduledOn } from '@/types';
+import { Habit, HabitLog, HabitFrequencyChange, HabitFrequencyConfig, isHabitScheduledOn, HABIT_FREQUENCY_LABELS } from '@/types';
+
+export function frequencyLabel(habit: Habit): string {
+  if (habit.frequency_type === 'custom_days' && habit.frequency_days) {
+    return habit.frequency_days.split(',').map(k => k[0].toUpperCase() + k.slice(1, 3)).join(', ');
+  }
+  if (habit.frequency_type === 'every_n_days') return `Every ${habit.frequency_interval_days || 2} days`;
+  return HABIT_FREQUENCY_LABELS[habit.frequency_type];
+}
 
 /** Which frequency/target was actually in effect for a habit on a given date — the latest
  *  history row with effective_date <= dateISO, or the habit's own current fields if it's

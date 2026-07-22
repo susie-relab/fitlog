@@ -4,8 +4,8 @@ import { SkipForward } from 'lucide-react';
 import { Habit, HabitLog, HabitFrequencyType, HabitColorKey, HabitTrackingStyle, HABIT_COLORS } from '@/types';
 import { todayLocalISO } from '@/lib/utils';
 import { periodProgress, isSkippableFrequency, periodBoundsFor, addDaysISO } from '@/lib/habitStats';
-import { ApplyOption, FrequencyApplyPicker, FrequencyFields, PencilIcon, TimeOfDayField, Tip, frequencyLabel } from '@/components/HabitTabBox';
-import { currentStreak } from '@/lib/habitStats';
+import { ApplyOption, FrequencyApplyPicker, FrequencyFields, PencilIcon, TimeOfDayField, Tip } from '@/components/HabitTabBox';
+import { currentStreak, frequencyLabel } from '@/lib/habitStats';
 
 interface CategoryOption { key: string; label: string; emoji: string }
 

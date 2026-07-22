@@ -6,7 +6,7 @@ import {
   HABIT_COLORS, HABIT_FREQUENCY_LABELS, isHabitScheduledOn,
 } from '@/types';
 import { todayLocalISO } from '@/lib/utils';
-import { getMonthDays, completionPctInRange, completionRatio, habitDayStats, addDaysISO, displayTarget, resolveFrequencyAt, isSkippableFrequency, periodBoundsFor } from '@/lib/habitStats';
+import { getMonthDays, completionPctInRange, completionRatio, habitDayStats, addDaysISO, displayTarget, resolveFrequencyAt, isSkippableFrequency, periodBoundsFor, frequencyLabel } from '@/lib/habitStats';
 
 interface CategoryDef { key: string; label: string; emoji: string; isCustom: boolean; habitCount: number }
 
@@ -108,13 +108,6 @@ export function Tip({ label, children }: { label: string; children: ReactNode })
   );
 }
 
-export function frequencyLabel(habit: Habit): string {
-  if (habit.frequency_type === 'custom_days' && habit.frequency_days) {
-    return habit.frequency_days.split(',').map(k => k[0].toUpperCase() + k.slice(1, 3)).join(', ');
-  }
-  if (habit.frequency_type === 'every_n_days') return `Every ${habit.frequency_interval_days || 2} days`;
-  return HABIT_FREQUENCY_LABELS[habit.frequency_type];
-}
 
 export function targetUnitLabel(frequency: HabitFrequencyType, intervalDays: string): string {
   switch (frequency) {
