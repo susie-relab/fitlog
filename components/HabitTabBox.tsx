@@ -108,7 +108,7 @@ export function Tip({ label, children }: { label: string; children: ReactNode })
   );
 }
 
-function frequencyLabel(habit: Habit): string {
+export function frequencyLabel(habit: Habit): string {
   if (habit.frequency_type === 'custom_days' && habit.frequency_days) {
     return habit.frequency_days.split(',').map(k => k[0].toUpperCase() + k.slice(1, 3)).join(', ');
   }
