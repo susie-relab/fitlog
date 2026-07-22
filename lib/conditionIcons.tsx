@@ -1,6 +1,7 @@
 // Hand-drawn doodle for weather/terrain conditions that don't have a good emoji equivalent
 // (see WeatherCondition / CONDITION_EMOJI in types/index.ts). Same filled-silhouette style as
 // the mud-splatter reference — a irregular splat blob with a few flung droplets.
+import { useId } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import type { WeatherCondition } from '@/types';
 
@@ -28,18 +29,20 @@ const MuddyIcon = makeIcon(({ size = 24, className }) => (
   </svg>
 ));
 
-const SunriseIcon = makeIcon(({ size = 24, className }) => (
+const SunriseIcon = makeIcon(({ size = 24, className }) => {
   // Half-sun dome sitting on the horizon, rays fanning around its curve, an arrow rising
   // out of it toward a new day. Dawn gradient: bright yellow fading to a soft coral pink.
+  const gradId = `condition-sunrise-grad-${useId()}`;
+  return (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
     <defs>
-      <linearGradient id="condition-sunrise-grad" x1="0" y1="0" x2="0" y2="1">
+      <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
         <stop offset="0%" stopColor="#FFDA55" />
         <stop offset="50%" stopColor="#FF9F40" />
         <stop offset="100%" stopColor="#FF7096" />
       </linearGradient>
     </defs>
-    <path d="M6.5 18.5 A5.5 5.5 0 0 1 17.5 18.5 Z" fill="url(#condition-sunrise-grad)" />
+    <path d="M6.5 18.5 A5.5 5.5 0 0 1 17.5 18.5 Z" fill={`url(#${gradId})`} />
     <line x1="3" y1="18.5" x2="21" y2="18.5" stroke="#FF9F40" strokeWidth={1.4} strokeLinecap="round" />
     <g stroke="#FFDA55" strokeWidth={0.9} strokeLinecap="round">
       <line x1="6.58" y1="17.55" x2="4.91" y2="17.25" />
@@ -54,22 +57,25 @@ const SunriseIcon = makeIcon(({ size = 24, className }) => (
     <path d="M12 11.8 L12 6.1" stroke="#F8FAFC" strokeWidth={1.1} strokeLinecap="round" />
     <path d="M8.8 9.3 L12 6.1 L15.2 9.3" fill="none" stroke="#F8FAFC" strokeWidth={1.1} strokeLinecap="round" strokeLinejoin="round" />
   </svg>
-));
+  );
+});
 
-const SunsetIcon = makeIcon(({ size = 24, className }) => (
+const SunsetIcon = makeIcon(({ size = 24, className }) => {
   // Mirror of sunrise — half-sun dome hanging from the top edge, arrow falling toward the
   // horizon. Dusk gradient: muted gold fading to a deeper magenta-pink than sunrise's.
+  const gradId = `condition-sunset-grad-${useId()}`;
+  return (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
     <defs>
-      <linearGradient id="condition-sunset-grad" x1="0" y1="0" x2="0" y2="1">
+      <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
         <stop offset="0%" stopColor="#FFB454" />
         <stop offset="50%" stopColor="#FF6F61" />
         <stop offset="100%" stopColor="#D6478C" />
       </linearGradient>
     </defs>
-    <path d="M6.5 5.5 A5.5 5.5 0 0 0 17.5 5.5 Z" fill="url(#condition-sunset-grad)" />
+    <path d="M6.5 5.5 A5.5 5.5 0 0 0 17.5 5.5 Z" fill={`url(#${gradId})`} />
     <line x1="3" y1="18.5" x2="21" y2="18.5" stroke="#3B82F6" strokeWidth={1.4} strokeLinecap="round" />
-    <g stroke="url(#condition-sunset-grad)" strokeWidth={0.9} strokeLinecap="round">
+    <g stroke={`url(#${gradId})`} strokeWidth={0.9} strokeLinecap="round">
       <line x1="6.58" y1="6.46" x2="4.91" y2="6.75" />
       <line x1="7.24" y1="8.25" x2="5.77" y2="9.10" />
       <line x1="8.47" y1="9.71" x2="7.37" y2="11.02" />
@@ -82,7 +88,8 @@ const SunsetIcon = makeIcon(({ size = 24, className }) => (
     <path d="M12 12.2 L12 17.9" stroke="#F8FAFC" strokeWidth={1.1} strokeLinecap="round" />
     <path d="M8.8 14.7 L12 17.9 L15.2 14.7" fill="none" stroke="#F8FAFC" strokeWidth={1.1} strokeLinecap="round" strokeLinejoin="round" />
   </svg>
-));
+  );
+});
 
 const MorningIcon = makeIcon(({ size = 24, className }) => (
   // A plain clock face (no sun — that's sunrise/sunset's territory) with hands reading
@@ -105,22 +112,25 @@ const AfternoonIcon = makeIcon(({ size = 24, className }) => (
   </svg>
 ));
 
-const NightIcon = makeIcon(({ size = 24, className }) => (
-  // Tilted crescent moon (mask-based cut so it never depends on whatever's behind it,
-  // unlike an "eraser circle" approach) plus a 5-point star, both plain white.
+const NightIcon = makeIcon(({ size = 24, className }) => {
+  // Crescent moon (mask-based: white rect minus offset circle) plus a small 5-point star.
+  // Mask and moon are both in SVG coordinate space (no group transform) so maskContentUnits
+  // default (userSpaceOnUse) aligns correctly — the previous version had a <g transform> which
+  // caused the mask rect to start at the moon's local origin, clipping the left half of the moon.
+  const maskId = `condition-night-mask-${useId()}`;
+  return (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
     <defs>
-      <mask id="condition-night-crescent-mask" maskContentUnits="userSpaceOnUse">
+      <mask id={maskId}>
         <rect x="0" y="0" width="24" height="24" fill="white" />
-        <circle cx="-1.7" cy="0" r="6.5" fill="black" />
+        <circle cx="11" cy="9.5" r="6.5" fill="black" />
       </mask>
     </defs>
-    <g transform="translate(12.5,10) scale(1.3) rotate(25)">
-      <circle cx="0" cy="0" r="7" fill="#F8FAFC" mask="url(#condition-night-crescent-mask)" />
-    </g>
-    <path d="M5 6.4 L5.82 8.87 L8.42 8.89 L6.33 10.43 L7.12 12.91 L5 11.4 L2.88 12.91 L3.67 10.43 L1.58 8.89 L4.18 8.87 Z" fill="#F8FAFC" transform="translate(3.5,0)" />
+    <circle cx="14" cy="13" r="7" fill="#F8FAFC" mask={`url(#${maskId})`} />
+    <path d="M4.5 2.3 L5.0 3.8 L6.6 3.8 L5.4 4.8 L5.8 6.3 L4.5 5.4 L3.2 6.3 L3.6 4.8 L2.4 3.8 L4.0 3.8 Z" fill="#F8FAFC" />
   </svg>
-));
+  );
+});
 
 export const CONDITION_ICON_OVERRIDES: Partial<Record<WeatherCondition, LucideIcon>> = {
   muddy: MuddyIcon,
