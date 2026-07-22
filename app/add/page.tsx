@@ -830,31 +830,48 @@ export default function AddPage() {
         <button
           type="button"
           onClick={() => setShowMore(v => !v)}
-          className="flex items-center gap-2 text-sm text-[#64748B] hover:text-[#94A3B8] transition-colors py-1"
+          className="flex items-center gap-1.5 text-sm text-[#64748B] hover:text-[#94A3B8] transition-colors py-1"
         >
           {showMore ? (
-            <span>▼</span>
+            <>
+              <span className="text-xs">▼</span>
+              <span>Hide optional details</span>
+            </>
           ) : (
-            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" className="flex-shrink-0">
-              {/* rays */}
-              {[0,45,90,135,180,225,270,315].map(deg => (
-                <line key={deg}
-                  x1={9 + Math.cos((deg - 90) * Math.PI / 180) * 6.5}
-                  y1={9 + Math.sin((deg - 90) * Math.PI / 180) * 6.5}
-                  x2={9 + Math.cos((deg - 90) * Math.PI / 180) * 8.5}
-                  y2={9 + Math.sin((deg - 90) * Math.PI / 180) * 8.5}
-                  stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"
-                />
-              ))}
-              {/* centre dot */}
-              <circle cx="9" cy="9" r="3" fill="currentColor" />
-            </svg>
+            <>
+              {/* left rays */}
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="flex-shrink-0">
+                {[225,270,315].map(deg => (
+                  <line key={deg}
+                    x1={7 + Math.cos((deg - 90) * Math.PI / 180) * 4}
+                    y1={7 + Math.sin((deg - 90) * Math.PI / 180) * 4}
+                    x2={7 + Math.cos((deg - 90) * Math.PI / 180) * 6.5}
+                    y2={7 + Math.sin((deg - 90) * Math.PI / 180) * 6.5}
+                    stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"
+                  />
+                ))}
+                <circle cx="7" cy="7" r="2.5" fill="currentColor" />
+              </svg>
+              <span>More optional details</span>
+              {/* right rays */}
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="flex-shrink-0">
+                {[45,90,135].map(deg => (
+                  <line key={deg}
+                    x1={7 + Math.cos((deg - 90) * Math.PI / 180) * 4}
+                    y1={7 + Math.sin((deg - 90) * Math.PI / 180) * 4}
+                    x2={7 + Math.cos((deg - 90) * Math.PI / 180) * 6.5}
+                    y2={7 + Math.sin((deg - 90) * Math.PI / 180) * 6.5}
+                    stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"
+                  />
+                ))}
+                <circle cx="7" cy="7" r="2.5" fill="currentColor" />
+              </svg>
+            </>
           )}
-          {showMore ? 'Hide optional details' : 'More optional details'}
         </button>
 
         {showMore && (
-          <>
+          <div className="flex flex-col gap-3 rounded-xl border border-blue-500/30 bg-blue-500/5 p-4">
             {/* Pace */}
             <div>
               <label className="label">Average Pace <span className="text-[#64748B]">min/km</span></label>
@@ -920,7 +937,7 @@ export default function AddPage() {
                 })),
               ]}
             />
-          </>
+          </div>
         )}
 
         {/* Notes — always visible */}
