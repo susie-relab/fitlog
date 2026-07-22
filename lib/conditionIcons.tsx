@@ -127,7 +127,7 @@ const NightIcon = makeIcon(({ size = 24, className }) => {
       </mask>
     </defs>
     <circle cx="14" cy="13" r="7" fill="#F8FAFC" mask={`url(#${maskId})`} />
-    <path d="M4.5 2.3 L5.0 3.8 L6.6 3.8 L5.4 4.8 L5.8 6.3 L4.5 5.4 L3.2 6.3 L3.6 4.8 L2.4 3.8 L4.0 3.8 Z" fill="#F8FAFC" />
+    <path d="M5 0.5 L6.0 3.7 L9.5 3.7 L6.7 5.7 L7.7 9.0 L5 7.0 L2.3 9.0 L3.3 5.7 L0.5 3.7 L4.0 3.7 Z" fill="#F8FAFC" />
   </svg>
   );
 });
