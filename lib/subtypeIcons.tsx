@@ -766,7 +766,7 @@ const SurfIcon = makeIcon(({ size, className }) => (
 // so the swimmer riding out of it — head, torso, one forward arm, no legs — can be bigger.
 const BodysurfingIcon = makeIcon(({ size, className }) => (
   <Svg size={size} className={className}>
-    <path d="M2 18C3.5 18 4.63 16.13 4.63 13.88 4.63 10.88 7.25 9 10.25 9.38 12.5 9.68 13.63 11.63 12.5 13.5 11.6 15 9.5 15.38 8.75 14.1 9.5 15 11 16.13 12.5 16.88 13.25 17.25 13.63 17.63 13.63 18" strokeWidth={1.3} />
+    <path d="M2 18C3.5 18 4.63 16.13 4.63 13.88 4.63 10.88 7.25 9 10.25 9.38 12.5 9.68 13.63 11.63 12.5 13.5 11.6 15 9.5 15.38 8.75 14.1 9.5 15 11 16.13 12.5 16.88 15 18.2 18.5 19.8 21.5 20.5" strokeWidth={1.3} />
     <circle cx="21" cy="13.5" r="1.8" fill="currentColor" stroke="none" />
     <path d="M13.6 17 17.9 15.3" strokeWidth={1} />
     <path d="M17.9 15.3 23 17.5" strokeWidth={1} />
@@ -863,8 +863,8 @@ const WaterskiingIcon = makeIcon(({ size, className }) => (
   <Svg size={size} className={className}>
     <path d="M12 5h9l-2 3h-5Z" />
     <path d="M13 8 8 18" strokeWidth={0.8} />
-    <path d="M1.5 19h8" strokeWidth={1.2} />
-    <path d="M1.5 20.5h8" strokeWidth={1.2} />
+    <path d="M1.5 18h8" strokeWidth={1.2} />
+    <path d="M1.5 21h8" strokeWidth={1.2} />
   </Svg>
 ));
 
@@ -903,15 +903,15 @@ const CanyoningIcon = makeIcon(({ size, className }) => (
   <Svg size={size} className={className}>
     <path d="M2 21 4 17 3 14 6 10 5 7 8 3" />
     <path d="M22 21 20 17 21 14 18 10 19 7 16 3" />
-    <line x1="12" y1="3" x2="16.5" y2="14.5" strokeWidth={0.7} />
-    <circle cx="16.5" cy="12.9" r="0.9" fill="currentColor" stroke="none" />
-    <line x1="16.5" y1="13.8" x2="16.5" y2="15.5" strokeWidth={0.8} />
-    <line x1="16.5" y1="14.3" x2="18" y2="12.5" strokeWidth={0.7} />
-    <line x1="16.5" y1="14.3" x2="18" y2="13.5" strokeWidth={0.7} />
-    <line x1="16.5" y1="15.5" x2="15" y2="17.2" strokeWidth={0.7} />
-    <line x1="16.5" y1="15.5" x2="18" y2="17" strokeWidth={0.7} />
-    <path d="M4 19.8 Q6 19 8 19.8 Q10 20.6 12 19.8 Q14 19 16 19.8 Q18 20.6 20 19.8" strokeWidth={0.7} />
-    <path d="M4 21.3 Q6 20.5 8 21.3 Q10 22.1 12 21.3 Q14 20.5 16 21.3 Q18 22.1 20 21.3" strokeWidth={0.7} />
+    <line x1="12" y1="3" x2="15" y2="12" strokeWidth={0.7} />
+    <circle cx="15" cy="10" r="1.3" fill="currentColor" stroke="none" />
+    <line x1="15" y1="11.3" x2="15" y2="13.8" strokeWidth={1.1} />
+    <line x1="15" y1="12.3" x2="17.5" y2="10.3" strokeWidth={0.9} />
+    <line x1="15" y1="12.3" x2="17.5" y2="11.5" strokeWidth={0.9} />
+    <line x1="15" y1="13.8" x2="13" y2="16" strokeWidth={0.9} />
+    <line x1="15" y1="13.8" x2="16.8" y2="15.8" strokeWidth={0.9} />
+    <path d="M4 19 Q6 18 8 19 Q10 20 12 19 Q14 18 16 19 Q18 20 20 19" strokeWidth={1.1} />
+    <path d="M4 22 Q6 21 8 22 Q10 23 12 22 Q14 21 16 22 Q18 23 20 22" strokeWidth={1.1} />
   </Svg>
 ));
 
