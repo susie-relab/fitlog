@@ -724,7 +724,7 @@ export default function AddPage() {
               <button
                 key={type}
                 onClick={() => { setExerciseType(type); setRunType(''); setRunTypeModifier(''); setSubType(''); setGymTypes([]); setWalkTypes([]); setSportFocus(''); setSportStyle(''); setSwimFocus(''); setSwimStyles([]); setSnowStyles([]); setWaterStyles([]); }}
-                className={`flex items-center px-3 py-2.5 rounded-lg text-sm font-medium border transition-all text-left ${
+                className={`flex items-center px-5 py-2.5 rounded-lg text-sm font-medium border transition-all text-left ${
                   exerciseType === type
                     ? 'border-2 text-white'
                     : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'
