@@ -385,10 +385,10 @@ const SkiErgIcon = makeIcon(({ size, className }) => (
 const BoxingIcon = makeIcon(({ size, className }) => (
   // Outline glove with finger-bend scoop, thumb divider, and wrist strap.
   <Svg size={size} className={className}>
-    <path d="M7 3Q11 2.3 15 3Q17 3 17 7L17 9Q20.5 8.8 21 11Q20.5 14.5 16 16.5Q11 19 6 16.5Q4 15 4 12Q3.3 9.5 4 7Q4 3 7 3Z" fill="none" strokeWidth={0.85} />
-    <path d="M4.5 8.2c2.5 2.3 9.5 2.3 12 0" strokeWidth={0.75} />
-    <path d="M17 8 Q15.5 9.5 15 11.5" strokeWidth={0.75} />
-    <rect x="9" y="18" width="6" height="2" rx="0.5" fill="none" strokeWidth={0.85} />
+    <path d="M7 3Q11 2.3 15 3Q17 3 17 7L17 9Q20.5 8.8 21 11Q20.5 14.5 16 16.5Q11 19 6 16.5Q4 15 4 12Q3.3 9.5 4 7Q4 3 7 3Z" fill="none" strokeWidth={1.1} />
+    <path d="M4.5 8.2c2.5 2.3 9.5 2.3 12 0" strokeWidth={0.9} />
+    <path d="M17 8 Q15.5 10 14.5 12.5" strokeWidth={0.9} />
+    <rect x="9" y="18" width="6" height="2" rx="0.5" fill="none" strokeWidth={1.1} />
   </Svg>
 ));
 
@@ -775,11 +775,11 @@ const BodysurfingIcon = makeIcon(({ size, className }) => (
 // Hull with two parallel oars at the same diagonal angle, square blades at tips.
 const RowingIcon = makeIcon(({ size, className }) => (
   <Svg size={size} className={className}>
-    <path d="M3 14c0 2.5 4 3.5 9 3.5s9-1 9-3.5" />
-    <line x1="8" y1="15" x2="2" y2="21" strokeWidth={1} />
-    <rect x="-1.4" y="-1.1" width="2.8" height="2.2" fill="currentColor" stroke="none" transform="translate(2,21) rotate(130)" />
-    <line x1="16" y1="15" x2="10" y2="21" strokeWidth={1} />
-    <rect x="-1.4" y="-1.1" width="2.8" height="2.2" fill="currentColor" stroke="none" transform="translate(10,21) rotate(130)" />
+    <path d="M3 14c0 2.5 4 3.5 9 3.5s9-1 9-3.5" strokeWidth={1.4} />
+    <line x1="11" y1="14" x2="4" y2="22" strokeWidth={1.4} />
+    <rect x="-1.5" y="-1.2" width="3" height="2.4" fill="currentColor" stroke="none" transform="translate(4,22) rotate(130)" />
+    <line x1="16" y1="14" x2="9" y2="22" strokeWidth={1.4} />
+    <rect x="-1.5" y="-1.2" width="3" height="2.4" fill="currentColor" stroke="none" transform="translate(9,22) rotate(130)" />
   </Svg>
 ));
 
