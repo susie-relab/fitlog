@@ -1125,18 +1125,20 @@ export default function AddPage() {
         )}
 
         {/* Save — inline (tablet/desktop) */}
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="btn-primary w-full mt-2 py-3 text-base hidden sm:block"
-          style={{ background: accentColor }}
-        >
-          {saving ? 'Saving...' : 'Save Exercise'}
-        </button>
+        <div className="hidden sm:block mt-2">
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="btn-primary w-full py-3 text-base"
+            style={{ background: accentColor }}
+          >
+            {saving ? 'Saving...' : 'Save Exercise'}
+          </button>
+        </div>
       </div>
 
       {/* Sticky save — mobile only */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 p-4 bg-[#0F172A]/95 backdrop-blur-sm border-t border-[#334155] sm:hidden">
+      <div className="fixed bottom-16 left-0 right-0 z-40 p-3 bg-[#0F172A]/95 backdrop-blur-sm border-t border-[#334155] sm:hidden">
         <button
           onClick={handleSave}
           disabled={saving}
