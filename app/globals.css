@@ -300,3 +300,10 @@ select.input {
    dark theme, black on light theme, so it actually reads as a separator. */
 .divider-strong { border-top: 1px solid rgba(255, 255, 255, 0.5); }
 [data-theme="light"] .divider-strong { border-top-color: rgba(0, 0, 0, 0.5); }
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #334155; border-radius: 6px; }
+::-webkit-scrollbar-thumb:hover { background: #475569; }
+* { scrollbar-width: thin; scrollbar-color: #334155 transparent; }

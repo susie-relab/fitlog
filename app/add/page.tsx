@@ -204,9 +204,13 @@ export default function AddPage() {
   const [quickAddItems, setQuickAddItems] = useState<QuickAddItem[]>([]);
   const [showSurroundings, setShowSurroundings] = useState(false);
   const [showStyleFocus, setShowStyleFocus] = useState(false);
+  const [feelingAfter, setFeelingAfter] = useState<number | null>(null);
+  const [workoutVibes, setWorkoutVibes] = useState<string[]>([]);
+  const [duplicateCheck, setDuplicateCheck] = useState<{ existing: Activity; onConfirm: () => void } | null>(null);
   const [quickAddFixed, setQuickAddFixed] = useState<QuickAddItem[] | null>(null); // null = auto mode
   const [editingQuickAdd, setEditingQuickAdd] = useState(false);
   const paceManuallyEdited = useRef(false);
+  const nameManuallyEdited = useRef(false);
 
   // Prefill from query params
   useEffect(() => {
@@ -300,6 +304,22 @@ export default function AddPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [distance, durationSeconds]);
 
+  useEffect(() => {
+    if (nameManuallyEdited.current) return;
+    if (!exerciseType) { setName(''); return; }
+    const isRun = exerciseType === 'run';
+    const sub = isRun ? runType : subType;
+    let autoName = '';
+    if (isRun && runType) {
+      autoName = `${RUN_TYPE_LABELS[runType as RunType]} Run`;
+    } else if (sub) {
+      autoName = getSubLabel(exerciseType, sub);
+    } else {
+      autoName = EXERCISE_TYPE_LABELS[exerciseType] || '';
+    }
+    setName(autoName);
+  }, [exerciseType, runType, subType]);
+
   const paceToDecimal = (m: string, s: string) => {
     if (!m && !s) return undefined;
     return parseFloat(m || '0') + parseFloat(s || '0') / 60;
@@ -374,22 +394,14 @@ export default function AddPage() {
     else setSubType(item.subType);
   };
 
-  const handleSave = async () => {
-    const issues: string[] = [];
-    if (!name.trim()) issues.push('enter an activity name');
-    if (!exerciseType) issues.push('select an exercise type');
-    if (durationSeconds <= 0) issues.push('enter a valid duration');
-    if (!effort) issues.push('select an effort level');
-    if (issues.length > 0) {
-      const joined = issues.length === 1 ? issues[0]
-        : issues.length === 2 ? `${issues[0]} and ${issues[1]}`
-        : `${issues.slice(0, -1).join(', ')}, and ${issues[issues.length - 1]}`;
-      return setError(`Please ${joined}.`);
-    }
+  const accentColor = exerciseType === 'run' && runType
+    ? RUN_TYPE_COLORS[runType]
+    : exerciseType
+    ? EXERCISE_TYPE_COLORS[exerciseType]
+    : '#3B82F6';
 
+  const doSave = useCallback(async () => {
     setSaving(true);
-    setError('');
-
     const distanceKm = distance ? (exerciseType === 'swim' ? parseFloat(distance) / 1000 : parseFloat(distance)) : null;
     const paceMinKm = paceToDecimal(paceMin, paceSec) ?? calcAutoPace(String(distanceKm ?? ''), durationSeconds) ?? null;
     const subTypeValue = exerciseType === 'hiit' ? gymTypes.join(',') || null : exerciseType === 'walk' ? walkTypes.join(',') || null : subType || null;
@@ -425,6 +437,8 @@ export default function AddPage() {
       pb_description: isPb ? pbDesc : null,
       image_urls: images.length ? images : null,
       thumbnail_urls: imageThumbs.length ? imageThumbs : null,
+      feeling_after: feelingAfter,
+      workout_vibes: workoutVibes.length > 0 ? workoutVibes : null,
       date,
     }).select('id').single();
 
@@ -525,10 +539,13 @@ export default function AddPage() {
       setPaceMin(''); setPaceSec(''); setMaxPaceMin(''); setMaxPaceSec('');
       setMaxHr(''); setAvgHr(''); setElevationGain(''); setIsPb(false); setPbDesc('');
       setImages([]); setImageThumbs([]);
+      setFeelingAfter(null);
+      setWorkoutVibes([]);
       setDate(todayLocalISO());
       setShowMore(false);
       setShowSurroundings(false);
       paceManuallyEdited.current = false;
+      nameManuallyEdited.current = false;
       setShowStyleFocus(false);
 
       if (planCompleted) {
@@ -537,6 +554,39 @@ export default function AddPage() {
         autoNavTimeoutRef.current = setTimeout(() => router.push('/dash'), 1800);
       }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, distance, exerciseType, paceMin, paceSec, durationSeconds, gymTypes, walkTypes, subType, name, runType, runTypeModifier, sportFocus, sportStyle, sportHomeAway, swimFocus, swimStyles, snowStyles, waterStyles, companions, conditions, durationMinutes, durationExtraSeconds, effort, notes, intensityMins, maxPaceMin, maxPaceSec, maxHr, avgHr, elevationGain, isPb, pbDesc, images, imageThumbs, feelingAfter, workoutVibes, date, planLink, fromDash, accentColor, planCompleted]);
+
+  const handleSave = async () => {
+    const issues: string[] = [];
+    if (!name.trim()) issues.push('enter an activity name');
+    if (!exerciseType) issues.push('select an exercise type');
+    if (durationSeconds <= 0) issues.push('enter a valid duration');
+    if (!effort) issues.push('select an effort level');
+    if (issues.length > 0) {
+      const joined = issues.length === 1 ? issues[0]
+        : issues.length === 2 ? `${issues[0]} and ${issues[1]}`
+        : `${issues.slice(0, -1).join(', ')}, and ${issues[issues.length - 1]}`;
+      return setError(`Please ${joined}.`);
+    }
+
+    setSaving(true);
+    setError('');
+
+    const { data: sameDay } = await supabase
+      .from('activities')
+      .select('id, name, exercise_type, sub_type, run_type, duration_seconds, effort, date')
+      .eq('user_id', user!.id)
+      .eq('date', date)
+      .eq('exercise_type', exerciseType)
+      .maybeSingle();
+
+    if (sameDay) {
+      setSaving(false);
+      setDuplicateCheck({ existing: sameDay as Activity, onConfirm: doSave });
+      return;
+    }
+    await doSave();
   };
 
   const dismissDuplicate = async (deleteId: string) => {
@@ -564,12 +614,6 @@ export default function AddPage() {
     setPlanMatchPrompt(null);
   };
 
-  const accentColor = exerciseType === 'run' && runType
-    ? RUN_TYPE_COLORS[runType]
-    : exerciseType
-    ? EXERCISE_TYPE_COLORS[exerciseType]
-    : '#3B82F6';
-
   const age = user?.user_metadata?.birthday ? calcAge(user.user_metadata.birthday) : null;
   const maxHrEstimate = age ? 220 - age : null;
   const autoPaceDecimal = calcAutoPace(distance, durationSeconds);
@@ -578,7 +622,7 @@ export default function AddPage() {
   const progressCount = [!!name.trim(), !!exerciseType, durationSeconds > 0, !!effort, !!distance, !!notes.trim()].filter(Boolean).length;
 
   return (
-    <div className="max-w-lg lg:max-w-2xl mx-auto relative">
+    <div className="max-w-lg md:max-w-2xl mx-auto relative">
       <div className="absolute top-0 right-0 z-10">
         <AccountSwitcher compact />
       </div>
@@ -656,7 +700,7 @@ export default function AddPage() {
         {/* Name */}
         <div>
           <label className="label">Activity Name *</label>
-          <input className="input" placeholder="e.g. Morning Run" value={name} onChange={e => setName(e.target.value)} />
+          <input className="input" placeholder="e.g. Morning Run" value={name} onChange={e => { nameManuallyEdited.current = true; setName(e.target.value); }} />
         </div>
 
         {/* Date */}
@@ -668,7 +712,7 @@ export default function AddPage() {
         {/* Exercise Type */}
         <div>
           <label className="label">Exercise Session *</label>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             {EXERCISE_TYPE_ORDER.map(type => (
               <button
                 key={type}
@@ -694,7 +738,7 @@ export default function AddPage() {
         {exerciseType === 'run' && (
           <div>
             <label className="label">Run Type <span className="text-[#64748B]">(optional)</span></label>
-            <div className="grid grid-cols-2 gap-1">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
               {RUN_TYPE_WORKOUT.map(type => (
                 <button
                   key={type}
@@ -1128,6 +1172,61 @@ export default function AddPage() {
             style={{ resize: 'vertical' }}
           />
           {notes.length > 0 && <p className="text-xs text-[#475569] mt-1 text-right">{notes.length} characters</p>}
+          {/* Quick note chips */}
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {['Felt strong 💪', 'Tired legs 🥱', 'Good pacing ⏱', 'Hard effort 😤', 'Easy recovery 😌', 'Sore 😬', 'In the zone 🎯', 'Tough conditions 🌧'].map(chip => (
+              <button
+                key={chip}
+                type="button"
+                onClick={() => setNotes(n => n ? `${n} ${chip}` : chip)}
+                className="text-xs px-2 py-0.5 rounded-full border border-[#334155] text-[#64748B] hover:border-[#475569] hover:text-[#94A3B8] transition-all"
+              >
+                {chip}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Feeling after + session vibes */}
+        <div className="flex flex-col gap-3 rounded-xl border border-[#334155] bg-[#1E293B]/50 p-4">
+          <div>
+            <label className="label mb-2">How did you feel after? <span className="text-[#64748B]">(optional)</span></label>
+            <div className="flex flex-wrap gap-1">
+              {([-1,0,1,2,3,4,5,6,7,8,9,10] as const).map(n => {
+                const emoji = ({'-1':'🤮','0':'😭','1':'😞','2':'🥵','3':'🥱','4':'🫠','5':'😐','6':'😌','7':'🙂','8':'😊','9':'😄','10':'🤩'} as Record<string, string>)[String(n)];
+                const active = feelingAfter === n;
+                return (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setFeelingAfter(active ? null : n)}
+                    title={String(n)}
+                    className={`w-9 h-9 rounded-lg text-base transition-all border ${active ? 'border-blue-500 bg-blue-500/20' : 'border-transparent hover:border-[#334155]'}`}
+                  >
+                    {emoji}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div>
+            <label className="label mb-2">Session vibes <span className="text-[#64748B]">(optional, multi-select)</span></label>
+            <div className="flex flex-wrap gap-1">
+              {['💧','😆','🧘','💪','🤙','👍','👎','👌','⚡','🔥','🎯','😅','🏆','💨','😤','🦾','🌟','🤸','💯','🎉'].map(emoji => {
+                const active = workoutVibes.includes(emoji);
+                return (
+                  <button
+                    key={emoji}
+                    type="button"
+                    onClick={() => setWorkoutVibes(active ? workoutVibes.filter(e => e !== emoji) : [...workoutVibes, emoji])}
+                    className={`w-9 h-9 rounded-lg text-base transition-all border ${active ? 'border-blue-500 bg-blue-500/20' : 'border-transparent hover:border-[#334155]'}`}
+                  >
+                    {emoji}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
 
         {/* Photos */}
@@ -1174,13 +1273,15 @@ export default function AddPage() {
       </div>
 
       {/* Sticky save + progress bar — all screen sizes */}
-      <div className="fixed bottom-16 md:bottom-0 left-0 right-0 z-40 bg-[#0F172A]/95 backdrop-blur-sm border-t border-[#334155]">
+      <div className="fixed bottom-14 md:bottom-0 left-0 md:left-56 right-0 z-40 bg-[#0F172A]/95 backdrop-blur-sm border-t border-[#334155]">
         {(name || exerciseType) && (
-          <div className="h-1 w-full bg-[#1E293B]">
-            <div className="h-full transition-all duration-300" style={{ width: `${(progressCount / 6) * 100}%`, background: accentColor }} />
+          <div className="md:max-w-2xl md:mx-auto">
+            <div className="h-1 w-full bg-[#1E293B]">
+              <div className="h-full transition-all duration-300" style={{ width: `${(progressCount / 6) * 100}%`, background: accentColor }} />
+            </div>
           </div>
         )}
-        <div className="p-3 md:max-w-lg md:mx-auto">
+        <div className="p-3 md:max-w-2xl md:mx-auto">
         <button
           onClick={handleSave}
           disabled={saving}
@@ -1221,6 +1322,50 @@ export default function AddPage() {
                   </span>
                 </button>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Duplicate detection modal */}
+      {duplicateCheck && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setDuplicateCheck(null)}>
+          <div className="card w-full max-w-sm" onClick={e => e.stopPropagation()}>
+            <h3 className="text-base font-semibold text-white mb-1">Already logged today?</h3>
+            <p className="text-xs text-[#64748B] mb-4">You&apos;ve already logged a <span className="text-white font-medium">{EXERCISE_TYPE_LABELS[duplicateCheck.existing.exercise_type as ExerciseType]}</span> session today:</p>
+            <div className="rounded-lg border border-[#334155] bg-[#0F172A] p-3 mb-4 text-sm">
+              <p className="font-medium text-white">{duplicateCheck.existing.name}</p>
+              {duplicateCheck.existing.duration_seconds != null && (
+                <p className="text-xs text-[#64748B] mt-0.5">
+                  {Math.floor((duplicateCheck.existing.duration_seconds ?? 0) / 3600) > 0 && `${Math.floor((duplicateCheck.existing.duration_seconds ?? 0) / 3600)}h `}
+                  {Math.floor(((duplicateCheck.existing.duration_seconds ?? 0) % 3600) / 60)}min
+                  {duplicateCheck.existing.effort ? ` · Effort ${duplicateCheck.existing.effort}` : ''}
+                </p>
+              )}
+            </div>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => { duplicateCheck.onConfirm(); setDuplicateCheck(null); }}
+                className="btn-primary py-2.5 text-sm"
+                style={{ background: accentColor }}
+              >
+                Still save — this is a different session
+              </button>
+              <button
+                onClick={() => {
+                  setDuplicateCheck(null);
+                  router.push(`/log?edit=${duplicateCheck.existing.id}`);
+                }}
+                className="py-2.5 text-sm rounded-lg border border-[#334155] text-[#94A3B8] hover:border-[#475569] hover:text-white transition-all"
+              >
+                Oops, duplicate — edit the existing one
+              </button>
+              <button
+                onClick={() => setDuplicateCheck(null)}
+                className="text-xs text-[#475569] hover:text-white py-1 transition-colors"
+              >
+                Cancel
+              </button>
             </div>
           </div>
         </div>

@@ -375,3 +375,7 @@ create index if not exists training_plans_user on training_plans(user_id, create
 
 -- Migration: habit description — optional free-text note shown in the habit detail view.
 -- alter table habits add column if not exists description text;
+
+-- Migration: activity feeling_after + workout_vibes
+-- alter table activities add column if not exists feeling_after integer;
+-- alter table activities add column if not exists workout_vibes text[];
