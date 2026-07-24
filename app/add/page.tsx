@@ -719,7 +719,7 @@ export default function AddPage() {
         {/* Exercise Type */}
         <div>
           <label className="label">Exercise Session *</label>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <div className="flex flex-wrap gap-2">
             {EXERCISE_TYPE_ORDER.map(type => (
               <button
                 key={type}
