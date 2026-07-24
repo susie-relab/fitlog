@@ -109,7 +109,7 @@ function BulletStyleOption({ label, active, onClick, color }: {
 
 function DashedToggleButton({ label, hideLabel, expanded, onClick }: { label: string; hideLabel?: string; expanded: boolean; onClick: () => void }) {
   return (
-    <div className="relative self-start">
+    <div className="relative self-start w-fit">
       <button type="button" onClick={onClick}
         className="flex items-center gap-2 text-sm text-white hover:text-[#94A3B8] transition-colors px-2 py-0.5 border border-transparent rounded-lg">
         <span className="text-xs">{expanded ? '▼' : '▶'}</span>
@@ -204,6 +204,9 @@ export default function AddPage() {
   const [quickAddItems, setQuickAddItems] = useState<QuickAddItem[]>([]);
   const [showSurroundings, setShowSurroundings] = useState(false);
   const [showStyleFocus, setShowStyleFocus] = useState(false);
+  const [quickAddFixed, setQuickAddFixed] = useState<QuickAddItem[] | null>(null); // null = auto mode
+  const [editingQuickAdd, setEditingQuickAdd] = useState(false);
+  const paceManuallyEdited = useRef(false);
 
   // Prefill from query params
   useEffect(() => {
@@ -282,6 +285,20 @@ export default function AddPage() {
     setMins(m ? String(m) : '');
     setSecs(s ? String(s) : '');
   };
+
+  // Auto-fill avg pace when distance + duration change (unless user has manually edited pace)
+  useEffect(() => {
+    if (paceManuallyEdited.current) return;
+    const dec = calcAutoPace(distance, durationSeconds);
+    if (dec) {
+      setPaceMin(String(Math.floor(dec)));
+      setPaceSec(String(Math.round((dec % 1) * 60)).padStart(2, '0'));
+    } else {
+      setPaceMin('');
+      setPaceSec('');
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [distance, durationSeconds]);
 
   const paceToDecimal = (m: string, s: string) => {
     if (!m && !s) return undefined;
@@ -511,6 +528,7 @@ export default function AddPage() {
       setDate(todayLocalISO());
       setShowMore(false);
       setShowSurroundings(false);
+      paceManuallyEdited.current = false;
       setShowStyleFocus(false);
 
       if (planCompleted) {
@@ -570,21 +588,62 @@ export default function AddPage() {
           ↻ Repeat a recent activity
         </button>
       </div>
-      {quickAddItems.length > 0 && (
-        <div className="flex gap-2 flex-wrap mb-4">
-          {quickAddItems.map((item, i) => (
-            <button
-              key={i}
-              type="button"
-              onClick={() => applyQuickAdd(item)}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border border-[#334155] text-[#94A3B8] hover:border-[#475569] hover:text-white transition-all"
-            >
-              <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: item.color }} />
-              {item.label}
-            </button>
-          ))}
-        </div>
-      )}
+      {(() => {
+        const displayItems = (quickAddFixed ?? quickAddItems).filter(i => !!i.subType);
+        if (displayItems.length === 0 && !editingQuickAdd) return null;
+        return (
+          <div className="mb-4">
+            <div className="flex gap-2 flex-wrap items-center">
+              {displayItems.map((item, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => !editingQuickAdd && applyQuickAdd(item)}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${
+                    editingQuickAdd
+                      ? 'border-[#334155] text-[#64748B]'
+                      : 'border-[#334155] text-[#94A3B8] hover:border-[#475569] hover:text-white'
+                  }`}
+                >
+                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: item.color }} />
+                  {item.label}
+                  {editingQuickAdd && quickAddFixed && (
+                    <span
+                      className="ml-1 text-[#64748B] hover:text-red-400 cursor-pointer"
+                      onClick={e => { e.stopPropagation(); setQuickAddFixed(quickAddFixed.filter((_, idx) => idx !== i)); }}
+                    >✕</span>
+                  )}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => setEditingQuickAdd(v => !v)}
+                className="text-xs text-[#475569] hover:text-[#94A3B8] transition-colors ml-auto"
+              >
+                {editingQuickAdd ? 'Done' : '⚙ Edit'}
+              </button>
+            </div>
+            {editingQuickAdd && (
+              <div className="mt-2 p-3 rounded-lg border border-[#334155] bg-[#1E293B] flex flex-col gap-2 text-xs">
+                <button
+                  type="button"
+                  onClick={() => { setQuickAddFixed(null); setEditingQuickAdd(false); }}
+                  className={`flex items-center gap-2 px-2 py-1.5 rounded-lg border transition-all ${!quickAddFixed ? 'border-blue-500/50 bg-blue-500/10 text-blue-300' : 'border-[#334155] text-[#64748B] hover:border-[#475569]'}`}
+                >
+                  <span>🔄</span> Auto adjust from last 30 days
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { if (!quickAddFixed) setQuickAddFixed([...quickAddItems.filter(i => !!i.subType)]); }}
+                  className={`flex items-center gap-2 px-2 py-1.5 rounded-lg border transition-all ${quickAddFixed ? 'border-blue-500/50 bg-blue-500/10 text-blue-300' : 'border-[#334155] text-[#64748B] hover:border-[#475569]'}`}
+                >
+                  <span>📌</span> Fix these choices (remove ✕ to drop one)
+                </button>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {confettiColor && <ConfettiBurst color={confettiColor} />}
       {error && (
@@ -593,19 +652,7 @@ export default function AddPage() {
         </div>
       )}
 
-      {/* Progress bar */}
-      {(name || exerciseType) && (
-        <div className="mb-2">
-          <div className="h-1 w-full bg-[#1E293B] rounded-full overflow-hidden">
-            <div
-              className="h-full rounded-full transition-all duration-300"
-              style={{ width: `${(progressCount / 6) * 100}%`, background: accentColor }}
-            />
-          </div>
-        </div>
-      )}
-
-      <div className="flex flex-col gap-4 pb-24 sm:pb-0">
+      <div className="flex flex-col gap-4 pb-28">
         {/* Name */}
         <div>
           <label className="label">Activity Name *</label>
@@ -963,46 +1010,21 @@ export default function AddPage() {
           onClick={() => setShowMore(v => !v)}
         />
 
-        {/* Surroundings toggle */}
-        <DashedToggleButton
-          label="Surroundings"
-          hideLabel="Hide surroundings"
-          expanded={showSurroundings}
-          onClick={() => setShowSurroundings(v => !v)}
-        />
-        {showSurroundings && (
-          <div className="flex flex-col gap-3 rounded-xl border border-blue-500/30 bg-blue-500/5 p-4">
-            <TagToggleGrid
-              label="Select all that apply"
-              groups={[
-                (Object.keys(COMPANION_LABELS) as Companion[]).map(key => ({
-                  key, label: COMPANION_LABELS[key], emoji: COMPANION_EMOJI[key], doodle: COMPANION_ICON_OVERRIDES[key],
-                  active: companions.includes(key), onToggle: () => toggleCompanion(key),
-                })),
-                (Object.keys(CONDITION_LABELS) as WeatherCondition[]).map(key => ({
-                  key, label: CONDITION_LABELS[key], emoji: CONDITION_EMOJI[key], doodle: CONDITION_ICON_OVERRIDES[key],
-                  active: conditions.includes(key), onToggle: () => toggleCondition(key),
-                })),
-              ]}
-            />
-          </div>
-        )}
-
         {showMore && (
           <div className="flex flex-col gap-3 rounded-xl border border-blue-500/30 bg-blue-500/5 p-4">
             {/* Pace */}
             <div>
               <label className="label">Average Pace <span className="text-[#64748B]">min/km</span></label>
               <div className="flex gap-2 items-center">
-                <input type="number" className="input" placeholder={autoPaceMinVal != null && !paceMin && !paceSec ? String(autoPaceMinVal) : 'Min'} min="0" value={paceMin} onChange={e => setPaceMin(e.target.value)} />
+                <input type="number" className="input" placeholder="Min" min="0" value={paceMin} onChange={e => { paceManuallyEdited.current = true; setPaceMin(e.target.value); }} />
                 <span className="text-[#64748B]">:</span>
-                <input type="number" className="input" placeholder={autoPaceSecVal != null && !paceMin && !paceSec ? String(autoPaceSecVal) : 'Sec'} min="0" max="59" value={paceSec} onChange={e => setPaceSec(e.target.value)} />
+                <input type="number" className="input" placeholder="Sec" min="0" max="59" value={paceSec} onChange={e => { paceManuallyEdited.current = true; setPaceSec(e.target.value); }} />
                 {(paceMin || paceSec) && (
-                  <button type="button" onClick={() => { setPaceMin(''); setPaceSec(''); }} className="text-xs text-[#64748B] hover:text-white px-2 py-1 rounded-lg border border-[#334155] hover:border-[#475569] flex-shrink-0">✕</button>
+                  <button type="button" onClick={() => { paceManuallyEdited.current = false; setPaceMin(''); setPaceSec(''); }} className="text-xs text-[#64748B] hover:text-white px-2 py-1 rounded-lg border border-[#334155] hover:border-[#475569] flex-shrink-0">✕</button>
                 )}
               </div>
-              {autoPaceMinVal != null && !paceMin && !paceSec && (
-                <p className="text-xs text-[#475569] mt-1">Auto-calculated from distance + duration · tap to override</p>
+              {autoPaceDecimal && !paceManuallyEdited.current && (
+                <p className="text-xs text-[#475569] mt-1">Auto-calculated · tap to override, ✕ to reset</p>
               )}
             </div>
 
@@ -1028,7 +1050,7 @@ export default function AddPage() {
                     const z = hrZoneInfo(parseInt(avgHr), maxHrEstimate);
                     return (
                       <div className="flex items-center gap-1.5 mt-1.5">
-                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: z.color + '22', color: z.color, border: `1px solid ${z.color}44` }}>Z{z.zone}</span>
+                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: z.color + '22', color: z.color, border: `1px solid ${z.color}44` }}>Zone {z.zone}</span>
                         <span className="text-xs text-[#64748B]">{z.label}</span>
                       </div>
                     );
@@ -1039,8 +1061,8 @@ export default function AddPage() {
                     const hint = effortHrHint(effort, age)!;
                     return (
                       <div className="flex items-center gap-1.5 mt-1.5 px-2 py-1.5 rounded-lg" style={{ background: hint.color + '11', border: `1px solid ${hint.color}33` }}>
-                        <span className="text-xs font-semibold px-1.5 py-0.5 rounded-full" style={{ background: hint.color + '22', color: hint.color, border: `1px solid ${hint.color}44` }}>Z{hint.zone}</span>
-                        <span className="text-xs" style={{ color: hint.color + 'cc' }}>~{hint.low}–{hint.high} bpm · {hint.label}</span>
+                        <span className="text-xs font-semibold px-1.5 py-0.5 rounded-full" style={{ background: hint.color + '22', color: hint.color, border: `1px solid ${hint.color}44` }}>Zone {hint.zone}</span>
+                        <span className="text-xs" style={{ color: hint.color + 'cc' }}>Guess based on age + effort · {hint.low}–{hint.high} bpm</span>
                       </div>
                     );
                   })()
@@ -1066,6 +1088,31 @@ export default function AddPage() {
               <label className="label">Elevation Gain <span className="text-[#64748B]">m</span></label>
               <ScrollFieldPicker label="Elevation Gain" unit="m" max={9000} value={elevationGain} onChange={setElevationGain} suggestion={0} placeholder="e.g. 120" />
             </div>
+          </div>
+        )}
+
+        {/* Surroundings toggle */}
+        <DashedToggleButton
+          label="Surroundings"
+          hideLabel="Hide surroundings"
+          expanded={showSurroundings}
+          onClick={() => setShowSurroundings(v => !v)}
+        />
+        {showSurroundings && (
+          <div className="flex flex-col gap-3 rounded-xl border border-blue-500/30 bg-blue-500/5 p-4">
+            <TagToggleGrid
+              label="Select all that apply"
+              groups={[
+                (Object.keys(COMPANION_LABELS) as Companion[]).map(key => ({
+                  key, label: COMPANION_LABELS[key], emoji: COMPANION_EMOJI[key], doodle: COMPANION_ICON_OVERRIDES[key],
+                  active: companions.includes(key), onToggle: () => toggleCompanion(key),
+                })),
+                (Object.keys(CONDITION_LABELS) as WeatherCondition[]).map(key => ({
+                  key, label: CONDITION_LABELS[key], emoji: CONDITION_EMOJI[key], doodle: CONDITION_ICON_OVERRIDES[key],
+                  active: conditions.includes(key), onToggle: () => toggleCondition(key),
+                })),
+              ]}
+            />
           </div>
         )}
 
@@ -1124,21 +1171,16 @@ export default function AddPage() {
           </div>
         )}
 
-        {/* Save — inline (tablet/desktop) */}
-        <div className="hidden sm:block mt-2">
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="btn-primary w-full py-3 text-base"
-            style={{ background: accentColor }}
-          >
-            {saving ? 'Saving...' : 'Save Exercise'}
-          </button>
-        </div>
       </div>
 
-      {/* Sticky save — mobile only */}
-      <div className="fixed bottom-16 left-0 right-0 z-40 p-3 bg-[#0F172A]/95 backdrop-blur-sm border-t border-[#334155] sm:hidden">
+      {/* Sticky save + progress bar — all screen sizes */}
+      <div className="fixed bottom-16 md:bottom-0 left-0 right-0 z-40 bg-[#0F172A]/95 backdrop-blur-sm border-t border-[#334155]">
+        {(name || exerciseType) && (
+          <div className="h-1 w-full bg-[#1E293B]">
+            <div className="h-full transition-all duration-300" style={{ width: `${(progressCount / 6) * 100}%`, background: accentColor }} />
+          </div>
+        )}
+        <div className="p-3 md:max-w-lg md:mx-auto">
         <button
           onClick={handleSave}
           disabled={saving}
@@ -1147,6 +1189,7 @@ export default function AddPage() {
         >
           {saving ? 'Saving...' : 'Save Exercise'}
         </button>
+        </div>
       </div>
 
       {/* Repeat a recent activity */}
