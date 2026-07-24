@@ -216,6 +216,14 @@ export type FitnessSubType = 'dance' | 'skateboard' | 'jump_rope' | 'boxing' | '
 export type BikeSubType = 'mtb' | 'road' | 'mixed_terrain' | 'commute' | 'electric' | 'indoor_spin' | 'bmx' | 'track' | 'bikepacking';
 export type StretchSubType = 'pilates' | 'flexibility' | 'physio';
 export type WalkSubType = 'multi_day' | 'stroll' | 'speed' | 'urban' | 'bush' | 'mountain' | 'farm' | 'road' | 'track_oval' | 'treadmill' | 'beach' | 'push_buggy';
+export type GymFocus = 'power' | 'endurance' | 'mobility' | 'deload' | 'technique' | 'competition' | 'assessment' | 'casual';
+export type GymStyle = 'solo' | 'group' | 'class' | 'coached';
+export type BikeFocus = 'zone1' | 'zone2' | 'zone3' | 'zone4' | 'zone5' | 'zone6' | 'zone7' | 'intervals' | 'hill_climb' | 'technical' | 'casual';
+export type BikeStyle = 'group_ride' | 'solo_ride' | 'class';
+export type StretchFocus = 'full_body' | 'upper_body' | 'lower_body' | 'back_neck' | 'warm_up' | 'cool_down';
+export type StretchStyle = 'solo' | 'class' | 'appointment' | 'group';
+export type FitnessFocus = 'casual' | 'fun' | 'tricks' | 'technique' | 'training' | 'competition' | 'performance';
+export type FitnessStyle = 'solo' | 'group' | 'class' | 'coached';
 
 // --- Companions & conditions — universal tags, apply to any exercise type ---
 
@@ -320,6 +328,45 @@ export const WALK_SUB_LABELS: Record<WalkSubType, string> = {
   multi_day: 'Multi-day', stroll: 'Stroll', speed: 'Speed', urban: 'Urban', bush: 'Bush',
   mountain: 'Mountain', farm: 'Farm', road: 'Road', track_oval: 'Track / Oval',
   treadmill: 'Treadmill', beach: 'Beach', push_buggy: 'Push Buggy',
+};
+export const GYM_FOCUS_LABELS: Record<GymFocus, string> = {
+  power: 'Power', endurance: 'Endurance', mobility: 'Mobility', deload: 'Deload',
+  technique: 'Technique', competition: 'Competition', assessment: 'Assessment', casual: 'Casual',
+};
+export const GYM_STYLE_LABELS: Record<GymStyle, string> = {
+  solo: 'Solo', group: 'Group', class: 'Class', coached: 'Coached',
+};
+export const BIKE_FOCUS_LABELS: Record<BikeFocus, string> = {
+  zone1: 'Zone 1 — Active Recovery', zone2: 'Zone 2 — Endurance', zone3: 'Zone 3 — Tempo',
+  zone4: 'Zone 4 — Threshold', zone5: 'Zone 5 — VO₂ Max', zone6: 'Zone 6 — Sprint Capacity',
+  zone7: 'Zone 7 — Explosive Power', intervals: 'Intervals', hill_climb: 'Hill Climb',
+  technical: 'Technical', casual: 'Casual',
+};
+export const BIKE_FOCUS_TOOLTIPS: Partial<Record<BikeFocus, string>> = {
+  zone1: 'Very light spinning used to clear fatigue and recover',
+  zone2: 'Steady, conversational pace',
+  zone3: 'Moderate-to-high intensity for longer rides',
+  zone4: 'Hard, sustained efforts at time-trial pace',
+  zone5: 'Tough intervals designed to maximise oxygen uptake',
+  zone6: 'Short, explosive efforts for surges and power sprints',
+  zone7: 'All-out sprints lasting 10secs – 1 min',
+};
+export const BIKE_STYLE_LABELS: Record<BikeStyle, string> = {
+  group_ride: 'Group Ride', solo_ride: 'Solo Ride', class: 'Class',
+};
+export const STRETCH_FOCUS_LABELS: Record<StretchFocus, string> = {
+  full_body: 'Full Body', upper_body: 'Upper Body', lower_body: 'Lower Body',
+  back_neck: 'Back & Neck', warm_up: 'Warm-up', cool_down: 'Cool Down',
+};
+export const STRETCH_STYLE_LABELS: Record<StretchStyle, string> = {
+  solo: 'Solo', class: 'Class', appointment: 'Appointment', group: 'Group',
+};
+export const FITNESS_FOCUS_LABELS: Record<FitnessFocus, string> = {
+  casual: 'Casual', fun: 'Fun', tricks: 'Tricks', technique: 'Technique',
+  training: 'Training', competition: 'Competition', performance: 'Performance',
+};
+export const FITNESS_STYLE_LABELS: Record<FitnessStyle, string> = {
+  solo: 'Solo', group: 'Group', class: 'Class', coached: 'Coached',
 };
 
 // All subtype labels in one map + a helper to display a (possibly comma-joined) sub_type value.
@@ -505,6 +552,14 @@ export interface Activity {
   swim_styles?: string; // comma-joined SwimStyle keys — multi-select, like sub_type for hiit
   snow_styles?: string; // comma-joined SnowStyle keys — multi-select, like swim_styles
   water_styles?: string; // comma-joined WaterStyle keys — multi-select, like swim_styles
+  gym_focus?: GymFocus;
+  gym_style?: GymStyle;
+  bike_focus?: BikeFocus;
+  bike_style?: BikeStyle;
+  stretch_focus?: StretchFocus;
+  stretch_style?: StretchStyle;
+  fitness_focus?: FitnessFocus;
+  fitness_style?: FitnessStyle;
   companions?: string; // comma-joined Companion keys — multi-select, applies to any exercise type
   conditions?: string; // comma-joined WeatherCondition keys — multi-select, applies to any exercise type
   duration_minutes: number;

@@ -9,7 +9,9 @@ import {
   EXERCISE_TYPE_COLORS, RUN_TYPE_COLORS,
   EXERCISE_TYPE_ORDER, RUN_TYPE_TERRAIN, RUN_TYPE_WORKOUT,
   SportSubType, SportFocus, SportStyle, GymSubType, WaterSubType, WaterStyle, SnowSubType, SnowStyle, SwimSubType, SwimFocus, SwimStyle, FitnessSubType, BikeSubType, StretchSubType, WalkSubType,
+  GymFocus, GymStyle, BikeFocus, BikeStyle, StretchFocus, StretchStyle, FitnessFocus, FitnessStyle,
   SPORT_SUB_LABELS, SPORT_FOCUS_LABELS, SPORT_STYLE_LABELS, SPORT_STYLE_COLORS, GYM_SUB_LABELS, WATER_SUB_LABELS, WATER_STYLE_LABELS, SNOW_SUB_LABELS, SNOW_STYLE_LABELS, SWIM_SUB_LABELS, SWIM_FOCUS_LABELS, SWIM_STYLE_LABELS, SWIM_STYLE_COLORS, FITNESS_SUB_LABELS, BIKE_SUB_LABELS, STRETCH_SUB_LABELS, WALK_SUB_LABELS,
+  GYM_FOCUS_LABELS, GYM_STYLE_LABELS, BIKE_FOCUS_LABELS, BIKE_FOCUS_TOOLTIPS, BIKE_STYLE_LABELS, STRETCH_FOCUS_LABELS, STRETCH_STYLE_LABELS, FITNESS_FOCUS_LABELS, FITNESS_STYLE_LABELS,
   suggestedMaxHr, suggestedAvgHr,
   Companion, COMPANION_LABELS, COMPANION_EMOJI, WeatherCondition, CONDITION_LABELS, CONDITION_EMOJI,
   Activity,
@@ -142,6 +144,26 @@ function DashedToggleButton({ label, hideLabel, expanded, onClick }: { label: st
   );
 }
 
+function FocusTooltipButton({ label, tooltip, active, onClick, activeClass }: {
+  label: string; tooltip?: string; active: boolean; onClick: () => void; activeClass: string;
+}) {
+  return (
+    <div className="relative group">
+      <button
+        onClick={onClick}
+        className={`w-full px-2 py-2 rounded-lg text-xs font-medium border transition-all text-center ${active ? activeClass : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}
+      >
+        {label}
+      </button>
+      {tooltip && (
+        <div className="pointer-events-none absolute bottom-full left-0 mb-1.5 z-30 w-52 hidden group-hover:block bg-[#0F172A] border border-[#334155] rounded-lg p-2 text-xs text-[#94A3B8] shadow-xl">
+          {tooltip}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AddPage() {
   const { user } = useAuth();
   const [name, setName] = useState('');
@@ -158,6 +180,14 @@ export default function AddPage() {
   const [swimStyles, setSwimStyles] = useState<string[]>([]);
   const [snowStyles, setSnowStyles] = useState<string[]>([]);
   const [waterStyles, setWaterStyles] = useState<string[]>([]);
+  const [gymFocus, setGymFocus] = useState<GymFocus | ''>('');
+  const [gymStyle, setGymStyle] = useState<GymStyle | ''>('');
+  const [bikeFocus, setBikeFocus] = useState<BikeFocus | ''>('');
+  const [bikeStyle, setBikeStyle] = useState<BikeStyle | ''>('');
+  const [stretchFocus, setStretchFocus] = useState<StretchFocus | ''>('');
+  const [stretchStyle, setStretchStyle] = useState<StretchStyle | ''>('');
+  const [fitnessFocus, setFitnessFocus] = useState<FitnessFocus | ''>('');
+  const [fitnessStyle, setFitnessStyle] = useState<FitnessStyle | ''>('');
   const [companions, setCompanions] = useState<Companion[]>([]);
   const [conditions, setConditions] = useState<WeatherCondition[]>([]);
   const [hours, setHours] = useState('');
@@ -370,6 +400,14 @@ export default function AddPage() {
     setSwimStyles(a.swim_styles ? a.swim_styles.split(',') : []);
     setSnowStyles(a.snow_styles ? a.snow_styles.split(',') : []);
     setWaterStyles(a.water_styles ? a.water_styles.split(',') : []);
+    setGymFocus((a.gym_focus as GymFocus) || '');
+    setGymStyle((a.gym_style as GymStyle) || '');
+    setBikeFocus((a.bike_focus as BikeFocus) || '');
+    setBikeStyle((a.bike_style as BikeStyle) || '');
+    setStretchFocus((a.stretch_focus as StretchFocus) || '');
+    setStretchStyle((a.stretch_style as StretchStyle) || '');
+    setFitnessFocus((a.fitness_focus as FitnessFocus) || '');
+    setFitnessStyle((a.fitness_style as FitnessStyle) || '');
     setCompanions(a.companions ? a.companions.split(',') as Companion[] : []);
     setConditions(a.conditions ? a.conditions.split(',') as WeatherCondition[] : []);
     const totalSec = a.duration_minutes * 60 + (a.duration_seconds || 0);
@@ -389,7 +427,7 @@ export default function AddPage() {
     setMaxHr(a.max_hr != null ? String(a.max_hr) : '');
     setAvgHr(a.avg_hr != null ? String(a.avg_hr) : '');
     setElevationGain(a.elevation_gain_m != null ? String(a.elevation_gain_m) : '');
-    if (a.sport_focus || a.sport_style || a.swim_focus || a.swim_styles || a.snow_styles || a.water_styles) setShowStyleFocus(true);
+    if (a.sport_focus || a.sport_style || a.swim_focus || a.swim_styles || a.snow_styles || a.water_styles || a.gym_focus || a.gym_style || a.bike_focus || a.bike_style || a.stretch_focus || a.stretch_style || a.fitness_focus || a.fitness_style) setShowStyleFocus(true);
     if (a.companions || a.conditions) setShowSurroundings(true);
     if (a.pace_min_km != null || a.max_pace_min_km != null || a.max_hr != null || a.avg_hr != null || a.intensity_minutes != null || a.elevation_gain_m != null) setShowMore(true);
     setShowRepeatPicker(false);
@@ -401,6 +439,7 @@ export default function AddPage() {
     setGymTypes([]); setWalkTypes([]);
     setSportFocus(''); setSportStyle(''); setSportHomeAway('');
     setSwimFocus(''); setSwimStyles([]); setSnowStyles([]); setWaterStyles([]);
+    setGymFocus(''); setGymStyle(''); setBikeFocus(''); setBikeStyle(''); setStretchFocus(''); setStretchStyle(''); setFitnessFocus(''); setFitnessStyle('');
     if (item.exerciseType === 'run') setRunType(item.subType as RunType);
     else if (item.exerciseType === 'hiit') setGymTypes(item.subType ? [item.subType] : []);
     else if (item.exerciseType === 'walk') setWalkTypes(item.subType ? [item.subType] : []);
@@ -433,6 +472,14 @@ export default function AddPage() {
       swim_styles: exerciseType === 'swim' ? swimStyles.join(',') || null : null,
       snow_styles: exerciseType === 'snow' ? snowStyles.join(',') || null : null,
       water_styles: exerciseType === 'water' ? waterStyles.join(',') || null : null,
+      gym_focus: exerciseType === 'hiit' ? gymFocus || null : null,
+      gym_style: exerciseType === 'hiit' ? gymStyle || null : null,
+      bike_focus: exerciseType === 'bike' ? bikeFocus || null : null,
+      bike_style: exerciseType === 'bike' ? bikeStyle || null : null,
+      stretch_focus: exerciseType === 'stretch' ? stretchFocus || null : null,
+      stretch_style: exerciseType === 'stretch' ? stretchStyle || null : null,
+      fitness_focus: exerciseType === 'solo_fitness' ? fitnessFocus || null : null,
+      fitness_style: exerciseType === 'solo_fitness' ? fitnessStyle || null : null,
       companions: companions.join(',') || null,
       conditions: conditions.join(',') || null,
       duration_minutes: durationMinutes,
@@ -547,7 +594,7 @@ export default function AddPage() {
       setTimeout(() => setConfettiColor(null), 2200);
       if (isPb || pbReasons.length > 0) setPbCelebration(pbReasons);
       else setSavedTitle(randomEncouragement());
-      setName(''); setExerciseType(''); setRunType(''); setRunTypeModifier(''); setSubType(''); setGymTypes([]); setWalkTypes([]); setSportFocus(''); setSportStyle(''); setSportHomeAway(''); setSwimFocus(''); setSwimStyles([]); setSnowStyles([]); setWaterStyles([]); setCompanions([]); setConditions([]); setHours(''); setMins(''); setSecs('');
+      setName(''); setExerciseType(''); setRunType(''); setRunTypeModifier(''); setSubType(''); setGymTypes([]); setWalkTypes([]); setSportFocus(''); setSportStyle(''); setSportHomeAway(''); setSwimFocus(''); setSwimStyles([]); setSnowStyles([]); setWaterStyles([]); setGymFocus(''); setGymStyle(''); setBikeFocus(''); setBikeStyle(''); setStretchFocus(''); setStretchStyle(''); setFitnessFocus(''); setFitnessStyle(''); setCompanions([]); setConditions([]); setHours(''); setMins(''); setSecs('');
       setEffort(null); setDistance(''); setNotes(''); setIntensityMins(''); setActivePercent(null);
       setPaceMin(''); setPaceSec(''); setMaxPaceMin(''); setMaxPaceSec('');
       setMaxHr(''); setAvgHr(''); setElevationGain(''); setIsPb(false); setPbDesc('');
@@ -568,7 +615,7 @@ export default function AddPage() {
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, distance, exerciseType, paceMin, paceSec, durationSeconds, gymTypes, walkTypes, subType, name, runType, runTypeModifier, sportFocus, sportStyle, sportHomeAway, swimFocus, swimStyles, snowStyles, waterStyles, companions, conditions, durationMinutes, durationExtraSeconds, effort, notes, intensityMins, maxPaceMin, maxPaceSec, maxHr, avgHr, elevationGain, isPb, pbDesc, images, imageThumbs, feelingAfter, workoutVibes, date, planLink, fromDash, accentColor, planCompleted]);
+  }, [user, distance, exerciseType, paceMin, paceSec, durationSeconds, gymTypes, walkTypes, subType, name, runType, runTypeModifier, sportFocus, sportStyle, sportHomeAway, swimFocus, swimStyles, snowStyles, waterStyles, gymFocus, gymStyle, bikeFocus, bikeStyle, stretchFocus, stretchStyle, fitnessFocus, fitnessStyle, companions, conditions, durationMinutes, durationExtraSeconds, effort, notes, intensityMins, maxPaceMin, maxPaceSec, maxHr, avgHr, elevationGain, isPb, pbDesc, images, imageThumbs, feelingAfter, workoutVibes, date, planLink, fromDash, accentColor, planCompleted]);
 
   const handleSave = async () => {
     const issues: string[] = [];
@@ -736,7 +783,7 @@ export default function AddPage() {
             {EXERCISE_TYPE_ORDER.map(type => (
               <button
                 key={type}
-                onClick={() => { setExerciseType(type); setRunType(''); setRunTypeModifier(''); setSubType(''); setGymTypes([]); setWalkTypes([]); setSportFocus(''); setSportStyle(''); setSwimFocus(''); setSwimStyles([]); setSnowStyles([]); setWaterStyles([]); }}
+                onClick={() => { setExerciseType(type); setRunType(''); setRunTypeModifier(''); setSubType(''); setGymTypes([]); setWalkTypes([]); setSportFocus(''); setSportStyle(''); setSwimFocus(''); setSwimStyles([]); setSnowStyles([]); setWaterStyles([]); setGymFocus(''); setGymStyle(''); setBikeFocus(''); setBikeStyle(''); setStretchFocus(''); setStretchStyle(''); setFitnessFocus(''); setFitnessStyle(''); }}
                 className={`flex items-center px-5 py-2.5 rounded-lg text-sm font-medium border transition-all text-left ${
                   exerciseType === type
                     ? 'border-2 text-white'
@@ -866,6 +913,31 @@ export default function AddPage() {
                 );
               })}
             </div>
+            <div className="mt-3">
+              <DashedToggleButton label="Workout Focus & Style" hideLabel="Hide Workout Focus & Style" expanded={showStyleFocus} onClick={() => setShowStyleFocus(v => !v)} />
+            </div>
+            {showStyleFocus && (
+              <>
+                <label className="label mt-3">Workout Focus <span className="text-[#64748B]">(optional)</span></label>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {(Object.keys(GYM_FOCUS_LABELS) as GymFocus[]).map(t => (
+                    <button key={t} onClick={() => setGymFocus(gymFocus === t ? '' : t)}
+                      className={`px-2 py-2 rounded-lg text-xs font-medium border transition-all text-center ${gymFocus === t ? 'border-red-500 bg-red-500/20 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>
+                      {GYM_FOCUS_LABELS[t]}
+                    </button>
+                  ))}
+                </div>
+                <label className="label mt-3">Workout Style <span className="text-[#64748B]">(optional)</span></label>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {(Object.keys(GYM_STYLE_LABELS) as GymStyle[]).map(t => (
+                    <button key={t} onClick={() => setGymStyle(gymStyle === t ? '' : t)}
+                      className={`px-2 py-2 rounded-lg text-xs font-medium border transition-all text-center ${gymStyle === t ? 'border-red-500 bg-red-500/20 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>
+                      {GYM_STYLE_LABELS[t]}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         )}
 
@@ -975,6 +1047,31 @@ export default function AddPage() {
                   onClick={() => setSubType(subType === t ? '' : t)} activeClass="border-purple-500 bg-purple-500/20 text-white" />
               ))}
             </div>
+            <div className="mt-3">
+              <DashedToggleButton label="Focus & Style" hideLabel="Hide Focus & Style" expanded={showStyleFocus} onClick={() => setShowStyleFocus(v => !v)} />
+            </div>
+            {showStyleFocus && (
+              <>
+                <label className="label mt-3">Focus <span className="text-[#64748B]">(optional)</span></label>
+                <div className="grid grid-cols-3 gap-1.5 mt-1">
+                  {(Object.keys(FITNESS_FOCUS_LABELS) as FitnessFocus[]).map(t => (
+                    <button key={t} onClick={() => setFitnessFocus(fitnessFocus === t ? '' : t)}
+                      className={`px-2 py-2 rounded-lg text-xs font-medium border transition-all text-center ${fitnessFocus === t ? 'border-purple-500 bg-purple-500/20 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>
+                      {FITNESS_FOCUS_LABELS[t]}
+                    </button>
+                  ))}
+                </div>
+                <label className="label mt-3">Style <span className="text-[#64748B]">(optional)</span></label>
+                <div className="grid grid-cols-2 gap-1.5 mt-1">
+                  {(Object.keys(FITNESS_STYLE_LABELS) as FitnessStyle[]).map(t => (
+                    <button key={t} onClick={() => setFitnessStyle(fitnessStyle === t ? '' : t)}
+                      className={`px-2 py-2 rounded-lg text-xs font-medium border transition-all text-center ${fitnessStyle === t ? 'border-purple-500 bg-purple-500/20 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>
+                      {FITNESS_STYLE_LABELS[t]}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         )}
         {exerciseType === 'bike' && (
@@ -988,6 +1085,29 @@ export default function AddPage() {
                 </button>
               ))}
             </div>
+            <div className="mt-3">
+              <DashedToggleButton label="Ride Focus & Style" hideLabel="Hide Ride Focus & Style" expanded={showStyleFocus} onClick={() => setShowStyleFocus(v => !v)} />
+            </div>
+            {showStyleFocus && (
+              <>
+                <label className="label mt-3">Ride Focus <span className="text-[#64748B]">(optional)</span></label>
+                <div className="grid grid-cols-2 gap-1.5 mt-1">
+                  {(Object.keys(BIKE_FOCUS_LABELS) as BikeFocus[]).map(t => (
+                    <FocusTooltipButton key={t} label={BIKE_FOCUS_LABELS[t]} tooltip={BIKE_FOCUS_TOOLTIPS[t]} active={bikeFocus === t}
+                      onClick={() => setBikeFocus(bikeFocus === t ? '' : t)} activeClass="border-yellow-500 bg-yellow-500/20 text-white" />
+                  ))}
+                </div>
+                <label className="label mt-3">Ride Style <span className="text-[#64748B]">(optional)</span></label>
+                <div className="grid grid-cols-3 gap-1.5 mt-1">
+                  {(Object.keys(BIKE_STYLE_LABELS) as BikeStyle[]).map(t => (
+                    <button key={t} onClick={() => setBikeStyle(bikeStyle === t ? '' : t)}
+                      className={`px-2 py-2 rounded-lg text-xs font-medium border transition-all text-center ${bikeStyle === t ? 'border-yellow-500 bg-yellow-500/20 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>
+                      {BIKE_STYLE_LABELS[t]}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         )}
         {exerciseType === 'walk' && (
@@ -1015,6 +1135,31 @@ export default function AddPage() {
                 </button>
               ))}
             </div>
+            <div className="mt-3">
+              <DashedToggleButton label="Stretch Focus & Style" hideLabel="Hide Stretch Focus & Style" expanded={showStyleFocus} onClick={() => setShowStyleFocus(v => !v)} />
+            </div>
+            {showStyleFocus && (
+              <>
+                <label className="label mt-3">Stretch Focus <span className="text-[#64748B]">(optional)</span></label>
+                <div className="grid grid-cols-3 gap-1.5 mt-1">
+                  {(Object.keys(STRETCH_FOCUS_LABELS) as StretchFocus[]).map(t => (
+                    <button key={t} onClick={() => setStretchFocus(stretchFocus === t ? '' : t)}
+                      className={`px-2 py-2 rounded-lg text-xs font-medium border transition-all text-center ${stretchFocus === t ? 'border-green-500 bg-green-500/20 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>
+                      {STRETCH_FOCUS_LABELS[t]}
+                    </button>
+                  ))}
+                </div>
+                <label className="label mt-3">Stretch Style <span className="text-[#64748B]">(optional)</span></label>
+                <div className="grid grid-cols-2 gap-1.5 mt-1">
+                  {(Object.keys(STRETCH_STYLE_LABELS) as StretchStyle[]).map(t => (
+                    <button key={t} onClick={() => setStretchStyle(stretchStyle === t ? '' : t)}
+                      className={`px-2 py-2 rounded-lg text-xs font-medium border transition-all text-center ${stretchStyle === t ? 'border-green-500 bg-green-500/20 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>
+                      {STRETCH_STYLE_LABELS[t]}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         )}
 

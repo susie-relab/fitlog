@@ -7,7 +7,9 @@ import {
   EXERCISE_TYPE_COLORS, RUN_TYPE_COLORS,
   EXERCISE_TYPE_ORDER, RUN_TYPE_TERRAIN, RUN_TYPE_WORKOUT,
   SportSubType, SportFocus, SportStyle, GymSubType, WaterSubType, WaterStyle, SnowSubType, SnowStyle, SwimSubType, SwimFocus, SwimStyle, FitnessSubType, BikeSubType, StretchSubType, WalkSubType,
+  GymFocus, GymStyle, BikeFocus, BikeStyle, StretchFocus, StretchStyle, FitnessFocus, FitnessStyle,
   SPORT_SUB_LABELS, SPORT_FOCUS_LABELS, SPORT_STYLE_LABELS, GYM_SUB_LABELS, WATER_SUB_LABELS, WATER_STYLE_LABELS, SNOW_SUB_LABELS, SNOW_STYLE_LABELS, SWIM_SUB_LABELS, SWIM_FOCUS_LABELS, SWIM_STYLE_LABELS, FITNESS_SUB_LABELS, BIKE_SUB_LABELS, STRETCH_SUB_LABELS, WALK_SUB_LABELS,
+  GYM_FOCUS_LABELS, GYM_STYLE_LABELS, BIKE_FOCUS_LABELS, BIKE_FOCUS_TOOLTIPS, BIKE_STYLE_LABELS, STRETCH_FOCUS_LABELS, STRETCH_STYLE_LABELS, FITNESS_FOCUS_LABELS, FITNESS_STYLE_LABELS,
   suggestedMaxHr, suggestedAvgHr,
   Companion, COMPANION_LABELS, COMPANION_EMOJI, WeatherCondition, CONDITION_LABELS, CONDITION_EMOJI,
 } from '@/types';
@@ -47,6 +49,14 @@ export default function EditActivityModal({ activity, onClose, onSaved, onDelete
   const [swimStyles, setSwimStyles] = useState<string[]>(activity.swim_styles ? activity.swim_styles.split(',') : []);
   const [snowStyles, setSnowStyles] = useState<string[]>(activity.snow_styles ? activity.snow_styles.split(',') : []);
   const [waterStyles, setWaterStyles] = useState<string[]>(activity.water_styles ? activity.water_styles.split(',') : []);
+  const [gymFocus, setGymFocus] = useState<GymFocus | ''>(activity.gym_focus || '');
+  const [gymStyle, setGymStyle] = useState<GymStyle | ''>(activity.gym_style || '');
+  const [bikeFocus, setBikeFocus] = useState<BikeFocus | ''>(activity.bike_focus || '');
+  const [bikeStyle, setBikeStyle] = useState<BikeStyle | ''>(activity.bike_style || '');
+  const [stretchFocus, setStretchFocus] = useState<StretchFocus | ''>(activity.stretch_focus || '');
+  const [stretchStyle, setStretchStyle] = useState<StretchStyle | ''>(activity.stretch_style || '');
+  const [fitnessFocus, setFitnessFocus] = useState<FitnessFocus | ''>(activity.fitness_focus || '');
+  const [fitnessStyle, setFitnessStyle] = useState<FitnessStyle | ''>(activity.fitness_style || '');
   const [companions, setCompanions] = useState<Companion[]>(activity.companions ? activity.companions.split(',') as Companion[] : []);
   const [conditions, setConditions] = useState<WeatherCondition[]>(activity.conditions ? activity.conditions.split(',') as WeatherCondition[] : []);
   const [showMore, setShowMore] = useState(false);
@@ -122,6 +132,14 @@ export default function EditActivityModal({ activity, onClose, onSaved, onDelete
         swim_styles: exerciseType === 'swim' ? swimStyles.join(',') || null : null,
         snow_styles: exerciseType === 'snow' ? snowStyles.join(',') || null : null,
         water_styles: exerciseType === 'water' ? waterStyles.join(',') || null : null,
+        gym_focus: exerciseType === 'hiit' ? gymFocus || null : null,
+        gym_style: exerciseType === 'hiit' ? gymStyle || null : null,
+        bike_focus: exerciseType === 'bike' ? bikeFocus || null : null,
+        bike_style: exerciseType === 'bike' ? bikeStyle || null : null,
+        stretch_focus: exerciseType === 'stretch' ? stretchFocus || null : null,
+        stretch_style: exerciseType === 'stretch' ? stretchStyle || null : null,
+        fitness_focus: exerciseType === 'solo_fitness' ? fitnessFocus || null : null,
+        fitness_style: exerciseType === 'solo_fitness' ? fitnessStyle || null : null,
         companions: companions.join(',') || null,
         conditions: conditions.join(',') || null,
         duration_minutes: durationMinutes,
@@ -200,7 +218,7 @@ export default function EditActivityModal({ activity, onClose, onSaved, onDelete
               {EXERCISE_TYPE_ORDER.map(type => (
                 <button
                   key={type}
-                  onClick={() => { setExerciseType(type); setRunType(''); setRunTypeModifier(''); setSubType(''); setGymTypes([]); setWalkTypes([]); setSportFocus(''); setSportStyle(''); setSwimFocus(''); setSwimStyles([]); setSnowStyles([]); setWaterStyles([]); }}
+                  onClick={() => { setExerciseType(type); setRunType(''); setRunTypeModifier(''); setSubType(''); setGymTypes([]); setWalkTypes([]); setSportFocus(''); setSportStyle(''); setSwimFocus(''); setSwimStyles([]); setSnowStyles([]); setWaterStyles([]); setGymFocus(''); setGymStyle(''); setBikeFocus(''); setBikeStyle(''); setStretchFocus(''); setStretchStyle(''); setFitnessFocus(''); setFitnessStyle(''); }}
                   className={`flex items-center px-3 py-2.5 rounded-lg text-sm font-medium border transition-all text-left ${
                     exerciseType === type ? 'border-2 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'
                   }`}
@@ -307,6 +325,24 @@ export default function EditActivityModal({ activity, onClose, onSaved, onDelete
                   );
                 })}
               </div>
+              <label className="label mt-3">Workout Focus <span className="text-[#64748B]">(optional)</span></label>
+              <div className="grid grid-cols-2 gap-1.5">
+                {(Object.keys(GYM_FOCUS_LABELS) as GymFocus[]).map(t => (
+                  <button key={t} onClick={() => setGymFocus(gymFocus === t ? '' : t)}
+                    className={`px-2 py-2 rounded-lg text-xs font-medium border transition-all text-center ${gymFocus === t ? 'border-red-500 bg-red-500/20 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>
+                    {GYM_FOCUS_LABELS[t]}
+                  </button>
+                ))}
+              </div>
+              <label className="label mt-3">Workout Style <span className="text-[#64748B]">(optional)</span></label>
+              <div className="grid grid-cols-2 gap-1.5">
+                {(Object.keys(GYM_STYLE_LABELS) as GymStyle[]).map(t => (
+                  <button key={t} onClick={() => setGymStyle(gymStyle === t ? '' : t)}
+                    className={`px-2 py-2 rounded-lg text-xs font-medium border transition-all text-center ${gymStyle === t ? 'border-red-500 bg-red-500/20 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>
+                    {GYM_STYLE_LABELS[t]}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
           {exerciseType === 'water' && (
@@ -404,6 +440,24 @@ export default function EditActivityModal({ activity, onClose, onSaved, onDelete
                   </button>
                 ))}
               </div>
+              <label className="label mt-3">Focus <span className="text-[#64748B]">(optional)</span></label>
+              <div className="grid grid-cols-3 gap-1.5">
+                {(Object.keys(FITNESS_FOCUS_LABELS) as FitnessFocus[]).map(t => (
+                  <button key={t} onClick={() => setFitnessFocus(fitnessFocus === t ? '' : t)}
+                    className={`px-2 py-2 rounded-lg text-xs font-medium border transition-all text-center ${fitnessFocus === t ? 'border-purple-500 bg-purple-500/20 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>
+                    {FITNESS_FOCUS_LABELS[t]}
+                  </button>
+                ))}
+              </div>
+              <label className="label mt-3">Style <span className="text-[#64748B]">(optional)</span></label>
+              <div className="grid grid-cols-2 gap-1.5">
+                {(Object.keys(FITNESS_STYLE_LABELS) as FitnessStyle[]).map(t => (
+                  <button key={t} onClick={() => setFitnessStyle(fitnessStyle === t ? '' : t)}
+                    className={`px-2 py-2 rounded-lg text-xs font-medium border transition-all text-center ${fitnessStyle === t ? 'border-purple-500 bg-purple-500/20 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>
+                    {FITNESS_STYLE_LABELS[t]}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
           {exerciseType === 'bike' && (
@@ -414,6 +468,31 @@ export default function EditActivityModal({ activity, onClose, onSaved, onDelete
                   <button key={t} onClick={() => setSubType(subType === t ? '' : t)}
                     className={`px-2 py-2 rounded-lg text-xs font-medium border transition-all text-center ${subType === t ? 'border-yellow-500 bg-yellow-500/20 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>
                     {BIKE_SUB_LABELS[t]}
+                  </button>
+                ))}
+              </div>
+              <label className="label mt-3">Ride Focus <span className="text-[#64748B]">(optional)</span></label>
+              <div className="grid grid-cols-2 gap-1.5">
+                {(Object.keys(BIKE_FOCUS_LABELS) as BikeFocus[]).map(t => (
+                  <div key={t} className="relative group">
+                    <button onClick={() => setBikeFocus(bikeFocus === t ? '' : t)}
+                      className={`w-full px-2 py-2 rounded-lg text-xs font-medium border transition-all text-center ${bikeFocus === t ? 'border-yellow-500 bg-yellow-500/20 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>
+                      {BIKE_FOCUS_LABELS[t]}
+                    </button>
+                    {BIKE_FOCUS_TOOLTIPS[t] && (
+                      <div className="pointer-events-none absolute bottom-full left-0 mb-1.5 z-30 w-52 hidden group-hover:block bg-[#0F172A] border border-[#334155] rounded-lg p-2 text-xs text-[#94A3B8] shadow-xl">
+                        {BIKE_FOCUS_TOOLTIPS[t]}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <label className="label mt-3">Ride Style <span className="text-[#64748B]">(optional)</span></label>
+              <div className="grid grid-cols-3 gap-1.5">
+                {(Object.keys(BIKE_STYLE_LABELS) as BikeStyle[]).map(t => (
+                  <button key={t} onClick={() => setBikeStyle(bikeStyle === t ? '' : t)}
+                    className={`px-2 py-2 rounded-lg text-xs font-medium border transition-all text-center ${bikeStyle === t ? 'border-yellow-500 bg-yellow-500/20 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>
+                    {BIKE_STYLE_LABELS[t]}
                   </button>
                 ))}
               </div>
@@ -443,6 +522,24 @@ export default function EditActivityModal({ activity, onClose, onSaved, onDelete
                   <button key={t} onClick={() => setSubType(subType === t ? '' : t)}
                     className={`px-2 py-2 rounded-lg text-xs font-medium border transition-all text-center ${subType === t ? 'border-green-500 bg-green-500/20 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>
                     {STRETCH_SUB_LABELS[t]}
+                  </button>
+                ))}
+              </div>
+              <label className="label mt-3">Stretch Focus <span className="text-[#64748B]">(optional)</span></label>
+              <div className="grid grid-cols-3 gap-1.5">
+                {(Object.keys(STRETCH_FOCUS_LABELS) as StretchFocus[]).map(t => (
+                  <button key={t} onClick={() => setStretchFocus(stretchFocus === t ? '' : t)}
+                    className={`px-2 py-2 rounded-lg text-xs font-medium border transition-all text-center ${stretchFocus === t ? 'border-green-500 bg-green-500/20 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>
+                    {STRETCH_FOCUS_LABELS[t]}
+                  </button>
+                ))}
+              </div>
+              <label className="label mt-3">Stretch Style <span className="text-[#64748B]">(optional)</span></label>
+              <div className="grid grid-cols-2 gap-1.5">
+                {(Object.keys(STRETCH_STYLE_LABELS) as StretchStyle[]).map(t => (
+                  <button key={t} onClick={() => setStretchStyle(stretchStyle === t ? '' : t)}
+                    className={`px-2 py-2 rounded-lg text-xs font-medium border transition-all text-center ${stretchStyle === t ? 'border-green-500 bg-green-500/20 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>
+                    {STRETCH_STYLE_LABELS[t]}
                   </button>
                 ))}
               </div>
