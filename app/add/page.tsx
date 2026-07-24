@@ -22,6 +22,7 @@ import { RUN_STYLE_ICON_OVERRIDES } from '@/lib/runStyleIcons';
 import type { LucideIcon } from 'lucide-react';
 import DistancePicker from '@/components/DistancePicker';
 import ScrollFieldPicker from '@/components/ScrollFieldPicker';
+import { suggestActivePercent, calcIntensityMins, backCalcActivePercent } from '@/lib/intensityCalc';
 import ImageUploader from '@/components/ImageUploader';
 import { useDirtyForm } from '@/components/DirtyFormContext';
 import { sessionParts, combineSessions, WEEKDAYS, isRunSession, todaysSession } from '@/lib/runPlanGenerator';
@@ -168,6 +169,7 @@ export default function AddPage() {
   const [images, setImages] = useState<string[]>([]);
   const [imageThumbs, setImageThumbs] = useState<string[]>([]);
   const [intensityMins, setIntensityMins] = useState('');
+  const [activePercent, setActivePercent] = useState<number | null>(null);
   const [paceMin, setPaceMin] = useState('');
   const [paceSec, setPaceSec] = useState('');
   const [maxPaceMin, setMaxPaceMin] = useState('');
@@ -278,6 +280,8 @@ export default function AddPage() {
   const durationSeconds = (parseInt(hours || '0') * 3600) + (parseInt(mins || '0') * 60) + parseInt(secs || '0');
   const durationMinutes = Math.floor(durationSeconds / 60);
   const durationExtraSeconds = durationSeconds % 60;
+  const displayPercent = activePercent ?? (exerciseType ? suggestActivePercent(exerciseType, subType) : 75);
+  const derivedIntensityMins = durationSeconds > 0 ? calcIntensityMins(effort, durationSeconds / 60, displayPercent) : null;
 
   const normalizeDuration = () => {
     let h = parseInt(hours || '0');
@@ -303,6 +307,10 @@ export default function AddPage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [distance, durationSeconds]);
+
+  useEffect(() => {
+    setIntensityMins(derivedIntensityMins != null ? String(derivedIntensityMins) : '');
+  }, [derivedIntensityMins]);
 
   useEffect(() => {
     if (nameManuallyEdited.current) return;
@@ -370,7 +378,12 @@ export default function AddPage() {
     setSecs(totalSec % 60 ? String(totalSec % 60) : '');
     setEffort(a.effort);
     setDistance(a.distance_km != null ? (a.exercise_type === 'swim' ? String(Math.round(a.distance_km * 1000)) : String(a.distance_km)) : '');
-    setIntensityMins(a.intensity_minutes != null ? String(a.intensity_minutes) : '');
+    if (a.intensity_minutes != null) {
+      const aDurationMins = a.duration_minutes + (a.duration_seconds || 0) / 60;
+      setActivePercent(backCalcActivePercent(a.intensity_minutes, a.effort, aDurationMins));
+    } else {
+      setActivePercent(null);
+    }
     if (a.pace_min_km != null) { setPaceMin(String(Math.floor(a.pace_min_km))); setPaceSec(String(Math.round((a.pace_min_km % 1) * 60))); } else { setPaceMin(''); setPaceSec(''); }
     if (a.max_pace_min_km != null) { setMaxPaceMin(String(Math.floor(a.max_pace_min_km))); setMaxPaceSec(String(Math.round((a.max_pace_min_km % 1) * 60))); } else { setMaxPaceMin(''); setMaxPaceSec(''); }
     setMaxHr(a.max_hr != null ? String(a.max_hr) : '');
@@ -535,7 +548,7 @@ export default function AddPage() {
       if (isPb || pbReasons.length > 0) setPbCelebration(pbReasons);
       else setSavedTitle(randomEncouragement());
       setName(''); setExerciseType(''); setRunType(''); setRunTypeModifier(''); setSubType(''); setGymTypes([]); setWalkTypes([]); setSportFocus(''); setSportStyle(''); setSportHomeAway(''); setSwimFocus(''); setSwimStyles([]); setSnowStyles([]); setWaterStyles([]); setCompanions([]); setConditions([]); setHours(''); setMins(''); setSecs('');
-      setEffort(null); setDistance(''); setNotes(''); setIntensityMins('');
+      setEffort(null); setDistance(''); setNotes(''); setIntensityMins(''); setActivePercent(null);
       setPaceMin(''); setPaceSec(''); setMaxPaceMin(''); setMaxPaceSec('');
       setMaxHr(''); setAvgHr(''); setElevationGain(''); setIsPb(false); setPbDesc('');
       setImages([]); setImageThumbs([]);
@@ -1135,8 +1148,28 @@ export default function AddPage() {
 
             {/* Intensity Minutes */}
             <div>
-              <label className="label">Intensity Minutes</label>
-              <input type="number" className="input" placeholder="e.g. 25" value={intensityMins} onChange={e => setIntensityMins(e.target.value)} />
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="label mb-0">Intensity Minutes</label>
+                {effort && durationSeconds > 0 && (
+                  <span className="text-xs text-[#64748B]">
+                    {effort <= 3 ? 'light (0.5×)' : effort <= 6 ? 'moderate (1×)' : 'vigorous (2×)'}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-3">
+                <input
+                  type="range" min={0} max={100} value={displayPercent}
+                  onChange={e => setActivePercent(Number(e.target.value))}
+                  className="flex-1 accent-blue-500"
+                />
+                <span className="text-sm font-semibold text-white w-10 text-right">{displayPercent}%</span>
+              </div>
+              <p className="text-xs text-[#64748B] mt-1">
+                {durationSeconds > 0 && effort
+                  ? <><span className="text-[#94A3B8] font-medium">{derivedIntensityMins} mins</span> · {Math.round(durationSeconds / 60 * displayPercent / 100)} active of {Math.round(durationSeconds / 60)} total</>
+                  : 'Set effort + duration to auto-calculate'
+                }
+              </p>
             </div>
 
             {/* Elevation Gain */}
