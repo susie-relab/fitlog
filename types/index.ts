@@ -11,7 +11,7 @@ export type ExerciseType =
   | 'snow';
 
 // Display order for UI
-export const EXERCISE_TYPE_ORDER: ExerciseType[] = ['run', 'sport', 'hiit', 'bike', 'swim', 'walk', 'stretch', 'water', 'snow', 'solo_fitness'];
+export const EXERCISE_TYPE_ORDER: ExerciseType[] = ['run', 'sport', 'bike', 'swim', 'hiit', 'walk', 'stretch', 'water', 'snow', 'solo_fitness'];
 
 export const EXERCISE_TYPE_LABELS: Record<ExerciseType, string> = {
   run: 'Run',
