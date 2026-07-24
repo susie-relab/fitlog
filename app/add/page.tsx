@@ -32,12 +32,50 @@ import AccountSwitcher from '@/components/AccountSwitcher';
 import { detectAutoPBs } from '@/lib/pbDetect';
 import { todayLocalISO, openDatePicker, calcAge, formatDuration, formatDistance } from '@/lib/utils';
 
+// Module-level helpers
+
+function getSubLabel(type: string, sub: string): string {
+  const maps: Record<string, Record<string, string>> = {
+    sport: SPORT_SUB_LABELS as Record<string, string>,
+    hiit: GYM_SUB_LABELS as Record<string, string>,
+    water: WATER_SUB_LABELS as Record<string, string>,
+    snow: SNOW_SUB_LABELS as Record<string, string>,
+    swim: SWIM_SUB_LABELS as Record<string, string>,
+    solo_fitness: FITNESS_SUB_LABELS as Record<string, string>,
+    bike: BIKE_SUB_LABELS as Record<string, string>,
+    walk: WALK_SUB_LABELS as Record<string, string>,
+    stretch: STRETCH_SUB_LABELS as Record<string, string>,
+  };
+  return maps[type]?.[sub] || EXERCISE_TYPE_LABELS[type as ExerciseType] || sub;
+}
+
+function hrZoneInfo(hr: number, maxHr: number) {
+  const pct = hr / maxHr;
+  if (pct < 0.6) return { zone: 1, label: 'Zone 1 · easy recovery', color: '#22C55E' };
+  if (pct < 0.7) return { zone: 2, label: 'Zone 2 · aerobic base', color: '#3B82F6' };
+  if (pct < 0.8) return { zone: 3, label: 'Zone 3 · tempo', color: '#EAB308' };
+  if (pct < 0.9) return { zone: 4, label: 'Zone 4 · threshold', color: '#F97316' };
+  return { zone: 5, label: 'Zone 5 · max effort', color: '#EF4444' };
+}
+
+function effortHrHint(e: number | null, ageVal: number | null) {
+  if (!e || !ageVal || ageVal < 10) return null;
+  const maxHr = 220 - ageVal;
+  const zones = [
+    { zone: 1, low: 0.50, high: 0.60, label: 'easy aerobic', color: '#22C55E' },
+    { zone: 2, low: 0.60, high: 0.70, label: 'aerobic', color: '#3B82F6' },
+    { zone: 3, low: 0.70, high: 0.80, label: 'tempo', color: '#EAB308' },
+    { zone: 4, low: 0.80, high: 0.90, label: 'threshold', color: '#F97316' },
+    { zone: 5, low: 0.90, high: 1.00, label: 'max effort', color: '#EF4444' },
+  ];
+  const z = zones[e <= 2 ? 0 : e <= 4 ? 1 : e <= 6 ? 2 : e <= 8 ? 3 : 4];
+  return { low: Math.round(maxHr * z.low), high: Math.round(maxHr * z.high), zone: z.zone, label: z.label, color: z.color };
+}
+
 function ColorDot({ color }: { color: string }) {
   return <span className="inline-block w-2.5 h-2.5 rounded-full mr-2" style={{ background: color }} />;
 }
 
-/** Sub-type button with an icon (reused from the "This Year" tile set) and no visible box
- *  until selected — keeps a dense grid from looking like a wall of identical outlined boxes. */
 function IconSubtypeButton({ label, subtypeKey, active, onClick, activeClass }: {
   label: string; subtypeKey: string; active: boolean; onClick: () => void; activeClass: string;
 }) {
@@ -55,8 +93,6 @@ function IconSubtypeButton({ label, subtypeKey, active, onClick, activeClass }: 
   );
 }
 
-/** Style option shown as a plain bullet list (no box) — for groups where a full button grid
- *  reads as too heavy; the bullet fills in solid when selected. */
 function BulletStyleOption({ label, active, onClick, color }: {
   label: string; active: boolean; onClick: () => void; color: string;
 }) {
@@ -68,6 +104,40 @@ function BulletStyleOption({ label, active, onClick, color }: {
       <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: active ? color : '#475569' }} />
       {label}
     </button>
+  );
+}
+
+function DashedToggleButton({ label, hideLabel, expanded, onClick }: { label: string; hideLabel?: string; expanded: boolean; onClick: () => void }) {
+  return (
+    <div className="relative self-start">
+      <button type="button" onClick={onClick}
+        className="flex items-center gap-2 text-sm text-white hover:text-[#94A3B8] transition-colors px-2 py-0.5 border border-transparent rounded-lg">
+        <span className="text-xs">{expanded ? '▼' : '▶'}</span>
+        {expanded ? (hideLabel ?? label) : label}
+      </button>
+      {!expanded && (
+        <svg aria-hidden className="absolute inset-0 w-full h-full pointer-events-none" style={{overflow:'visible'}}>
+          {[13,38,63,88].map(p => (
+            <line key={`l${p}`} x1="0" y1={`${p}%`} x2="-6" y2={`${p}%`} stroke="white" strokeWidth="1.2" strokeLinecap="round" opacity="0.4"/>
+          ))}
+          <g style={{transform:'translateX(100%)', transformBox:'view-box' as never, transformOrigin:'0 0'}}>
+            {[13,38,63,88].map(p => (
+              <line key={`r${p}`} x1="0" y1={`${p}%`} x2="6" y2={`${p}%`} stroke="white" strokeWidth="1.2" strokeLinecap="round" opacity="0.4"/>
+            ))}
+          </g>
+          <line x1="0" y1="0" x2="-5" y2="-5" stroke="white" strokeWidth="1.2" strokeLinecap="round" opacity="0.4"/>
+          <g style={{transform:'translateX(100%)', transformBox:'view-box' as never, transformOrigin:'0 0'}}>
+            <line x1="0" y1="0" x2="5" y2="-5" stroke="white" strokeWidth="1.2" strokeLinecap="round" opacity="0.4"/>
+          </g>
+          <g style={{transform:'translateY(100%)', transformBox:'view-box' as never, transformOrigin:'0 0'}}>
+            <line x1="0" y1="0" x2="-5" y2="5" stroke="white" strokeWidth="1.2" strokeLinecap="round" opacity="0.4"/>
+          </g>
+          <g style={{transform:'translate(100%, 100%)', transformBox:'view-box' as never, transformOrigin:'0 0'}}>
+            <line x1="0" y1="0" x2="5" y2="5" stroke="white" strokeWidth="1.2" strokeLinecap="round" opacity="0.4"/>
+          </g>
+        </svg>
+      )}
+    </div>
   );
 }
 
@@ -121,9 +191,6 @@ export default function AddPage() {
   const [planCompleted, setPlanCompleted] = useState<{ planId: string; totalRuns: number; totalKm: number; totalMin: number } | null>(null);
   const [planMatchPrompt, setPlanMatchPrompt] = useState<{ planId: string; week: number; day: string; sessionTitle: string; activityId: string; distanceKm: number | null; durationMinutes: number; effort: number | null } | null>(null);
   const [duplicatePrompt, setDuplicatePrompt] = useState<{ existing: Activity; newId: string } | null>(null);
-  // Holds the pending "auto-return to Dash/Plan" timeout so an explicit nav choice
-  // in the saved/PB celebration modal (e.g. "View in Activity Log") can cancel it —
-  // otherwise it fires ~1.8s later and yanks the user back regardless of their pick.
   const autoNavTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const navigateFromModal = (path: string) => {
     if (autoNavTimeoutRef.current) clearTimeout(autoNavTimeoutRef.current);
@@ -133,7 +200,12 @@ export default function AddPage() {
   const [recentActivities, setRecentActivities] = useState<Activity[] | null>(null);
   const [loadingRecent, setLoadingRecent] = useState(false);
 
-  // Prefill from query params (e.g. clicking a session in a training plan)
+  type QuickAddItem = { exerciseType: ExerciseType; subType: string; label: string; color: string };
+  const [quickAddItems, setQuickAddItems] = useState<QuickAddItem[]>([]);
+  const [showSurroundings, setShowSurroundings] = useState(false);
+  const [showStyleFocus, setShowStyleFocus] = useState(false);
+
+  // Prefill from query params
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const t = params.get('title'); if (t) setName(t);
@@ -164,14 +236,42 @@ export default function AddPage() {
     return () => window.removeEventListener('beforeunload', handler);
   }, [isDirty]);
 
+  // Load the user's top 5 most-used exercise+subtype combos from the last 30 days
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - 30);
+      const { data } = await supabase.from('activities')
+        .select('exercise_type, sub_type, run_type')
+        .eq('user_id', user.id)
+        .gte('date', cutoff.toISOString().slice(0, 10))
+        .order('date', { ascending: false })
+        .limit(150);
+      if (!data || data.length === 0) return;
+      const counts = new Map<string, { exerciseType: ExerciseType; subType: string; count: number }>();
+      for (const a of data) {
+        const sub = a.exercise_type === 'run' ? (a.run_type || '') : (a.sub_type || '');
+        const key = `${a.exercise_type}|${sub}`;
+        const existing = counts.get(key);
+        if (existing) existing.count++; else counts.set(key, { exerciseType: a.exercise_type as ExerciseType, subType: sub, count: 1 });
+      }
+      const top = [...counts.values()].sort((a, b) => b.count - a.count).slice(0, 5);
+      setQuickAddItems(top.map(item => {
+        const isRun = item.exerciseType === 'run';
+        const label = isRun && item.subType
+          ? `${RUN_TYPE_LABELS[item.subType as RunType]} Run`
+          : item.subType ? getSubLabel(item.exerciseType, item.subType) : EXERCISE_TYPE_LABELS[item.exerciseType];
+        const color = isRun && item.subType ? RUN_TYPE_COLORS[item.subType as RunType] : EXERCISE_TYPE_COLORS[item.exerciseType];
+        return { exerciseType: item.exerciseType, subType: item.subType, label, color };
+      }));
+    })();
+  }, [user]);
+
   const durationSeconds = (parseInt(hours || '0') * 3600) + (parseInt(mins || '0') * 60) + parseInt(secs || '0');
-  // Whole minutes + a leftover-seconds remainder are both stored — floor (not round) the
-  // minutes so entering seconds never bumps the saved minutes up (45:30 stays 45m 30s, not 46m).
   const durationMinutes = Math.floor(durationSeconds / 60);
   const durationExtraSeconds = durationSeconds % 60;
 
-  // Rolls an overflowing minutes/seconds field up into the unit above it (e.g. typing "70"
-  // minutes becomes 1h 10m) as soon as the user taps out of any of the three duration fields.
   const normalizeDuration = () => {
     let h = parseInt(hours || '0');
     let m = parseInt(mins || '0');
@@ -210,9 +310,6 @@ export default function AddPage() {
     setLoadingRecent(false);
   };
 
-  // Prefills the form from a past activity so the user can tweak it before saving — deliberately
-  // leaves notes, photos, the PB flag, and the date alone, since those belong to that past
-  // session specifically, not to today's repeat of it.
   const applyRecentActivity = (a: Activity) => {
     setName(a.name);
     setExerciseType(a.exercise_type);
@@ -242,15 +339,25 @@ export default function AddPage() {
     setMaxHr(a.max_hr != null ? String(a.max_hr) : '');
     setAvgHr(a.avg_hr != null ? String(a.avg_hr) : '');
     setElevationGain(a.elevation_gain_m != null ? String(a.elevation_gain_m) : '');
-    if (a.sport_focus || a.sport_style || a.swim_focus || a.swim_styles || a.snow_styles || a.water_styles) setShowMore(true);
+    if (a.sport_focus || a.sport_style || a.swim_focus || a.swim_styles || a.snow_styles || a.water_styles) setShowStyleFocus(true);
+    if (a.companions || a.conditions) setShowSurroundings(true);
     if (a.pace_min_km != null || a.max_pace_min_km != null || a.max_hr != null || a.avg_hr != null || a.intensity_minutes != null || a.elevation_gain_m != null) setShowMore(true);
     setShowRepeatPicker(false);
   };
 
+  const applyQuickAdd = (item: QuickAddItem) => {
+    setExerciseType(item.exerciseType);
+    setRunType(''); setRunTypeModifier(''); setSubType('');
+    setGymTypes([]); setWalkTypes([]);
+    setSportFocus(''); setSportStyle(''); setSportHomeAway('');
+    setSwimFocus(''); setSwimStyles([]); setSnowStyles([]); setWaterStyles([]);
+    if (item.exerciseType === 'run') setRunType(item.subType as RunType);
+    else if (item.exerciseType === 'hiit') setGymTypes(item.subType ? [item.subType] : []);
+    else if (item.exerciseType === 'walk') setWalkTypes(item.subType ? [item.subType] : []);
+    else setSubType(item.subType);
+  };
+
   const handleSave = async () => {
-    // Collect every missing/invalid field at once instead of stopping at the first one, so
-    // the banner reads e.g. "Please enter a valid duration and select an effort level."
-    // rather than making the user fix one thing, hit Save, and discover the next.
     const issues: string[] = [];
     if (!name.trim()) issues.push('enter an activity name');
     if (!exerciseType) issues.push('select an exercise type');
@@ -266,8 +373,6 @@ export default function AddPage() {
     setSaving(true);
     setError('');
 
-    // Swim distance is entered/shown in metres — convert to km for storage/pace math,
-    // since distance_km (and pace_min_km) are shared across every exercise type.
     const distanceKm = distance ? (exerciseType === 'swim' ? parseFloat(distance) / 1000 : parseFloat(distance)) : null;
     const paceMinKm = paceToDecimal(paceMin, paceSec) ?? calcAutoPace(String(distanceKm ?? ''), durationSeconds) ?? null;
     const subTypeValue = exerciseType === 'hiit' ? gymTypes.join(',') || null : exerciseType === 'walk' ? walkTypes.join(',') || null : subType || null;
@@ -306,12 +411,6 @@ export default function AddPage() {
       date,
     }).select('id').single();
 
-    // Check for an auto-detected PB (fastest distance, longest session, best pace — both for
-    // the overall exercise type and for each subtype) against prior activity, and/or the
-    // user's manual "Personal Best" flag. Narrowed to rows that could actually match a
-    // category: same exercise type (covers type- and subtype-level comparisons), or any row
-    // with a distance (needed for the cross-type "fastest at this race distance" check) —
-    // this avoids pulling the user's entire multi-year history on every save.
     let autoReasons: string[] = [];
     if (!dbErr && inserted?.id) {
       const { data: prior } = await supabase.from('activities')
@@ -323,14 +422,12 @@ export default function AddPage() {
         { exercise_type: exerciseType as ExerciseType, distance_km: distanceKm ?? undefined, pace_min_km: paceMinKm ?? undefined, duration_minutes: durationMinutes, run_type: exerciseType === 'run' ? (runType as RunType || undefined) : undefined, run_type_modifier: exerciseType === 'run' ? (runTypeModifier as RunType || undefined) : undefined, sub_type: subTypeValue ?? undefined },
         prior || [],
       );
-      // Only auto-star if the user hadn't already manually starred it — a manual star always wins.
       if (!isPb && autoReasons.length > 0) {
         await supabase.from('activities').update({ is_pb: true, pb_auto: true, pb_description: autoReasons.join(' · ') }).eq('id', inserted.id);
       }
     }
     const pbReasons = isPb && pbDesc.trim() ? [pbDesc.trim(), ...autoReasons] : autoReasons;
 
-    // If this came from a training plan session, mark that day complete.
     if (!dbErr && planLink) {
       const { data: planRow } = await supabase.from('training_plans').select('plan_data').eq('id', planLink.planId).single();
       if (planRow?.plan_data) {
@@ -346,7 +443,6 @@ export default function AddPage() {
           wk.days[planLink.day] = newParts.length === 1 ? newParts[0] : combineSessions(newParts);
           await supabase.from('training_plans').update({ plan_data: pd, updated_at: new Date().toISOString() }).eq('id', planLink.planId);
 
-          // Was that the plan's final remaining session? Surface a completion celebration.
           const totalRuns = pd.weeks.reduce((s: number, w: typeof wk) => s + WEEKDAYS.filter(d => isRunSession(w.days[d])).length, 0);
           const runsCompleted = pd.weeks.reduce((s: number, w: typeof wk) => s + WEEKDAYS.filter(d => w.days[d].completed).length, 0);
           if (totalRuns > 0 && runsCompleted >= totalRuns) {
@@ -359,8 +455,6 @@ export default function AddPage() {
       setPlanLink(null);
     }
 
-    // If not a Dash/plan-initiated log, check if the saved exercise type matches an unlogged
-    // plan session on this date — if so, offer to apply it to the plan.
     if (!dbErr && inserted?.id && !planLink && !fromDash) {
       const { data: plans } = await supabase
         .from('training_plans')
@@ -386,7 +480,6 @@ export default function AddPage() {
       }
     }
 
-    // Check for a duplicate — same exercise type already logged on this date.
     if (!dbErr && inserted?.id) {
       const { data: sameDay } = await supabase
         .from('activities')
@@ -410,7 +503,6 @@ export default function AddPage() {
       setTimeout(() => setConfettiColor(null), 2200);
       if (isPb || pbReasons.length > 0) setPbCelebration(pbReasons);
       else setSavedTitle(randomEncouragement());
-      // Reset form
       setName(''); setExerciseType(''); setRunType(''); setRunTypeModifier(''); setSubType(''); setGymTypes([]); setWalkTypes([]); setSportFocus(''); setSportStyle(''); setSportHomeAway(''); setSwimFocus(''); setSwimStyles([]); setSnowStyles([]); setWaterStyles([]); setCompanions([]); setConditions([]); setHours(''); setMins(''); setSecs('');
       setEffort(null); setDistance(''); setNotes(''); setIntensityMins('');
       setPaceMin(''); setPaceSec(''); setMaxPaceMin(''); setMaxPaceSec('');
@@ -418,9 +510,9 @@ export default function AddPage() {
       setImages([]); setImageThumbs([]);
       setDate(todayLocalISO());
       setShowMore(false);
-      // form is clean after save
+      setShowSurroundings(false);
+      setShowStyleFocus(false);
 
-      // Give the confetti/PB-celebration a moment to play before navigating away.
       if (planCompleted) {
         autoNavTimeoutRef.current = setTimeout(() => router.push(`/training-plan?plan=${planCompleted.planId}&celebrate=1`), 1800);
       } else if (fromDash) {
@@ -460,17 +552,39 @@ export default function AddPage() {
     ? EXERCISE_TYPE_COLORS[exerciseType]
     : '#3B82F6';
 
+  const age = user?.user_metadata?.birthday ? calcAge(user.user_metadata.birthday) : null;
+  const maxHrEstimate = age ? 220 - age : null;
+  const autoPaceDecimal = calcAutoPace(distance, durationSeconds);
+  const autoPaceMinVal = autoPaceDecimal ? Math.floor(autoPaceDecimal) : null;
+  const autoPaceSecVal = autoPaceDecimal ? Math.round((autoPaceDecimal % 1) * 60) : null;
+  const progressCount = [!!name.trim(), !!exerciseType, durationSeconds > 0, !!effort, !!distance, !!notes.trim()].filter(Boolean).length;
+
   return (
     <div className="max-w-lg lg:max-w-2xl mx-auto relative">
       <div className="absolute top-0 right-0 z-10">
         <AccountSwitcher compact />
       </div>
-      <div className="flex items-center justify-between mb-5 gap-2 flex-wrap pr-24 sm:pr-32">
+      <div className="flex items-center justify-between mb-3 gap-2 flex-wrap pr-24 sm:pr-32">
         <h1 className="text-xl font-bold text-white">Add Exercise</h1>
         <button type="button" onClick={openRepeatPicker} className="text-sm text-blue-400 hover:text-blue-300">
           ↻ Repeat a recent activity
         </button>
       </div>
+      {quickAddItems.length > 0 && (
+        <div className="flex gap-2 flex-wrap mb-4">
+          {quickAddItems.map((item, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => applyQuickAdd(item)}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border border-[#334155] text-[#94A3B8] hover:border-[#475569] hover:text-white transition-all"
+            >
+              <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: item.color }} />
+              {item.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {confettiColor && <ConfettiBurst color={confettiColor} />}
       {error && (
@@ -479,7 +593,19 @@ export default function AddPage() {
         </div>
       )}
 
-      <div className="flex flex-col gap-4">
+      {/* Progress bar */}
+      {(name || exerciseType) && (
+        <div className="mb-2">
+          <div className="h-1 w-full bg-[#1E293B] rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-300"
+              style={{ width: `${(progressCount / 6) * 100}%`, background: accentColor }}
+            />
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-col gap-4 pb-24 sm:pb-0">
         {/* Name */}
         <div>
           <label className="label">Activity Name *</label>
@@ -517,7 +643,7 @@ export default function AddPage() {
           </div>
         </div>
 
-        {/* Run Type and Run Style are independent; pick at most one of each */}
+        {/* Run Type and Run Style */}
         {exerciseType === 'run' && (
           <div>
             <label className="label">Run Type <span className="text-[#64748B]">(optional)</span></label>
@@ -541,30 +667,29 @@ export default function AddPage() {
                 </button>
               ))}
             </div>
-            <label className="label mt-3">Run Style <span className="text-[#64748B]">(optional)</span></label>
-            <div className="grid grid-cols-2 gap-2">
-              {RUN_TYPE_TERRAIN.map(type => {
-                const RunStyleIcon = RUN_STYLE_ICON_OVERRIDES[type];
-                return (
-                <button
-                  key={type}
-                  onClick={() => setRunTypeModifier(runTypeModifier === type ? '' : type)}
-                  className={`flex items-center px-3 py-2.5 rounded-lg text-sm font-medium border transition-all text-left ${
-                    runTypeModifier === type
-                      ? 'border-2 text-white'
-                      : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'
-                  }`}
-                  style={runTypeModifier === type ? {
-                    borderColor: RUN_TYPE_COLORS[type],
-                    background: RUN_TYPE_COLORS[type] + '33',
-                  } : {}}
-                >
-                  {RunStyleIcon && <RunStyleIcon size={16} className="flex-shrink-0 mr-2" style={{ color: RUN_TYPE_COLORS[type] }} />}
-                  {RUN_TYPE_LABELS[type]}
-                </button>
-                );
-              })}
+            <div className="mt-3">
+              <DashedToggleButton label="Run Style" hideLabel="Hide Run Style" expanded={showStyleFocus} onClick={() => setShowStyleFocus(v => !v)} />
             </div>
+            {showStyleFocus && (
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                {RUN_TYPE_TERRAIN.map(type => {
+                  const RunStyleIcon = RUN_STYLE_ICON_OVERRIDES[type];
+                  return (
+                    <button
+                      key={type}
+                      onClick={() => setRunTypeModifier(runTypeModifier === type ? '' : type)}
+                      className={`flex items-center px-3 py-2.5 rounded-lg text-sm font-medium border transition-all text-left ${
+                        runTypeModifier === type ? 'border-2 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'
+                      }`}
+                      style={runTypeModifier === type ? { borderColor: RUN_TYPE_COLORS[type], background: RUN_TYPE_COLORS[type] + '33' } : {}}
+                    >
+                      {RunStyleIcon && <RunStyleIcon size={16} className="flex-shrink-0 mr-2" style={{ color: RUN_TYPE_COLORS[type] }} />}
+                      {RUN_TYPE_LABELS[type]}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
@@ -578,38 +703,46 @@ export default function AddPage() {
                   onClick={() => setSubType(subType === t ? '' : t)} activeClass="border-orange-500 bg-orange-500/20 text-white" />
               ))}
             </div>
-            <label className="label mt-3">Sport Focus <span className="text-[#64748B]">(optional)</span></label>
-            <div className="grid grid-cols-3 gap-1.5">
-              {(Object.keys(SPORT_FOCUS_LABELS) as SportFocus[]).map(t => (
-                <button key={t} onClick={() => setSportFocus(sportFocus === t ? '' : t)}
-                  className={`px-2 py-2 rounded-lg text-xs font-medium border transition-all text-center ${sportFocus === t ? 'border-orange-500 bg-orange-500/20 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>
-                  {SPORT_FOCUS_LABELS[t]}
-                </button>
-              ))}
+            <div className="mt-3">
+              <DashedToggleButton label="Sport Focus & Style" hideLabel="Hide Sport Focus & Style" expanded={showStyleFocus} onClick={() => setShowStyleFocus(v => !v)} />
             </div>
-            {sportFocus === 'game' && (
+            {showStyleFocus && (
               <>
-                <label className="label mt-3">Home or Away? <span className="text-[#64748B]">(optional)</span></label>
-                <div className="flex gap-2">
-                  {(['home', 'away'] as const).map(v => (
-                    <button key={v} onClick={() => setSportHomeAway(sportHomeAway === v ? '' : v)}
-                      className={`flex-1 py-2 rounded-lg text-xs font-medium border transition-all capitalize ${sportHomeAway === v ? 'border-orange-500 bg-orange-500/20 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>
-                      {v === 'home' ? '🏠 Home' : '✈️ Away'}
+                <label className="label mt-3">Sport Focus <span className="text-[#64748B]">(optional)</span></label>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {(Object.keys(SPORT_FOCUS_LABELS) as SportFocus[]).map(t => (
+                    <button key={t} onClick={() => setSportFocus(sportFocus === t ? '' : t)}
+                      className={`px-2 py-2 rounded-lg text-xs font-medium border transition-all text-center ${sportFocus === t ? 'border-orange-500 bg-orange-500/20 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>
+                      {SPORT_FOCUS_LABELS[t]}
                     </button>
+                  ))}
+                </div>
+                {sportFocus === 'game' && (
+                  <>
+                    <label className="label mt-3">Home or Away? <span className="text-[#64748B]">(optional)</span></label>
+                    <div className="flex gap-2">
+                      {(['home', 'away'] as const).map(v => (
+                        <button key={v} onClick={() => setSportHomeAway(sportHomeAway === v ? '' : v)}
+                          className={`flex-1 py-2 rounded-lg text-xs font-medium border transition-all capitalize ${sportHomeAway === v ? 'border-orange-500 bg-orange-500/20 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>
+                          {v === 'home' ? '🏠 Home' : '✈️ Away'}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+                <label className="label mt-3">Sport Style <span className="text-[#64748B]">(optional)</span></label>
+                <div className="grid grid-cols-2 gap-1">
+                  {(Object.keys(SPORT_STYLE_LABELS) as SportStyle[]).map(t => (
+                    <BulletStyleOption key={t} label={SPORT_STYLE_LABELS[t]} active={sportStyle === t}
+                      onClick={() => setSportStyle(sportStyle === t ? '' : t)} color={SPORT_STYLE_COLORS[t]} />
                   ))}
                 </div>
               </>
             )}
-            <label className="label mt-3">Sport Style <span className="text-[#64748B]">(optional)</span></label>
-            <div className="grid grid-cols-2 gap-1">
-              {(Object.keys(SPORT_STYLE_LABELS) as SportStyle[]).map(t => (
-                <BulletStyleOption key={t} label={SPORT_STYLE_LABELS[t]} active={sportStyle === t}
-                  onClick={() => setSportStyle(sportStyle === t ? '' : t)} color={SPORT_STYLE_COLORS[t]} />
-              ))}
-            </div>
           </div>
         )}
-        {/* Gym subtype — multi select */}
+
+        {/* Gym subtype */}
         {exerciseType === 'hiit' && (
           <div>
             <label className="label">Workout Focus <span className="text-[#64748B]">(optional + multi-select)</span></label>
@@ -624,6 +757,8 @@ export default function AddPage() {
             </div>
           </div>
         )}
+
+        {/* Water */}
         {exerciseType === 'water' && (
           <div>
             <label className="label">Activity <span className="text-[#64748B]">(optional)</span></label>
@@ -633,20 +768,26 @@ export default function AddPage() {
                   onClick={() => setSubType(subType === t ? '' : t)} activeClass="border-sky-500 bg-sky-500/20 text-white" />
               ))}
             </div>
-            <label className="label mt-3">Water Style <span className="text-[#64748B]">(optional + multi-select)</span></label>
-            <div className="grid grid-cols-2 gap-1.5">
-              {(Object.keys(WATER_STYLE_LABELS) as WaterStyle[]).map(t => {
-                const active = waterStyles.includes(t);
-                return (
-                  <button key={t} onClick={() => setWaterStyles(active ? waterStyles.filter(x => x !== t) : [...waterStyles, t])}
-                    className={`px-2 py-2 rounded-lg text-xs font-medium border transition-all text-center ${active ? 'border-sky-500 bg-sky-500/20 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>
-                    {WATER_STYLE_LABELS[t]}
-                  </button>
-                );
-              })}
+            <div className="mt-3">
+              <DashedToggleButton label="Water Style" hideLabel="Hide Water Style" expanded={showStyleFocus} onClick={() => setShowStyleFocus(v => !v)} />
             </div>
+            {showStyleFocus && (
+              <div className="grid grid-cols-2 gap-1.5 mt-2">
+                {(Object.keys(WATER_STYLE_LABELS) as WaterStyle[]).map(t => {
+                  const active = waterStyles.includes(t);
+                  return (
+                    <button key={t} onClick={() => setWaterStyles(active ? waterStyles.filter(x => x !== t) : [...waterStyles, t])}
+                      className={`px-2 py-2 rounded-lg text-xs font-medium border transition-all text-center ${active ? 'border-sky-500 bg-sky-500/20 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>
+                      {WATER_STYLE_LABELS[t]}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
+
+        {/* Snow */}
         {exerciseType === 'snow' && (
           <div>
             <label className="label">Activity <span className="text-[#64748B]">(optional)</span></label>
@@ -656,20 +797,26 @@ export default function AddPage() {
                   onClick={() => setSubType(subType === t ? '' : t)} activeClass="border-sky-500 bg-sky-500/20 text-white" />
               ))}
             </div>
-            <label className="label mt-3">Snow Style <span className="text-[#64748B]">(optional + multi-select)</span></label>
-            <div className="grid grid-cols-2 gap-1.5">
-              {(Object.keys(SNOW_STYLE_LABELS) as SnowStyle[]).map(t => {
-                const active = snowStyles.includes(t);
-                return (
-                  <button key={t} onClick={() => setSnowStyles(active ? snowStyles.filter(x => x !== t) : [...snowStyles, t])}
-                    className={`px-2 py-2 rounded-lg text-xs font-medium border transition-all text-center ${active ? 'border-sky-500 bg-sky-500/20 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>
-                    {SNOW_STYLE_LABELS[t]}
-                  </button>
-                );
-              })}
+            <div className="mt-3">
+              <DashedToggleButton label="Snow Style" hideLabel="Hide Snow Style" expanded={showStyleFocus} onClick={() => setShowStyleFocus(v => !v)} />
             </div>
+            {showStyleFocus && (
+              <div className="grid grid-cols-2 gap-1.5 mt-2">
+                {(Object.keys(SNOW_STYLE_LABELS) as SnowStyle[]).map(t => {
+                  const active = snowStyles.includes(t);
+                  return (
+                    <button key={t} onClick={() => setSnowStyles(active ? snowStyles.filter(x => x !== t) : [...snowStyles, t])}
+                      className={`px-2 py-2 rounded-lg text-xs font-medium border transition-all text-center ${active ? 'border-sky-500 bg-sky-500/20 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>
+                      {SNOW_STYLE_LABELS[t]}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
+
+        {/* Swim */}
         {exerciseType === 'swim' && (
           <div>
             <label className="label">Swim Type <span className="text-[#64748B]">(optional)</span></label>
@@ -679,27 +826,35 @@ export default function AddPage() {
                   onClick={() => setSubType(subType === t ? '' : t)} activeClass="border-cyan-500 bg-cyan-500/20 text-white" />
               ))}
             </div>
-            <label className="label mt-3">Swim Focus <span className="text-[#64748B]">(optional)</span></label>
-            <div className="grid grid-cols-2 gap-1.5">
-              {(Object.keys(SWIM_FOCUS_LABELS) as SwimFocus[]).map(t => (
-                <button key={t} onClick={() => setSwimFocus(swimFocus === t ? '' : t)}
-                  className={`px-2 py-2 rounded-lg text-xs font-medium border transition-all text-center ${swimFocus === t ? 'border-cyan-500 bg-cyan-500/20 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>
-                  {SWIM_FOCUS_LABELS[t]}
-                </button>
-              ))}
+            <div className="mt-3">
+              <DashedToggleButton label="Swim Focus & Style" hideLabel="Hide Swim Focus & Style" expanded={showStyleFocus} onClick={() => setShowStyleFocus(v => !v)} />
             </div>
-            <label className="label mt-3">Swim Style <span className="text-[#64748B]">(optional + multi-select)</span></label>
-            <div className="grid grid-cols-2 gap-1">
-              {(Object.keys(SWIM_STYLE_LABELS) as SwimStyle[]).map(t => {
-                const active = swimStyles.includes(t);
-                return (
-                  <BulletStyleOption key={t} label={SWIM_STYLE_LABELS[t]} active={active}
-                    onClick={() => setSwimStyles(active ? swimStyles.filter(x => x !== t) : [...swimStyles, t])} color={SWIM_STYLE_COLORS[t]} />
-                );
-              })}
-            </div>
+            {showStyleFocus && (
+              <>
+                <label className="label mt-3">Swim Focus <span className="text-[#64748B]">(optional)</span></label>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {(Object.keys(SWIM_FOCUS_LABELS) as SwimFocus[]).map(t => (
+                    <button key={t} onClick={() => setSwimFocus(swimFocus === t ? '' : t)}
+                      className={`px-2 py-2 rounded-lg text-xs font-medium border transition-all text-center ${swimFocus === t ? 'border-cyan-500 bg-cyan-500/20 text-white' : 'border-[#334155] text-[#94A3B8] hover:border-[#475569]'}`}>
+                      {SWIM_FOCUS_LABELS[t]}
+                    </button>
+                  ))}
+                </div>
+                <label className="label mt-3">Swim Style <span className="text-[#64748B]">(optional + multi-select)</span></label>
+                <div className="grid grid-cols-2 gap-1">
+                  {(Object.keys(SWIM_STYLE_LABELS) as SwimStyle[]).map(t => {
+                    const active = swimStyles.includes(t);
+                    return (
+                      <BulletStyleOption key={t} label={SWIM_STYLE_LABELS[t]} active={active}
+                        onClick={() => setSwimStyles(active ? swimStyles.filter(x => x !== t) : [...swimStyles, t])} color={SWIM_STYLE_COLORS[t]} />
+                    );
+                  })}
+                </div>
+              </>
+            )}
           </div>
         )}
+
         {exerciseType === 'solo_fitness' && (
           <div>
             <label className="label">Activity Type <span className="text-[#64748B]">(optional)</span></label>
@@ -757,39 +912,13 @@ export default function AddPage() {
           <label className="label">Duration *</label>
           <div className="flex gap-3">
             <div className="flex-1">
-              <input
-                type="number"
-                className="input"
-                placeholder="Hours"
-                min="0"
-                value={hours}
-                onChange={e => setHours(e.target.value)}
-                onBlur={normalizeDuration}
-              />
+              <input type="number" className="input" placeholder="Hours" min="0" value={hours} onChange={e => setHours(e.target.value)} onBlur={normalizeDuration} />
             </div>
             <div className="flex-1">
-              <input
-                type="number"
-                className="input"
-                placeholder="Minutes"
-                min="0"
-                max="59"
-                value={mins}
-                onChange={e => setMins(e.target.value)}
-                onBlur={normalizeDuration}
-              />
+              <input type="number" className="input" placeholder="Minutes" min="0" max="59" value={mins} onChange={e => setMins(e.target.value)} onBlur={normalizeDuration} />
             </div>
             <div className="flex-1">
-              <input
-                type="number"
-                className="input"
-                placeholder="Seconds"
-                min="0"
-                max="59"
-                value={secs}
-                onChange={e => setSecs(e.target.value)}
-                onBlur={normalizeDuration}
-              />
+              <input type="number" className="input" placeholder="Seconds" min="0" max="59" value={secs} onChange={e => setSecs(e.target.value)} onBlur={normalizeDuration} />
             </div>
           </div>
           {durationSeconds > 0 && (
@@ -820,52 +949,44 @@ export default function AddPage() {
           </div>
         </div>
 
-        {/* Distance — always visible */}
+        {/* Distance */}
         <div>
           <label className="label">Distance (optional)</label>
           <DistancePicker value={distance} onChange={setDistance} exerciseType={exerciseType} />
         </div>
 
         {/* More details toggle */}
-        <div className="relative self-start">
-          <button
-            type="button"
-            onClick={() => setShowMore(v => !v)}
-            className="flex items-center gap-2 text-sm text-white hover:text-[#94A3B8] transition-colors px-2 py-0.5 border border-transparent rounded-lg"
-          >
-            <span className="text-xs">{showMore ? '▼' : '▶'}</span>
-            {showMore ? 'Hide optional details' : 'More optional details'}
-          </button>
-          {!showMore && (
-            <svg
-              aria-hidden
-              className="absolute inset-0 w-full h-full pointer-events-none"
-              style={{overflow: 'visible'}}
-            >
-              {/* left */}
-              {[13,38,63,88].map(p => (
-                <line key={`l${p}`} x1="0" y1={`${p}%`} x2="-6" y2={`${p}%`} stroke="white" strokeWidth="1.2" strokeLinecap="round" opacity="0.4"/>
-              ))}
-              {/* right */}
-              <g style={{transform:'translateX(100%)', transformBox:'view-box' as never, transformOrigin:'0 0'}}>
-                {[13,38,63,88].map(p => (
-                  <line key={`r${p}`} x1="0" y1={`${p}%`} x2="6" y2={`${p}%`} stroke="white" strokeWidth="1.2" strokeLinecap="round" opacity="0.4"/>
-                ))}
-              </g>
-              {/* corners */}
-              <line x1="0" y1="0" x2="-5" y2="-5" stroke="white" strokeWidth="1.2" strokeLinecap="round" opacity="0.4"/>
-              <g style={{transform:'translateX(100%)', transformBox:'view-box' as never, transformOrigin:'0 0'}}>
-                <line x1="0" y1="0" x2="5" y2="-5" stroke="white" strokeWidth="1.2" strokeLinecap="round" opacity="0.4"/>
-              </g>
-              <g style={{transform:'translateY(100%)', transformBox:'view-box' as never, transformOrigin:'0 0'}}>
-                <line x1="0" y1="0" x2="-5" y2="5" stroke="white" strokeWidth="1.2" strokeLinecap="round" opacity="0.4"/>
-              </g>
-              <g style={{transform:'translate(100%, 100%)', transformBox:'view-box' as never, transformOrigin:'0 0'}}>
-                <line x1="0" y1="0" x2="5" y2="5" stroke="white" strokeWidth="1.2" strokeLinecap="round" opacity="0.4"/>
-              </g>
-            </svg>
-          )}
-        </div>
+        <DashedToggleButton
+          label="More optional details"
+          hideLabel="Hide optional details"
+          expanded={showMore}
+          onClick={() => setShowMore(v => !v)}
+        />
+
+        {/* Surroundings toggle */}
+        <DashedToggleButton
+          label="Surroundings"
+          hideLabel="Hide surroundings"
+          expanded={showSurroundings}
+          onClick={() => setShowSurroundings(v => !v)}
+        />
+        {showSurroundings && (
+          <div className="flex flex-col gap-3 rounded-xl border border-blue-500/30 bg-blue-500/5 p-4">
+            <TagToggleGrid
+              label="Select all that apply"
+              groups={[
+                (Object.keys(COMPANION_LABELS) as Companion[]).map(key => ({
+                  key, label: COMPANION_LABELS[key], emoji: COMPANION_EMOJI[key], doodle: COMPANION_ICON_OVERRIDES[key],
+                  active: companions.includes(key), onToggle: () => toggleCompanion(key),
+                })),
+                (Object.keys(CONDITION_LABELS) as WeatherCondition[]).map(key => ({
+                  key, label: CONDITION_LABELS[key], emoji: CONDITION_EMOJI[key], doodle: CONDITION_ICON_OVERRIDES[key],
+                  active: conditions.includes(key), onToggle: () => toggleCondition(key),
+                })),
+              ]}
+            />
+          </div>
+        )}
 
         {showMore && (
           <div className="flex flex-col gap-3 rounded-xl border border-blue-500/30 bg-blue-500/5 p-4">
@@ -873,10 +994,16 @@ export default function AddPage() {
             <div>
               <label className="label">Average Pace <span className="text-[#64748B]">min/km</span></label>
               <div className="flex gap-2 items-center">
-                <input type="number" className="input" placeholder="Min" min="0" value={paceMin} onChange={e => setPaceMin(e.target.value)} />
+                <input type="number" className="input" placeholder={autoPaceMinVal != null && !paceMin && !paceSec ? String(autoPaceMinVal) : 'Min'} min="0" value={paceMin} onChange={e => setPaceMin(e.target.value)} />
                 <span className="text-[#64748B]">:</span>
-                <input type="number" className="input" placeholder="Sec" min="0" max="59" value={paceSec} onChange={e => setPaceSec(e.target.value)} />
+                <input type="number" className="input" placeholder={autoPaceSecVal != null && !paceMin && !paceSec ? String(autoPaceSecVal) : 'Sec'} min="0" max="59" value={paceSec} onChange={e => setPaceSec(e.target.value)} />
+                {(paceMin || paceSec) && (
+                  <button type="button" onClick={() => { setPaceMin(''); setPaceSec(''); }} className="text-xs text-[#64748B] hover:text-white px-2 py-1 rounded-lg border border-[#334155] hover:border-[#475569] flex-shrink-0">✕</button>
+                )}
               </div>
+              {autoPaceMinVal != null && !paceMin && !paceSec && (
+                <p className="text-xs text-[#475569] mt-1">Auto-calculated from distance + duration · tap to override</p>
+              )}
             </div>
 
             <div>
@@ -894,14 +1021,36 @@ export default function AddPage() {
                 <label className="label">Avg Heart Rate</label>
                 <ScrollFieldPicker
                   label="Avg Heart Rate" unit="bpm" min={28} max={230} value={avgHr} onChange={setAvgHr}
-                  suggestion={suggestedAvgHr(user?.user_metadata?.birthday ? calcAge(user.user_metadata.birthday) : null, effort)} preferSuggestion placeholder="bpm"
+                  suggestion={suggestedAvgHr(age, effort)} preferSuggestion placeholder="bpm"
                 />
+                {avgHr && maxHrEstimate && (
+                  (() => {
+                    const z = hrZoneInfo(parseInt(avgHr), maxHrEstimate);
+                    return (
+                      <div className="flex items-center gap-1.5 mt-1.5">
+                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: z.color + '22', color: z.color, border: `1px solid ${z.color}44` }}>Z{z.zone}</span>
+                        <span className="text-xs text-[#64748B]">{z.label}</span>
+                      </div>
+                    );
+                  })()
+                )}
+                {!avgHr && effort && effortHrHint(effort, age) && (
+                  (() => {
+                    const hint = effortHrHint(effort, age)!;
+                    return (
+                      <div className="flex items-center gap-1.5 mt-1.5 px-2 py-1.5 rounded-lg" style={{ background: hint.color + '11', border: `1px solid ${hint.color}33` }}>
+                        <span className="text-xs font-semibold px-1.5 py-0.5 rounded-full" style={{ background: hint.color + '22', color: hint.color, border: `1px solid ${hint.color}44` }}>Z{hint.zone}</span>
+                        <span className="text-xs" style={{ color: hint.color + 'cc' }}>~{hint.low}–{hint.high} bpm · {hint.label}</span>
+                      </div>
+                    );
+                  })()
+                )}
               </div>
               <div>
                 <label className="label">Max Heart Rate</label>
                 <ScrollFieldPicker
                   label="Max Heart Rate" unit="bpm" min={28} max={230} value={maxHr} onChange={setMaxHr}
-                  suggestion={suggestedMaxHr(user?.user_metadata?.birthday ? calcAge(user.user_metadata.birthday) : null, effort)} preferSuggestion placeholder="bpm"
+                  suggestion={suggestedMaxHr(age, effort)} preferSuggestion placeholder="bpm"
                 />
               </div>
             </div>
@@ -917,27 +1066,10 @@ export default function AddPage() {
               <label className="label">Elevation Gain <span className="text-[#64748B]">m</span></label>
               <ScrollFieldPicker label="Elevation Gain" unit="m" max={9000} value={elevationGain} onChange={setElevationGain} suggestion={0} placeholder="e.g. 120" />
             </div>
-
-            {/* Companions & conditions — universal tags, shown regardless of exercise type.
-                Two groups (not one flat list) so companions always keep their own top row,
-                never sharing it with conditions regardless of the column count at this width. */}
-            <TagToggleGrid
-              label="Select all that apply"
-              groups={[
-                (Object.keys(COMPANION_LABELS) as Companion[]).map(key => ({
-                  key, label: COMPANION_LABELS[key], emoji: COMPANION_EMOJI[key], doodle: COMPANION_ICON_OVERRIDES[key],
-                  active: companions.includes(key), onToggle: () => toggleCompanion(key),
-                })),
-                (Object.keys(CONDITION_LABELS) as WeatherCondition[]).map(key => ({
-                  key, label: CONDITION_LABELS[key], emoji: CONDITION_EMOJI[key], doodle: CONDITION_ICON_OVERRIDES[key],
-                  active: conditions.includes(key), onToggle: () => toggleCondition(key),
-                })),
-              ]}
-            />
           </div>
         )}
 
-        {/* Notes — always visible */}
+        {/* Notes */}
         <div>
           <label className="label">Notes / Highlights (optional)</label>
           <textarea
@@ -948,6 +1080,7 @@ export default function AddPage() {
             onChange={e => setNotes(e.target.value)}
             style={{ resize: 'vertical' }}
           />
+          {notes.length > 0 && <p className="text-xs text-[#475569] mt-1 text-right">{notes.length} characters</p>}
         </div>
 
         {/* Photos */}
@@ -985,20 +1118,29 @@ export default function AddPage() {
           )}
         </div>
 
-        {/* Repeats the top error banner here — validation failures are often for a field
-            above this point, and the user is usually scrolled down to this button when
-            Save fails, so the top banner alone can go unnoticed. */}
         {error && (
           <div className="p-3 rounded-lg bg-red-900/40 border border-red-700 text-red-300 text-sm">
             {error}
           </div>
         )}
 
-        {/* Save */}
+        {/* Save — inline (tablet/desktop) */}
         <button
           onClick={handleSave}
           disabled={saving}
-          className="btn-primary w-full mt-2 py-3 text-base"
+          className="btn-primary w-full mt-2 py-3 text-base hidden sm:block"
+          style={{ background: accentColor }}
+        >
+          {saving ? 'Saving...' : 'Save Exercise'}
+        </button>
+      </div>
+
+      {/* Sticky save — mobile only */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 p-4 bg-[#0F172A]/95 backdrop-blur-sm border-t border-[#334155] sm:hidden">
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="btn-primary w-full py-3 text-base"
           style={{ background: accentColor }}
         >
           {saving ? 'Saving...' : 'Save Exercise'}
@@ -1101,18 +1243,8 @@ export default function AddPage() {
               This matches your planned <span className="text-white font-medium">{planMatchPrompt.sessionTitle}</span> session. Count it as done?
             </p>
             <div className="flex flex-col gap-2">
-              <button
-                onClick={applyPlanMatch}
-                className="btn-primary w-full"
-              >
-                Yes, apply to plan ✓
-              </button>
-              <button
-                onClick={() => setPlanMatchPrompt(null)}
-                className="btn-secondary w-full"
-              >
-                No, skip
-              </button>
+              <button onClick={applyPlanMatch} className="btn-primary w-full">Yes, apply to plan ✓</button>
+              <button onClick={() => setPlanMatchPrompt(null)} className="btn-secondary w-full">No, skip</button>
             </div>
           </div>
         </div>
